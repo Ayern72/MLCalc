@@ -1,5 +1,11 @@
 # MLCalc
 
+> **Disclaimer:** MLCalc is a personal project, provided "as is" and without any warranty. Like
+> all software, it may contain bugs, so its results can be wrong. Do not use MLCalc where an
+> incorrect result is not acceptable, for example in medical, safety-critical, engineering,
+> financial or legal work. If a result matters, check it with another method or tool. The full
+> terms are in the [MIT license](LICENSE).
+
 MLCalc is a scientific calculator and plotting program with its own small scripting language.
 It was first written in C for the Amiga in the mid-1990s. This repository is a modern C#/.NET
 re-implementation, starting with a WPF desktop front-end.

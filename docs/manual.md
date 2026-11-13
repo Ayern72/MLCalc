@@ -1,5 +1,11 @@
 # MLCalc User's Manual
 
+> **Disclaimer:** MLCalc is a personal project, provided "as is" and without any warranty. Like
+> all software, it may contain bugs, so its results can be wrong. Do not use MLCalc where an
+> incorrect result is not acceptable, for example in medical, safety-critical, engineering,
+> financial or legal work. If a result matters, check it with another method or tool. The full
+> terms are in the [MIT license](../LICENSE).
+
 MLCalc is a calculator and plotting program with its own small programming language. It works
 with numbers, complex numbers and matrices, solves equations, fits polynomials, integrates and
 differentiates functions, and draws graphs. It began as an Amiga program in the 1990s; this version
