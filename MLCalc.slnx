@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MLCalc.Interpreter/MLCalc.Interpreter.csproj" />
+    <Project Path="src/MLCalc.Language/MLCalc.Language.csproj" />
+    <Project Path="src/MLCalc.LinearAlgebra/MLCalc.LinearAlgebra.csproj" />
+    <Project Path="src/MLCalc.Math/MLCalc.Math.csproj" />
+    <Project Path="src/MLCalc.Numerics/MLCalc.Numerics.csproj" />
+    <Project Path="src/MLCalc.Plotting/MLCalc.Plotting.csproj" />
+    <Project Path="src/MLCalc.Wpf/MLCalc.Wpf.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MLCalc.Interpreter.Tests/MLCalc.Interpreter.Tests.csproj" />
+    <Project Path="tests/MLCalc.Language.Tests/MLCalc.Language.Tests.csproj" />
+    <Project Path="tests/MLCalc.LinearAlgebra.Tests/MLCalc.LinearAlgebra.Tests.csproj" />
+    <Project Path="tests/MLCalc.Math.Tests/MLCalc.Math.Tests.csproj" />
+    <Project Path="tests/MLCalc.Numerics.Tests/MLCalc.Numerics.Tests.csproj" />
+    <Project Path="tests/MLCalc.Plotting.Tests/MLCalc.Plotting.Tests.csproj" />
+  </Folder>
+</Solution>
