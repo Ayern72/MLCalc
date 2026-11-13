@@ -18,9 +18,17 @@ z = (1 + 2i)^2              % complex numbers
 t = 0:0.1:2*pi;             % ranges; ';' suppresses output
 x = A(2, :)                 % indexing is 1-based; ':' selects a whole row or column
 
+for k = 1:5                 % MATLAB-style blocks: if … elseif … else … end, while … end, for … end
+	if mod(k, 2) == 0
+		disp("even")
+	else
+		disp(k)
+	end
+end
+
 k = 0;
-while k < 3 do              % control flow: if … then … else, while … do, for k = 1 to 10 do
-begin
+while k < 3 do              % the original style: if … then … else, while … do, for k = 1 to 10 do,
+begin                       % with a single statement or begin … end as the body
 	k = k + 1
 end
 

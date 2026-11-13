@@ -275,8 +275,8 @@ internal sealed class CliApp : IConsoleOutput
 		  A = [1 2; 3 4]          matrices; * / ^ are matrix operations, .* ./ .^ element-wise
 		  z = (1 + 2i)^2          complex numbers; ';' at the end hides the result
 		  x = 0:0.1:1             ranges; x(2), A(1,:) index from 1
-		  while k < 3 do          control flow: if … then … else, while … do, for k = 1 to 9 do,
-		  begin … end             with begin … end blocks over several lines
+		  if x > 0 … elseif … else … end      MATLAB-style blocks: if, while, for k = 1:9 … end
+		  while k < 3 do begin … end         original style: if … then …, while … do, for … do
 		  solve("x", "x^2-2", 1)  numerics: integral, derivata, solve, isect, extreme, feval
 		  fplot("x", "sin(x)")    plots: plot, fplot, polyplot, dot, xrange, yrange, initdisplay
 		  savefig("plot.svg")     save the plots

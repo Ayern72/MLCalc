@@ -87,7 +87,8 @@ internal sealed class Builtins
 		Element2(ComplexMath.Root, "xroot");
 		Element2(RealOnly(RealMath.Comb, "comb"), "comb");
 		Element2(RealOnly(RealMath.Perm, "perm"), "perm");
-		Element2(RealOnly(RealMath.Mod, "mod"), "rem");
+		Element2(RealOnly(RealMath.Mod, "mod"), "mod", "rem");
+		Element2(RealOnly(RealMath.Div, "div"), "div");
 	}
 
 	// ───────────── Matrix functions ─────────────

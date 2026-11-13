@@ -55,6 +55,8 @@ public class ParserTests
 	[InlineData("plot(t(1,:),t(6,:),+)", "(plot (t 1 :) (t 6 :) `+)")]
 	[InlineData("fplot(\"x\",\"sin(x)\")", "(fplot \"x\" \"sin(x)\")")]
 	[InlineData("max(a, -b)", "(max a (- b))")]
+	[InlineData("mod(k, 2) + 7 mod 3", "(+ (mod k 2) (mod 7 3))")]
+	[InlineData("div(7, 2)", "(div 7 2)")]
 	public void CallsAndIndexing(string text, string expected)
 	{
 		Assert.Equal(expected, P(text));
@@ -142,6 +144,62 @@ public class ParserTests
 	}
 
 	[Fact]
+	public void MatlabStyleIf()
+	{
+		Assert.Equal("(if (> a 0) {(= x 1); (= y 2)})", P("if a > 0\n\tx = 1;\n\ty = 2\nend"));
+		Assert.Equal("(if a {x} {y})", P("if a, x, else, y, end"));
+		Assert.Equal("(if a {})", P("if a\nend"));
+	}
+
+	[Fact]
+	public void MatlabStyleElseifChainSharesOneEnd()
+	{
+		const string source = """
+			if x > 0
+				s = 1;
+			elseif x < 0
+				s = -1;
+			else
+				s = 0;
+			end
+			after
+			""";
+		Assert.Equal("(if (> x 0) {(= s 1);} (if (< x 0) {(= s (- 1));} {(= s 0);}))\nafter", P(source));
+	}
+
+	[Fact]
+	public void MatlabStyleLoops()
+	{
+		Assert.Equal("(while (< k 3) {(= k (+ k 1));})", P("while k < 3\n\tk = k + 1;\nend"));
+		Assert.Equal("(while (< k 3) {(= k (+ k 1));})", P("while k < 3, k = k + 1; end"));
+		Assert.Equal("(for k (: 1 3) {k})", P("for k = 1:3\n\tk\nend"));
+		Assert.Equal("(for k 1 3 {k})", P("for k = 1 to 3\n\tk\nend"));
+	}
+
+	[Fact]
+	public void StylesCanBeMixedAndNested()
+	{
+		const string source = """
+			for i = 1:3
+				if i == 2 then continue2 = 1
+				while k < i do k = k + 1;
+				if i > 1
+					begin
+						x = i
+					end
+				end
+			end
+			""";
+		Assert.Equal("(for i (: 1 3) {(if (== i 2) (= continue2 1)) (while (< k i) (= k (+ k 1));) (if (> i 1) {{(= x i)}})})", P(source));
+	}
+
+	[Fact]
+	public void ElseifIsAKeyword()
+	{
+		Assert.Equal(TokenKind.Elseif, Lexer.Tokenize("ElseIf").Tokens[0].Kind);
+	}
+
+	[Fact]
 	public void NestedBlocks()
 	{
 		Assert.Equal("{{a} b}", P("begin begin a end b end"));
@@ -179,6 +237,12 @@ public class ParserErrorTests
 	[InlineData("while a do")]
 	[InlineData("if a then")]
 	[InlineData("begin\n x = 1")]
+	[InlineData("if a")]
+	[InlineData("if a\n x = 1")]
+	[InlineData("if a\n x = 1\nelse")]
+	[InlineData("if a\n x\nelseif b\n y")]
+	[InlineData("while k < 3\n k = k + 1;")]
+	[InlineData("for k = 1:3")]
 	public void InputEndingMidConstructIsIncomplete(string text)
 	{
 		var result = Parser.Parse(text);
@@ -206,6 +270,32 @@ public class ParserErrorTests
 		var result = Parser.Parse("x = 1 +* 2\ny = 3\nz = )\nw = 4");
 		Assert.Equal(2, result.Diagnostics.Length);
 		Assert.Equal("(= y 3)\n(= w 4)", result.Root.ToString());
+	}
+
+	[Theory]
+	[InlineData("elseif a")]
+	[InlineData("while a b end")]
+	[InlineData("for k = 1:3 k end")]
+	public void InvalidMatlabBlocksAreReported(string text)
+	{
+		var result = Parser.Parse(text);
+		Assert.True(result.HasErrors);
+		Assert.False(result.IsIncomplete);
+	}
+
+	[Fact]
+	public void MissingThenOrNewLineMentionsBothStyles()
+	{
+		var diagnostic = Assert.Single(Parser.Parse("if a b").Diagnostics);
+		Assert.Equal("Expected 'then' or the end of the line, but found 'b'.", diagnostic.Message);
+	}
+
+	[Fact]
+	public void RecoversInsideMatlabBlocks()
+	{
+		var result = Parser.Parse("if a\n x = *\n y = 1\nend\nz = 2");
+		Assert.Single(result.Diagnostics);
+		Assert.Equal("(if a {(= y 1)})\n(= z 2)", result.Root.ToString());
 	}
 
 	[Fact]

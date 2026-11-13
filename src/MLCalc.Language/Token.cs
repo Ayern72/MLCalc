@@ -15,6 +15,7 @@ public enum TokenKind
 	If,
 	Then,
 	Else,
+	Elseif,
 	While,
 	Do,
 	For,

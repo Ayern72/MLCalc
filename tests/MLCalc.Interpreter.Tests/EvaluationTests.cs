@@ -227,6 +227,29 @@ public class ControlFlowTests
 	}
 
 	[Fact]
+	public void MatlabStyleBlocks()
+	{
+		const string source = """
+			s = 0;
+			for k = 1:10
+				if mod(k, 2) == 0
+					s = s + k;
+				elseif k == 5
+					s = s + 100;
+				else
+					s = s - 1;
+				end
+			end
+			n = 0;
+			while n < 3, n = n + 1; end
+			""";
+		host.Run(source);
+		// Even numbers 2+4+6+8+10 = 30, plus 100 for k = 5, minus 1 for 1, 3, 7, 9.
+		AssertClose(126, host["s"]);
+		AssertClose(3, host["n"]);
+	}
+
+	[Fact]
 	public void MatrixConditionRequiresAllNonZero()
 	{
 		host.Run("if [1 1 0] then a = 1 else a = 2;");

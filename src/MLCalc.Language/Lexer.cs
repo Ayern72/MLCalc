@@ -14,6 +14,7 @@ public sealed class Lexer
 		["if"] = TokenKind.If,
 		["then"] = TokenKind.Then,
 		["else"] = TokenKind.Else,
+		["elseif"] = TokenKind.Elseif,
 		["while"] = TokenKind.While,
 		["do"] = TokenKind.Do,
 		["for"] = TokenKind.For,
