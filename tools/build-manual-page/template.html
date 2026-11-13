@@ -1,0 +1,249 @@
+<title>MLCalc User's Manual</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a technical manual — sticky contents rail beside a single measured text column;
+   console transcripts styled like the MLCalc console (orange prompt, blue input). */
+:root {
+	--bg: #f6f8fa;
+	--surface: #ffffff;
+	--ink: #19222d;
+	--muted: #5b6878;
+	--rule: #d8dfe7;
+	--accent: #1d5fa6;
+	--accent-soft: #e4eef9;
+	--prompt: #b85a00;
+	--code-bg: #eef2f6;
+	--err: #b3261e;
+	--notice-bg: #fdf4e7;
+	--notice-rule: #ecc994;
+	--notice-ink: #8a4300;
+	--font-display: "IBM Plex Sans Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+	--font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+	--font-mono: "IBM Plex Mono", "Cascadia Mono", Consolas, monospace;
+	--rail: 16rem;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		color-scheme: dark;
+		--bg: #0f141a;
+		--surface: #151c25;
+		--ink: #e2e8ef;
+		--muted: #97a3b2;
+		--rule: #283341;
+		--accent: #82b6f0;
+		--accent-soft: #1b2a3c;
+		--prompt: #f0a253;
+		--code-bg: #1a222d;
+		--err: #ff8f86;
+		--notice-bg: #2a2014;
+		--notice-rule: #6b4a1f;
+		--notice-ink: #f3b46a;
+	}
+}
+:root[data-theme="dark"] {
+	color-scheme: dark;
+	--bg: #0f141a;
+	--surface: #151c25;
+	--ink: #e2e8ef;
+	--muted: #97a3b2;
+	--rule: #283341;
+	--accent: #82b6f0;
+	--accent-soft: #1b2a3c;
+	--prompt: #f0a253;
+	--code-bg: #1a222d;
+	--err: #ff8f86;
+	--notice-bg: #2a2014;
+	--notice-rule: #6b4a1f;
+	--notice-ink: #f3b46a;
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 1rem); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--ink);
+	font: 400 1rem/1.65 var(--font-body);
+	-webkit-text-size-adjust: 100%;
+}
+a { color: var(--accent); text-underline-offset: 0.15em; text-decoration-thickness: 1px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+/* ───── Header ───── */
+.masthead {
+	border-bottom: 1px solid var(--rule);
+	background: var(--surface);
+	padding-block: 2rem 1.75rem;
+	padding-left: max(16px, env(safe-area-inset-left, 0px));
+	padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.masthead-inner { max-width: 72rem; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 1rem 2rem; align-items: end; justify-content: space-between; }
+.eyebrow { font: 500 0.75rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.6rem; }
+.eyebrow .p { color: var(--prompt); }
+.masthead h1 { font: 600 clamp(2rem, 4vw, 2.75rem)/1.05 var(--font-display); letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+.masthead .lede { margin: 0.6rem 0 0; color: var(--muted); max-width: 42rem; }
+.masthead nav { display: flex; gap: 1.25rem; font-size: 0.95rem; }
+
+/* ───── Two-column frame ───── */
+.frame {
+	max-width: 72rem;
+	margin: 0 auto;
+	display: grid;
+	grid-template-columns: var(--rail) minmax(0, 1fr);
+	gap: 3rem;
+	padding-block: 2rem 4rem;
+	padding-left: max(16px, env(safe-area-inset-left, 0px));
+	padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 1rem); align-self: start; max-height: calc(100vh - 2rem); overflow-y: auto; font-size: 0.9rem; }
+.rail details > summary { display: none; }
+.rail h2 { font: 600 0.75rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.75rem; }
+.rail ol { list-style: none; margin: 0; padding: 0; }
+.rail li { margin: 0; }
+.rail a { display: block; padding: 0.22rem 0.6rem; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; line-height: 1.35; }
+.rail a:hover { color: var(--ink); }
+.rail a[aria-current="true"] { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+.rail ol ol a { padding-left: 1.4rem; font-size: 0.85rem; }
+
+@media (max-width: 960px) {
+	.frame { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+	.rail { position: static; max-height: none; overflow: visible; }
+	.rail details { border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); }
+	.rail details > summary { display: block; cursor: pointer; padding: 0.7rem 1rem; font-weight: 500; }
+	.rail details > div { padding: 0 0.5rem 0.75rem; }
+	.rail h2 { display: none; }
+}
+
+/* ───── Manual text ───── */
+main { min-width: 0; max-width: 46rem; }
+main > .notice + p { font-size: 1.08rem; }
+.notice {
+	margin: 0 0 1.75rem;
+	padding: 0.85rem 1.1rem;
+	background: var(--notice-bg);
+	border: 1px solid var(--notice-rule);
+	border-radius: 6px;
+	font-size: 0.95rem;
+}
+.notice p { margin: 0; }
+.notice strong { color: var(--notice-ink); }
+main h2 {
+	font: 600 1.7rem/1.2 var(--font-display);
+	letter-spacing: -0.005em;
+	margin: 3.25rem 0 1rem;
+	padding-top: 1.25rem;
+	border-top: 2px solid var(--ink);
+	text-wrap: balance;
+}
+main h3 { font: 600 1.2rem/1.3 var(--font-display); margin: 2.25rem 0 0.6rem; text-wrap: balance; }
+main h4 { font: 600 1rem/1.3 var(--font-body); margin: 1.5rem 0 0.4rem; }
+main p, main ul, main ol { margin: 0 0 1rem; }
+main ul, main ol { padding-left: 1.4rem; }
+main li { margin: 0.25rem 0; }
+main li > p { margin: 0; }
+main hr { display: none; }
+main strong { font-weight: 600; }
+main em { color: var(--muted); }
+main h2 a.anchor, main h3 a.anchor { margin-left: 0.4rem; color: var(--rule); text-decoration: none; font-weight: 400; }
+main h2:hover a.anchor, main h3:hover a.anchor { color: var(--muted); }
+
+code { font: 400 0.88em/1.5 var(--font-mono); background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; }
+pre {
+	margin: 0 0 1.25rem;
+	padding: 0.9rem 1.1rem;
+	background: var(--code-bg);
+	border: 1px solid var(--rule);
+	border-radius: 6px;
+	overflow-x: auto;
+	line-height: 1.55;
+	tab-size: 4;
+}
+pre code { padding: 0; background: none; font-size: 0.86rem; white-space: pre; }
+pre .p { color: var(--prompt); font-weight: 500; user-select: none; }
+pre .in { color: var(--accent); font-weight: 500; }
+pre .err { color: var(--err); }
+pre .cm { color: var(--muted); font-style: italic; }
+
+.table-wrap { overflow-x: auto; margin: 0 0 1.5rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.93rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; vertical-align: top; padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--rule); }
+th { font: 600 0.75rem/1.3 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td code { white-space: nowrap; }
+
+.swatch { display: inline-block; width: 0.85em; height: 0.85em; border-radius: 2px; margin-right: 0.45em; vertical-align: -0.05em; box-shadow: 0 0 0 1px var(--rule); }
+
+footer { border-top: 1px solid var(--rule); color: var(--muted); font-size: 0.9rem; padding-block: 1.5rem 2.5rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+footer p { max-width: 72rem; margin: 0 auto; }
+</style>
+
+<header class="masthead">
+	<div class="masthead-inner">
+		<div>
+			<p class="eyebrow"><span class="p">&gt;&gt;</span> MLCalc · desktop app and command line</p>
+			<h1>MLCalc User's Manual</h1>
+			<p class="lede">Every operator, function and command of the MLCalc calculator and plotting language, with examples you can type at the prompt.</p>
+		</div>
+		<nav aria-label="Project">
+			<a href="https://github.com/Ayern72/MLCalc">Source on GitHub</a>
+			<a href="https://github.com/Ayern72/MLCalc/blob/main/docs/grammar.md">Grammar (EBNF)</a>
+		</nav>
+	</div>
+</header>
+
+<div class="frame">
+	<aside class="rail" aria-label="Contents">
+		<details id="toc" open>
+			<summary>Contents</summary>
+			<div>
+				<h2>Contents</h2>
+{{TOC}}
+			</div>
+		</details>
+	</aside>
+	<main id="manual">
+{{BODY}}
+	</main>
+</div>
+
+<footer>
+	<p>Generated from <a href="https://github.com/Ayern72/MLCalc/blob/main/docs/manual.md">docs/manual.md</a> in the MLCalc repository. MIT licence.</p>
+</footer>
+
+<script>
+(function () {
+	// Collapse the contents on narrow screens; keep it open beside the text on wide ones.
+	var toc = document.getElementById("toc");
+	var narrow = window.matchMedia("(max-width: 960px)");
+	function syncToc() { toc.open = !narrow.matches; }
+	syncToc();
+	narrow.addEventListener("change", syncToc);
+	toc.addEventListener("click", function (e) {
+		if (narrow.matches && e.target.closest("a")) toc.open = false;
+	});
+
+	// Highlight the section being read.
+	var links = {};
+	document.querySelectorAll(".rail a[href^='#']").forEach(function (a) { links[a.getAttribute("href").slice(1)] = a; });
+	var headings = Array.prototype.filter.call(document.querySelectorAll("main h2[id], main h3[id]"), function (h) { return links[h.id]; });
+	var current = null;
+	function update() {
+		var top = null;
+		for (var i = 0; i < headings.length; i++) {
+			if (headings[i].getBoundingClientRect().top <= 120) top = headings[i]; else break;
+		}
+		var id = top ? top.id : (headings[0] && headings[0].id);
+		if (id === current) return;
+		if (current && links[current]) links[current].removeAttribute("aria-current");
+		current = id;
+		if (current && links[current]) links[current].setAttribute("aria-current", "true");
+	}
+	window.addEventListener("scroll", update, { passive: true });
+	update();
+})();
+</script>

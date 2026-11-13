@@ -116,6 +116,13 @@ dotnet run --project src/MLCalc.Wpf
 dotnet run --project src/MLCalc.Cli -- -e "1 + 2"
 ```
 
+Two single-file tools live outside the solution:
+
+```
+dotnet run benchmarks/FunctionEvaluation.cs            # times function evaluation (see benchmarks/README.md)
+dotnet run tools/build-manual-page/BuildManualPage.cs  # builds the manual's web page into artifacts/
+```
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

@@ -18,3 +18,5 @@ jobs:
       - run: dotnet test MLCalc.slnx --no-build -c Release
       # Compile (not run) the benchmark so it keeps building as the code changes.
       - run: dotnet build benchmarks/FunctionEvaluation.cs
+      # Build the manual's web page; fails if a link within the page has no target.
+      - run: dotnet run tools/build-manual-page/BuildManualPage.cs
