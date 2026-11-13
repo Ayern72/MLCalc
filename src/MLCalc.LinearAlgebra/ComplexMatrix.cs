@@ -1,0 +1,249 @@
+using System.Globalization;
+using System.Numerics;
+using System.Text;
+using MLCalc.Math;
+
+namespace MLCalc.LinearAlgebra;
+
+/// <summary>
+/// An immutable dense matrix of complex numbers, stored row-major. This is MLCalc's single value
+/// type: scalars are 1×1 matrices and real numbers have a zero imaginary part.
+/// </summary>
+public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
+{
+	readonly Complex[] data;
+
+	public int Rows { get; }
+	public int Columns { get; }
+	public int Count => data.Length;
+
+	ComplexMatrix(int rows, int columns, Complex[] data)
+	{
+		Rows = rows;
+		Columns = columns;
+		this.data = data;
+	}
+
+	/// <summary>Creates a matrix from row-major data. The array is copied.</summary>
+	public static ComplexMatrix Create(int rows, int columns, ReadOnlySpan<Complex> rowMajorData)
+	{
+		ArgumentOutOfRangeException.ThrowIfNegative(rows);
+		ArgumentOutOfRangeException.ThrowIfNegative(columns);
+		if (rowMajorData.Length != rows * columns)
+			throw new ArgumentException($"Expected {rows * columns} elements, got {rowMajorData.Length}.", nameof(rowMajorData));
+		return new ComplexMatrix(rows, columns, rowMajorData.ToArray());
+	}
+
+	public static ComplexMatrix Create(int rows, int columns, Func<int, int, Complex> element)
+	{
+		var values = new Complex[rows * columns];
+		for (int r = 0; r < rows; r++)
+			for (int c = 0; c < columns; c++)
+				values[r * columns + c] = element(r, c);
+		return new ComplexMatrix(rows, columns, values);
+	}
+
+	public static ComplexMatrix FromRows(Complex[,] values) =>
+		Create(values.GetLength(0), values.GetLength(1), (r, c) => values[r, c]);
+
+	public static ComplexMatrix FromRows(double[,] values) =>
+		Create(values.GetLength(0), values.GetLength(1), (r, c) => values[r, c]);
+
+	public static ComplexMatrix Scalar(Complex value) => new(1, 1, [value]);
+
+	public static ComplexMatrix RowVector(params ReadOnlySpan<double> values)
+	{
+		var array = new Complex[values.Length];
+		for (int i = 0; i < values.Length; i++)
+			array[i] = values[i];
+		return new ComplexMatrix(1, values.Length, array);
+	}
+
+	public static ComplexMatrix ColumnVector(params ReadOnlySpan<double> values) => RowVector(values).Transpose();
+
+	public static ComplexMatrix Zeros(int rows, int columns) => new(rows, columns, new Complex[rows * columns]);
+
+	public static ComplexMatrix Ones(int rows, int columns) => Create(rows, columns, (_, _) => Complex.One);
+
+	public static ComplexMatrix Identity(int size) => Create(size, size, (r, c) => r == c ? Complex.One : Complex.Zero);
+
+	public static implicit operator ComplexMatrix(Complex value) => Scalar(value);
+	public static implicit operator ComplexMatrix(double value) => Scalar(value);
+
+	/// <summary>Element at zero-based row and column.</summary>
+	public Complex this[int row, int column]
+	{
+		get
+		{
+			if ((uint)row >= (uint)Rows || (uint)column >= (uint)Columns)
+				throw new MathException(MathError.Index, $"Index ({row + 1},{column + 1}) is outside a {Rows}×{Columns} matrix.");
+			return data[row * Columns + column];
+		}
+	}
+
+	/// <summary>Element at zero-based row-major linear index.</summary>
+	public Complex this[int index]
+	{
+		get
+		{
+			if ((uint)index >= (uint)data.Length)
+				throw new MathException(MathError.Index, $"Index {index + 1} is outside a matrix with {data.Length} elements.");
+			return data[index];
+		}
+	}
+
+	public ReadOnlySpan<Complex> AsSpan() => data;
+
+	public bool IsScalar => Rows == 1 && Columns == 1;
+	public bool IsEmpty => data.Length == 0;
+	public bool IsSquare => Rows == Columns;
+	public bool IsVector => Rows == 1 || Columns == 1;
+	public bool IsReal => data.All(ComplexMath.IsReal);
+
+	/// <summary>The single element of a 1×1 matrix.</summary>
+	public Complex ScalarValue => IsScalar
+		? data[0]
+		: throw new MathException(MathError.Dimension, $"Expected a scalar, got a {Rows}×{Columns} matrix.");
+
+	public ComplexMatrix Row(int row) => Create(1, Columns, (_, c) => this[row, c]);
+	public ComplexMatrix Column(int column) => Create(Rows, 1, (r, _) => this[r, column]);
+
+	/// <summary>Applies a function to every element.</summary>
+	public ComplexMatrix Map(Func<Complex, Complex> function)
+	{
+		var result = new Complex[data.Length];
+		for (int i = 0; i < data.Length; i++)
+			result[i] = function(data[i]);
+		return new ComplexMatrix(Rows, Columns, result);
+	}
+
+	/// <summary>
+	/// Combines two matrices element by element. Matrices must have the same size, or one of them
+	/// must be a scalar, which is then paired with every element of the other.
+	/// </summary>
+	public static ComplexMatrix ElementWise(ComplexMatrix a, ComplexMatrix b, Func<Complex, Complex, Complex> function)
+	{
+		if (a.Rows == b.Rows && a.Columns == b.Columns)
+		{
+			var result = new Complex[a.Count];
+			for (int i = 0; i < result.Length; i++)
+				result[i] = function(a.data[i], b.data[i]);
+			return new ComplexMatrix(a.Rows, a.Columns, result);
+		}
+		if (a.IsScalar)
+		{
+			var x = a.data[0];
+			return b.Map(y => function(x, y));
+		}
+		if (b.IsScalar)
+		{
+			var y = b.data[0];
+			return a.Map(x => function(x, y));
+		}
+		throw DimensionMismatch(a, b);
+	}
+
+	public static ComplexMatrix operator +(ComplexMatrix a, ComplexMatrix b) => ElementWise(a, b, (x, y) => x + y);
+	public static ComplexMatrix operator -(ComplexMatrix a, ComplexMatrix b) => ElementWise(a, b, (x, y) => x - y);
+	public static ComplexMatrix operator -(ComplexMatrix a) => a.Map(x => -x);
+
+	public ComplexMatrix ElementMultiply(ComplexMatrix other) => ElementWise(this, other, (x, y) => x * y);
+	public ComplexMatrix ElementDivide(ComplexMatrix other) => ElementWise(this, other, ComplexMath.Divide);
+	public ComplexMatrix ElementPower(ComplexMatrix other) => ElementWise(this, other, ComplexMath.Pow);
+
+	/// <summary>Matrix product. A scalar operand multiplies every element.</summary>
+	public static ComplexMatrix operator *(ComplexMatrix a, ComplexMatrix b)
+	{
+		if (a.IsScalar || b.IsScalar)
+			return a.ElementMultiply(b);
+		if (a.Columns != b.Rows)
+			throw new MathException(MathError.Dimension, $"Cannot multiply a {a.Rows}×{a.Columns} matrix by a {b.Rows}×{b.Columns} matrix.");
+		var result = new Complex[a.Rows * b.Columns];
+		for (int r = 0; r < a.Rows; r++)
+			for (int c = 0; c < b.Columns; c++)
+			{
+				Complex sum = Complex.Zero;
+				for (int k = 0; k < a.Columns; k++)
+					sum += a.data[r * a.Columns + k] * b.data[k * b.Columns + c];
+				result[r * b.Columns + c] = sum;
+			}
+		return new ComplexMatrix(a.Rows, b.Columns, result);
+	}
+
+	/// <summary>Plain transpose (no conjugation), as the original <c>'</c> operator.</summary>
+	public ComplexMatrix Transpose() => Create(Columns, Rows, (r, c) => data[c * Columns + r]);
+
+	public ComplexMatrix ConjugateTranspose() => Transpose().Map(Complex.Conjugate);
+
+	/// <summary>Solves A·X = B for X (MATLAB <c>A\B</c>).</summary>
+	public static ComplexMatrix LeftDivide(ComplexMatrix a, ComplexMatrix b) =>
+		a.IsScalar ? b.ElementDivide(a) : LinearSolver.Solve(a, b);
+
+	/// <summary>Solves X·B = A for X (MATLAB <c>A/B</c>).</summary>
+	public static ComplexMatrix RightDivide(ComplexMatrix a, ComplexMatrix b) =>
+		b.IsScalar ? a.ElementDivide(b) : LinearSolver.Solve(b.Transpose(), a.Transpose()).Transpose();
+
+	public Complex Determinant() => LinearSolver.Determinant(this);
+
+	public ComplexMatrix Inverse() => LinearSolver.Solve(this, Identity(Rows));
+
+	static MathException DimensionMismatch(ComplexMatrix a, ComplexMatrix b) =>
+		new(MathError.Dimension, $"Matrix dimensions do not agree: {a.Rows}×{a.Columns} and {b.Rows}×{b.Columns}.");
+
+	public bool Equals(ComplexMatrix? other) =>
+		other is not null && Rows == other.Rows && Columns == other.Columns && data.AsSpan().SequenceEqual(other.data);
+
+	public override bool Equals(object? obj) => Equals(obj as ComplexMatrix);
+
+	public override int GetHashCode()
+	{
+		var hash = new HashCode();
+		hash.Add(Rows);
+		hash.Add(Columns);
+		foreach (var value in data)
+			hash.Add(value);
+		return hash.ToHashCode();
+	}
+
+	/// <summary>True when the matrices have the same size and all elements differ by at most <paramref name="tolerance"/>.</summary>
+	public bool ApproximatelyEquals(ComplexMatrix other, double tolerance)
+	{
+		if (Rows != other.Rows || Columns != other.Columns)
+			return false;
+		for (int i = 0; i < data.Length; i++)
+			if (Complex.Abs(data[i] - other.data[i]) > tolerance)
+				return false;
+		return true;
+	}
+
+	public override string ToString()
+	{
+		if (IsScalar)
+			return Format(data[0]);
+		var builder = new StringBuilder();
+		for (int r = 0; r < Rows; r++)
+		{
+			if (r > 0)
+				builder.AppendLine();
+			for (int c = 0; c < Columns; c++)
+			{
+				if (c > 0)
+					builder.Append('\t');
+				builder.Append(Format(data[r * Columns + c]));
+			}
+		}
+		return builder.ToString();
+	}
+
+	/// <summary>Formats a complex number as "a", "bi" or "a+bi" using invariant culture.</summary>
+	public static string Format(Complex value, string numberFormat = "G10")
+	{
+		string re = value.Real.ToString(numberFormat, CultureInfo.InvariantCulture);
+		if (value.Imaginary == 0)
+			return re;
+		string im = System.Math.Abs(value.Imaginary).ToString(numberFormat, CultureInfo.InvariantCulture);
+		if (value.Real == 0)
+			return (value.Imaginary < 0 ? "-" : "") + im + "i";
+		return re + (value.Imaginary < 0 ? "-" : "+") + im + "i";
+	}
+}
