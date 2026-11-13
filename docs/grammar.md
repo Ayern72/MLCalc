@@ -15,14 +15,21 @@ plain EBNF. They are marked with ⚑ in the grammar and explained in
 | Notation | Meaning |
 |---|---|
 | `rule = … ;` | definition |
-| `"if"` | terminal (keywords are case-insensitive: `IF`, `If` and `if` are the same) |
-| `UPPER_CASE` | token produced by the lexer |
+| `UPPER_CASE` | a token: something the lexer produces and the parser consumes |
+| `lower_case` | a helper rule: part of a token or skipped text (lexical grammar), or a nonterminal (syntactic grammar) |
+| `"if"` | literal text (keywords are case-insensitive: `IF`, `If` and `if` are the same) |
+| `"\n"` `"\r"` `"\t"` `"\f"` `"\v"` | newline, carriage return, tab, form feed, vertical tab |
+| `? … ?` | a set of characters described in words |
 | `a b` | sequence |
 | `a \| b` | alternative |
+| `a - b` | `a` except `b` |
 | `[ a ]` | optional |
 | `{ a }` | zero or more |
 | `( a )` | grouping |
 | `(* … *)` | comment |
+
+`KEYWORD` and `OPERATOR` are tokens like the others, but the syntactic grammar never refers to them
+by name: it writes the specific keyword or operator as a literal, e.g. `"if"` or `"+"`.
 
 ## Lexical grammar
 
@@ -30,12 +37,19 @@ The lexer turns the source into tokens. Whitespace, comments and line continuati
 between tokens; newlines are tokens because they end statements and separate matrix rows.
 
 ```ebnf
+(* ───────── Character classes ───────── *)
+character      = ? any character ? ;
+letter         = ? any Unicode letter ? ;                     (* so identifiers such as längd are allowed *)
+digit          = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+newline-char   = "\n" | "\r" ;
+
 (* ───────── Skipped between tokens ───────── *)
-whitespace     = " " | TAB | FORM_FEED | VERTICAL_TAB ;
+whitespace     = " " | "\t" | "\f" | "\v" ;
 comment        = "%" { character - newline-char } ;           (* up to, not including, the newline *)
 continuation   = "..." { character - "\n" } "\n" ;            (* joins the next line to this one *)
 
 (* ───────── Tokens ───────── *)
+EOF            = ? end of the input ? ;
 NEWLINE        = "\r\n" | "\n" | "\r" ;                       (* ⚑ ignored inside ( ) *)
 
 NUMBER         = digits [ fraction ] [ exponent ]
@@ -48,21 +62,19 @@ digits         = digit { digit } ;
 IDENTIFIER     = ( letter | "_" ) { letter | digit | "_" } ;  (* excluding keywords *)
 STRING         = '"' { character - ( '"' | newline-char ) } '"' ;
 
-keyword        = "and" | "begin" | "div" | "do" | "else" | "elseif" | "end" | "for" | "if"
+KEYWORD        = "and" | "begin" | "div" | "do" | "else" | "elseif" | "end" | "for" | "if"
                | "mod" | "not" | "or" | "then" | "to" | "while" | "xor" ;
 
-operator       = "+" | "-" | "*" | "/" | "\" | "^" | ".*" | "./" | ".\" | ".^"
+OPERATOR       = "+" | "-" | "*" | "/" | "\" | "^" | ".*" | "./" | ".\" | ".^"
                | "'" | ".'" | "!" | "="
                | "==" | "~=" | "<>" | "<" | "<=" | ">" | ">="
                | "&" | "&&" | "|" | "||" | "~"
                | "(" | ")" | "[" | "]" | "," | ";" | ":" ;
-
-newline-char   = "\n" | "\r" ;
 ```
 
 Notes:
 
-- `letter` is any Unicode letter, so identifiers such as `längd` are allowed.
+- `IDENTIFIER` excludes the keywords, compared case-insensitively: `End` is the keyword `end`.
 - The longest operator wins: `<=` is one token, not `<` followed by `=`. `<>` and `~=` both mean
   "not equal".
 - Strings use double quotes only; `'` is always the transpose operator.
