@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/MLCalc.Cli/MLCalc.Cli.csproj" />
     <Project Path="src/MLCalc.Interpreter/MLCalc.Interpreter.csproj" />
     <Project Path="src/MLCalc.Language/MLCalc.Language.csproj" />
     <Project Path="src/MLCalc.LinearAlgebra/MLCalc.LinearAlgebra.csproj" />
@@ -9,6 +10,7 @@
     <Project Path="src/MLCalc.Wpf/MLCalc.Wpf.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/MLCalc.Cli.Tests/MLCalc.Cli.Tests.csproj" />
     <Project Path="tests/MLCalc.Interpreter.Tests/MLCalc.Interpreter.Tests.csproj" />
     <Project Path="tests/MLCalc.Language.Tests/MLCalc.Language.Tests.csproj" />
     <Project Path="tests/MLCalc.LinearAlgebra.Tests/MLCalc.LinearAlgebra.Tests.csproj" />

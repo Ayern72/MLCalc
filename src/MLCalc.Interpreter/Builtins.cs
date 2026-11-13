@@ -351,9 +351,31 @@ internal sealed class Builtins
 		}, "polyplot");
 		Add(call =>
 		{
-			call.Output.WriteLine("print: printing is not supported in this version.");
+			call.Output.WriteLine("print: printing is not supported in this version; use savefig(\"plot.svg\").");
 			return null;
 		}, "print");
+
+		// savefig("plot.svg") or savefig("plot.svg", width, height)
+		Add(call =>
+		{
+			call.RequireCount(1, 3);
+			string path = call.String(0);
+			if (!path.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+				throw call.Error("only SVG files (.svg) are supported.", 0);
+			double width = call.Count > 1 ? call.Real(1) : 800;
+			double height = call.Count > 2 ? call.Real(2) : 600;
+			string fullPath = call.Interpreter.ResolvePath(path);
+			try
+			{
+				SvgWriter.Save(call.Figure.Snapshot(), fullPath, width, height);
+			}
+			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+			{
+				throw call.Error(ex.Message, 0);
+			}
+			call.Output.WriteLine($"Saved {fullPath}");
+			return null;
+		}, "savefig");
 	}
 
 	static ComplexMatrix? SetText(CallContext call, Action<string> set)

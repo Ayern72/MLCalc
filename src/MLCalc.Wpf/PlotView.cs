@@ -17,7 +17,6 @@ public sealed class PlotView : FrameworkElement
 		nameof(Figure), typeof(Figure), typeof(PlotView),
 		new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender, OnFigureChanged));
 
-	const double MarginLeft = 62, MarginRight = 18, MarginTop = 28, MarginBottom = 44;
 	const double MarkerSize = 3.5;
 
 	static readonly Typeface LabelFace = new("Segoe UI");
@@ -88,17 +87,12 @@ public sealed class PlotView : FrameworkElement
 
 	// ───────────── Layout ─────────────
 
-	Rect CellRect(FigureSnapshot snapshot, int row, int column)
-	{
-		double width = ActualWidth / snapshot.Columns, height = ActualHeight / snapshot.Rows;
-		return new Rect(column * width, row * height, width, height);
-	}
+	Rect CellRect(FigureSnapshot snapshot, int row, int column) =>
+		ToRect(PlotLayout.Cell(snapshot, row, column, ActualWidth, ActualHeight));
 
-	static Rect PlotRect(Rect cell) => new(
-		cell.Left + MarginLeft,
-		cell.Top + MarginTop,
-		System.Math.Max(1, cell.Width - MarginLeft - MarginRight),
-		System.Math.Max(1, cell.Height - MarginTop - MarginBottom));
+	static Rect PlotRect(Rect cell) => ToRect(PlotLayout.PlotArea(new ScreenRect(cell.Left, cell.Top, cell.Width, cell.Height)));
+
+	static Rect ToRect(ScreenRect r) => new(r.Left, r.Top, r.Width, r.Height);
 
 	static PlotTransform TransformFor(Axes axes, Rect plot) => new(axes, new ScreenRect(plot.Left, plot.Top, plot.Width, plot.Height));
 
@@ -156,14 +150,14 @@ public sealed class PlotView : FrameworkElement
 		{
 			double sx = t.ToScreenX(x);
 			dc.DrawLine(TickPen, new Point(sx, plot.Bottom), new Point(sx, plot.Bottom + 4));
-			var text = Label(FormatTick(x), 11, dpi);
+			var text = Label(PlotLayout.FormatTick(x), 11, dpi);
 			dc.DrawText(text, new Point(sx - text.Width / 2, plot.Bottom + 6));
 		}
 		foreach (var y in yTicks)
 		{
 			double sy = t.ToScreenY(y);
 			dc.DrawLine(TickPen, new Point(plot.Left - 4, sy), new Point(plot.Left, sy));
-			var text = Label(FormatTick(y), 11, dpi);
+			var text = Label(PlotLayout.FormatTick(y), 11, dpi);
 			dc.DrawText(text, new Point(plot.Left - 7 - text.Width, sy - text.Height / 2));
 		}
 
@@ -212,50 +206,25 @@ public sealed class PlotView : FrameworkElement
 		}
 	}
 
-	/// <summary>
-	/// A polyline that breaks at non-finite values. For functions it also breaks where the curve
-	/// jumps from beyond one edge to beyond the other (a pole such as tan at π/2).
-	/// </summary>
+	/// <summary>A polyline split into runs by <see cref="PlotLayout.Segments"/> (gaps, poles).</summary>
 	static StreamGeometry Polyline(IReadOnlyList<PlotPoint> points, PlotTransform t, Rect plot, bool breakAtJumps)
 	{
+		var bounds = new ScreenRect(plot.Left, plot.Top, plot.Width, plot.Height);
 		var geometry = new StreamGeometry();
 		using (var ctx = geometry.Open())
 		{
-			bool drawing = false;
-			int previousSide = 0;
-			foreach (var p in points)
-			{
-				if (!double.IsFinite(p.X) || !double.IsFinite(p.Y))
+			foreach (var segment in PlotLayout.Segments(points, t.Axes, breakAtJumps))
+				for (int i = 0; i < segment.Count; i++)
 				{
-					drawing = false;
-					continue;
+					var (x, y) = PlotLayout.Clamp(t.ToScreenX(segment[i].X), t.ToScreenY(segment[i].Y), bounds);
+					if (i == 0)
+						ctx.BeginFigure(new Point(x, y), false, false);
+					else
+						ctx.LineTo(new Point(x, y), true, false);
 				}
-				int side = p.Y > t.Axes.YMax ? 1 : p.Y < t.Axes.YMin ? -1 : 0;
-				if (breakAtJumps && drawing && side != 0 && side == -previousSide)
-					drawing = false;
-				previousSide = side;
-
-				var screen = Clamp(new Point(t.ToScreenX(p.X), t.ToScreenY(p.Y)), plot);
-				if (drawing)
-					ctx.LineTo(screen, true, false);
-				else
-				{
-					ctx.BeginFigure(screen, false, false);
-					drawing = true;
-				}
-			}
 		}
 		geometry.Freeze();
 		return geometry;
-	}
-
-	/// <summary>Keeps far-away points at a finite distance; WPF geometry misbehaves with huge coordinates.</summary>
-	static Point Clamp(Point p, Rect plot)
-	{
-		double margin = 10 * System.Math.Max(plot.Width, plot.Height);
-		return new Point(
-			System.Math.Clamp(p.X, plot.Left - margin, plot.Right + margin),
-			System.Math.Clamp(p.Y, plot.Top - margin, plot.Bottom + margin));
 	}
 
 	static StreamGeometry Markers(IEnumerable<PlotPoint> points, PlotTransform t, Rect plot, bool star)
@@ -322,7 +291,6 @@ public sealed class PlotView : FrameworkElement
 			weight is { } w ? new Typeface(LabelFace.FontFamily, FontStyles.Normal, w, FontStretches.Normal) : LabelFace,
 			size, TextBrush, pixelsPerDip);
 
-	static string FormatTick(double value) => value.ToString("G6", CultureInfo.InvariantCulture);
 
 	// ───────────── Mouse coordinates ─────────────
 

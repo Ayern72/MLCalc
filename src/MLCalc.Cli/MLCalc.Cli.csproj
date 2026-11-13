@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<AssemblyName>mlcalc</AssemblyName>
+		<RootNamespace>MLCalc.Cli</RootNamespace>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\MLCalc.Interpreter\MLCalc.Interpreter.csproj" />
+		<ProjectReference Include="..\MLCalc.Plotting\MLCalc.Plotting.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="MLCalc.Cli.Tests" />
+	</ItemGroup>
+</Project>

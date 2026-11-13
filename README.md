@@ -42,6 +42,23 @@ Names are case-insensitive. **Help › List Functions** shows every function and
   dropping a `.m` file on the window, or from the command line: `MLCalc --run script.m`.
 - The original sample scripts are copied next to the executable, in `samples/`.
 - `initdisplay(rows, columns)` splits the plot area; `currentwin(r, c)` selects a window.
+- `savefig("plot.svg")` saves the plots as an SVG image.
+
+## Command line
+
+`mlcalc` runs on Windows, Linux and macOS. Without arguments it starts an interactive prompt
+(`help` for hints, Ctrl+C stops a running program, `exit` quits).
+
+```
+mlcalc script.m [more.m …]          run scripts; errors are reported as file:line:column
+mlcalc -e "A = [1 2; 3 4]" -e "inv(A)"
+echo "solve(\"x\", \"x^2-2\", 1)" | mlcalc
+mlcalc FEIGENBA.m --svg feigenbaum.svg --size 1200x800
+mlcalc script.m -i                   run a script, then continue interactively
+```
+
+The exit code is 0 on success, 1 when a program fails and 2 for invalid options, so `mlcalc` can be
+used from shell scripts and builds.
 
 ## Differences from the Amiga original
 
@@ -59,13 +76,14 @@ Names are case-insensitive. **Help › List Functions** shows every function and
 | `MLCalc.LinearAlgebra` | Complex matrix type and linear algebra (Gauss elimination, least squares, polynomials) |
 | `MLCalc.Numerics` | Numerical analysis: integration, differentiation, root finding |
 | `MLCalc.Language` | Lexer, parser and syntax tree for the MLCalc language |
-| `MLCalc.Plotting` | UI-independent plot model (figures, axes, series, coordinate transforms) |
+| `MLCalc.Plotting` | UI-independent plot model (figures, axes, series, layout) and SVG export |
 | `MLCalc.Interpreter` | Evaluates MLCalc expressions and scripts |
 | `MLCalc.Wpf` | Windows desktop application |
+| `MLCalc.Cli` | Cross-platform command-line tool (`mlcalc`) |
 
 The libraries target `net10.0` with no Windows dependencies, so they can be reused by other
-front-ends. Dependencies only point downward: `Math` ← `LinearAlgebra` ← `Numerics` ← `Interpreter` ← `Wpf`.
-`Language` and `Plotting` have no dependencies and are used by `Interpreter`; `Wpf` also renders `Plotting`.
+front-ends. Dependencies only point downward: `Math` ← `LinearAlgebra` ← `Numerics` ← `Interpreter` ← `Wpf` / `Cli`.
+`Language` and `Plotting` have no dependencies and are used by `Interpreter`; the front-ends also use `Plotting`.
 
 `samples/` contains scripts written for the original Amiga version.
 
@@ -77,6 +95,7 @@ Requires the .NET 10 SDK.
 dotnet build MLCalc.slnx
 dotnet test MLCalc.slnx
 dotnet run --project src/MLCalc.Wpf
+dotnet run --project src/MLCalc.Cli -- -e "1 + 2"
 ```
 
 ## License
