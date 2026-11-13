@@ -41,7 +41,8 @@ public partial class MainWindow : Window
 	/// <summary>Keeps the newest output visible; batched so long-running scripts stay responsive.</summary>
 	void OnEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
 	{
-		if (scrollPending || e.Action != NotifyCollectionChangedAction.Add)
+		// Large batches of output arrive as one Reset instead of many Adds.
+		if (scrollPending || e.Action is not (NotifyCollectionChangedAction.Add or NotifyCollectionChangedAction.Reset))
 			return;
 		scrollPending = true;
 		Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>

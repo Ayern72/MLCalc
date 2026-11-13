@@ -17,5 +17,6 @@
     <Project Path="tests/MLCalc.Math.Tests/MLCalc.Math.Tests.csproj" />
     <Project Path="tests/MLCalc.Numerics.Tests/MLCalc.Numerics.Tests.csproj" />
     <Project Path="tests/MLCalc.Plotting.Tests/MLCalc.Plotting.Tests.csproj" />
+    <Project Path="tests/MLCalc.Wpf.Tests/MLCalc.Wpf.Tests.csproj" />
   </Folder>
 </Solution>

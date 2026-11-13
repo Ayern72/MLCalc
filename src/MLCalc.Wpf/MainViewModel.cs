@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -22,24 +21,31 @@ public enum ConsoleEntryKind
 public sealed record ConsoleEntry(ConsoleEntryKind Kind, string Text);
 
 /// <summary>
-/// The console and plot state. Programs run on a worker thread; output is marshalled to the UI
-/// thread. Input that ends mid-construct (an open begin, bracket, or while … do) continues on the
-/// next line.
+/// The console and plot state. Programs run on a worker thread; their output goes into a bounded
+/// buffer that the UI thread moves into the console every 30 ms. Input that ends mid-construct
+/// (an open begin, bracket, or while … do) continues on the next line.
 /// </summary>
 public sealed partial class MainViewModel : ObservableObject, IConsoleOutput
 {
 	const int MaxEntries = 10_000;
 
+	/// <summary>Output lines that may wait for the console; more are dropped and counted.</summary>
+	const int MaxPendingOutput = 20_000;
+
 	readonly Dispatcher dispatcher;
 	readonly MLCalcInterpreter interpreter;
 	readonly List<string> history = [];
 	readonly List<string> pendingLines = [];
+	readonly ConsoleOutputBuffer output = new(MaxPendingOutput);
 	int historyIndex;
 	CancellationTokenSource? cancellation;
 
 	public MainViewModel(Dispatcher dispatcher)
 	{
 		this.dispatcher = dispatcher;
+		// Moves program output into the console every 30 ms. Background priority keeps input and
+		// rendering responsive while output streams in; a running timer is kept alive by the dispatcher.
+		_ = new DispatcherTimer(TimeSpan.FromMilliseconds(30), DispatcherPriority.Background, (_, _) => FlushOutput(), dispatcher);
 		interpreter = new MLCalcInterpreter(Figure, this);
 		// savefig("plot.png") renders with the same code as the plot view; WPF rendering needs the UI thread.
 		interpreter.RegisterFigureFormat(".png", (snapshot, path, width, height) =>
@@ -53,7 +59,7 @@ public sealed partial class MainViewModel : ObservableObject, IConsoleOutput
 
 	public Figure Figure { get; } = new();
 
-	public ObservableCollection<ConsoleEntry> Entries { get; } = [];
+	public ConsoleEntries Entries { get; } = new(MaxEntries);
 
 	public string WorkingDirectory => interpreter.WorkingDirectory;
 
@@ -156,7 +162,11 @@ public sealed partial class MainViewModel : ObservableObject, IConsoleOutput
 	}
 
 	[RelayCommand]
-	private void ClearConsole() => Entries.Clear();
+	private void ClearConsole()
+	{
+		output.Drain();
+		Entries.Clear();
+	}
 
 	[RelayCommand]
 	private void ResetPlots() => Figure.Initialize(1, 1);
@@ -202,21 +212,31 @@ public sealed partial class MainViewModel : ObservableObject, IConsoleOutput
 
 	// ───────────── IConsoleOutput (called from the worker thread) ─────────────
 
-	void IConsoleOutput.WriteValue(string name, ComplexMatrix value) => Post(ConsoleEntryKind.Result, ResultFormatter.Format(name, value));
+	void IConsoleOutput.WriteValue(string name, ComplexMatrix value) => output.Add(new ConsoleEntry(ConsoleEntryKind.Result, ResultFormatter.Format(name, value)));
 
-	void IConsoleOutput.WriteLine(string text) => Post(ConsoleEntryKind.Text, text);
+	void IConsoleOutput.WriteLine(string text) => output.Add(new ConsoleEntry(ConsoleEntryKind.Text, text));
 
-	void IConsoleOutput.Clear() => dispatcher.BeginInvoke(Entries.Clear);
-
-	void Post(ConsoleEntryKind kind, string text) => dispatcher.BeginInvoke(() => Add(kind, text));
+	void IConsoleOutput.Clear() => output.Clear();
 
 	/// <summary>Writes a message from the UI (e.g. "Saved plot.png") to the console.</summary>
 	public void Report(ConsoleEntryKind kind, string text) => Add(kind, text);
 
+	/// <summary>Adds a line on the UI thread, after any program output still waiting in the buffer.</summary>
 	void Add(ConsoleEntryKind kind, string text)
 	{
-		Entries.Add(new ConsoleEntry(kind, text));
-		while (Entries.Count > MaxEntries)
-			Entries.RemoveAt(0);
+		FlushOutput();
+		Entries.AddRange([new ConsoleEntry(kind, text)]);
+	}
+
+	/// <summary>Moves the program output waiting in the buffer into the console (UI thread).</summary>
+	void FlushOutput()
+	{
+		var (cleared, entries, dropped) = output.Drain();
+		if (cleared)
+			Entries.Clear();
+		if (dropped > 0)
+			entries.Add(new ConsoleEntry(ConsoleEntryKind.Info,
+				$"… {dropped} lines of output were not shown: they came faster than the console can display them."));
+		Entries.AddRange(entries);
 	}
 }

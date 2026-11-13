@@ -192,6 +192,8 @@ ans = 43
 - Assignments do not change `ans`.
 - Commands such as `plot` or `xrange` do not change `ans`.
 - Typing just the name of a variable shows it without changing `ans`.
+- A large result keeps its memory while it is in `ans`, until the next result replaces it;
+  `del(ans)` frees it at once. The same holds for any large variable: `del(name)`.
 
 ### Listing and deleting variables
 
@@ -1082,6 +1084,10 @@ The console shows your input in blue, results in black, errors in red and notes 
 lines with the mouse (Shift and Ctrl select several) and press **Ctrl+C** to copy them; with
 nothing selected, **Edit › Copy Output** copies the whole console.
 
+The console keeps the latest 10 000 lines. A program can print far faster than a window can show
+text, so when output arrives too fast, some lines are skipped and a grey note says how many; the
+program itself is not affected. End statements in loops with `;` to avoid printing them.
+
 ### Menus and shortcuts
 
 | Menu item | Shortcut | Effect |
@@ -1193,6 +1199,7 @@ Common messages:
 | *A 46341×46341 matrix would have 2147488281 elements; the limit is 25000000* | a matrix (or range) larger than the size limit, see [Limitations](#14-limitations) |
 | *The program is nested too deeply (more than 256 levels …)* | too many nested parentheses, brackets, blocks, or operators in one chain |
 | *Scripts are nested too deeply (does a script run itself?)* | scripts running each other more than 32 levels deep |
+| *The plot window is full: it can hold at most 2000000 points* | too many dots or plots in one window; clear it first, see [Limitations](#14-limitations) |
 | *Internal error (…): …* | an unexpected problem in MLCalc itself; the program stops, but MLCalc keeps working |
 | *Strings can only be used as arguments to functions such as fplot or title* | strings are not values |
 
@@ -1252,6 +1259,8 @@ message; nothing is changed.
 | Nesting of parentheses, brackets, blocks and operator chains | 256 levels (a sum of up to about 250 terms) |
 | Scripts running other scripts | 32 levels |
 | Elements shown in the console | 10 000; larger results are summarised as, for example, `A = [200×200 matrix, too large to show; …]` |
+| Points in one plot window | 2 000 000 (dots, plotted points and curves together); `clear`, `xrange` or `yrange` empties the window |
+| Lines kept in the desktop console | the latest 10 000 |
 | `savefig` image size | 50 to 16000 |
 
 ---

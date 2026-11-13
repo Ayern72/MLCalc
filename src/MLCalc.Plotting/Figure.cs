@@ -9,7 +9,10 @@ public enum AxesKind
 	Complex,
 }
 
-/// <summary>An immutable picture of one plot window, for rendering.</summary>
+/// <summary>
+/// An immutable picture of one plot window, for rendering. <c>PointCount</c> is the number of points
+/// in <c>Items</c> (dots, series and curves together), checked against <see cref="Figure.MaxPointsPerWindow"/>.
+/// </summary>
 public sealed record Axes(
 	AxesKind Kind,
 	double XMin,
@@ -21,7 +24,8 @@ public sealed record Axes(
 	string YTitle,
 	bool ShowGrid,
 	int Pen,
-	ImmutableArray<PlotItem> Items)
+	ImmutableArray<PlotItem> Items,
+	int PointCount = 0)
 {
 	public static Axes Default { get; } = new(AxesKind.Cartesian, -10, 10, -10, 10, "", "", "", false, 1, []);
 }
@@ -46,10 +50,27 @@ public sealed class Figure
 	/// <summary>Number of samples used when plotting a function over the x range.</summary>
 	public const int FunctionSamples = 1000;
 
+	/// <summary>
+	/// The default for <see cref="MaxPointsPerWindow"/>: 2 million points, about 100 MB. Plot items
+	/// stay until the window is cleared, so without a limit a loop calling <c>dot</c> could fill the
+	/// computer's memory (and redrawing would become ever slower).
+	/// </summary>
+	public const int DefaultMaxPointsPerWindow = 2_000_000;
+
 	readonly Lock gate = new();
 	Axes[] axes = [Axes.Default];
 	int rows = 1, columns = 1, currentRow, currentColumn;
 	long version;
+
+	/// <param name="maxPointsPerWindow">The most points one plot window may hold; see <see cref="DefaultMaxPointsPerWindow"/>.</param>
+	public Figure(int maxPointsPerWindow = DefaultMaxPointsPerWindow)
+	{
+		ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxPointsPerWindow);
+		MaxPointsPerWindow = maxPointsPerWindow;
+	}
+
+	/// <summary>The most points (dots, series points and curve samples together) one plot window may hold.</summary>
+	public int MaxPointsPerWindow { get; }
 
 	/// <summary>Raised after every change, on the thread that made it.</summary>
 	public event EventHandler? Changed;
@@ -160,20 +181,37 @@ public sealed class Figure
 	/// <summary>Adds a single dot in the current pen without advancing it (<c>dot</c>).</summary>
 	public void AddDot(double x, double y) => ModifyCurrent(a =>
 	{
+		RequireRoom(a, 1);
 		var point = new PlotPoint(x, y);
 		if (!a.Items.IsEmpty && a.Items[^1] is DotCloud cloud && cloud.Pen == a.Pen)
-			return a with { Items = a.Items.SetItem(a.Items.Length - 1, cloud with { Points = cloud.Points.Add(point) }) };
-		return a with { Items = a.Items.Add(new DotCloud(a.Pen, [point])) };
+			return a with { Items = a.Items.SetItem(a.Items.Length - 1, cloud with { Points = cloud.Points.Add(point) }), PointCount = a.PointCount + 1 };
+		return a with { Items = a.Items.Add(new DotCloud(a.Pen, [point])), PointCount = a.PointCount + 1 };
 	});
 
 	void AddWithNextPen(AxesKind kind, Func<int, PlotItem> create) => ModifyCurrent(a =>
 	{
 		// Switching between real and complex axes clears the window, as in the original.
 		var target = a.Kind == kind ? a : Clear(a) with { Kind = kind };
-		return target with { Items = target.Items.Add(create(target.Pen)), Pen = Pens.Normalize(target.Pen + 1) };
+		var item = create(target.Pen);
+		int points = item switch
+		{
+			PointSeries series => series.Points.Length,
+			FunctionSeries function => function.Points.Length,
+			DotCloud cloud => cloud.Points.Count,
+			_ => 0,
+		};
+		RequireRoom(target, points);
+		return target with { Items = target.Items.Add(item), Pen = Pens.Normalize(target.Pen + 1), PointCount = target.PointCount + points };
 	});
 
-	static Axes Clear(Axes a) => a with { Items = [], Pen = 1 };
+	void RequireRoom(Axes a, int points)
+	{
+		if ((long)a.PointCount + points > MaxPointsPerWindow)
+			throw new ArgumentException(FormattableString.Invariant(
+				$"The plot window is full: it can hold at most {MaxPointsPerWindow} points. Clear it (clear, xrange or yrange) before plotting more."));
+	}
+
+	static Axes Clear(Axes a) => a with { Items = [], Pen = 1, PointCount = 0 };
 
 	static void RequireRange(double min, double max)
 	{

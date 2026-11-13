@@ -44,6 +44,16 @@ public class ReviewFollowUpTests
 	}
 
 	[Fact]
+	public void AFullPlotWindowIsReportedAsAnError()
+	{
+		var figure = new Figure(maxPointsPerWindow: 5);
+		var interpreter = new MLCalcInterpreter(figure, new RecordingOutput());
+		var result = interpreter.Execute("for k = 1:10 do dot(k, k)");
+		Assert.Equal("The plot window is full: it can hold at most 5 points. Clear it (clear, xrange or yrange) before plotting more.", result.Error?.Message);
+		Assert.True(interpreter.Execute("clear; dot(1, 1)").Success);
+	}
+
+	[Fact]
 	public void MaxAndMinIgnoreNaN()
 	{
 		TestHost.AssertClose(3, host.Eval("max([1 nan 3])"));
