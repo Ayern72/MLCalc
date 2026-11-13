@@ -40,6 +40,7 @@ solve("x", "x^2 - 2", 1)    % also integral, derivata, isect, extreme, feval
 ```
 
 Names are case-insensitive. **Help › List Functions** shows every function and command.
+The full syntax is described in EBNF in [docs/grammar.md](docs/grammar.md).
 
 ## Using the app
 
