@@ -16,3 +16,5 @@ jobs:
       - run: dotnet restore MLCalc.slnx
       - run: dotnet build MLCalc.slnx --no-restore -c Release
       - run: dotnet test MLCalc.slnx --no-build -c Release
+      # Compile (not run) the benchmark so it keeps building as the code changes.
+      - run: dotnet build benchmarks/FunctionEvaluation.cs
