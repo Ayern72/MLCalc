@@ -14,8 +14,15 @@ public static class ComplexMath
 
 	public static double Abs(Complex z) => Complex.Abs(z);
 
-	/// <summary>Argument in (-π, π]; 0 for z = 0.</summary>
-	public static double Arg(Complex z) => z == Complex.Zero ? 0 : System.Math.Atan2(z.Imaginary, z.Real);
+	/// <summary>
+	/// Argument in (-π, π]; 0 for z = 0. A zero imaginary part counts as +0 even when it is -0, so
+	/// negative reals have argument π (not -π) and logarithms and roots stay on the principal branch.
+	/// </summary>
+	public static double Arg(Complex z) =>
+		z == Complex.Zero ? 0 : System.Math.Atan2(z.Imaginary == 0 ? 0.0 : z.Imaginary, z.Real);
+
+	/// <summary>Negation that keeps real numbers exactly real (no -0 imaginary part).</summary>
+	public static Complex Negate(Complex z) => IsReal(z) ? -z.Real : -z;
 
 	public static Complex Conj(Complex z) => Complex.Conjugate(z);
 

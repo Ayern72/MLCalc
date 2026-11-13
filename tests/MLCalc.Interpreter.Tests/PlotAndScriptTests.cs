@@ -94,7 +94,7 @@ public class PlotCommandTests
 		var snapshot = host.Figure.Snapshot();
 		Assert.Equal((1, 0), (snapshot.CurrentRow, snapshot.CurrentColumn));
 		Assert.Single(snapshot[1, 0].Items);
-		Assert.Contains("no plot window", host.Fail("currentwin(3, 1)").Message);
+		Assert.Equal("There is no plot window (3,1); the grid is 2×2.", host.Fail("currentwin(3, 1)").Message);
 	}
 }
 

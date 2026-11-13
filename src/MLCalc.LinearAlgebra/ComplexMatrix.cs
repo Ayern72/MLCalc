@@ -182,7 +182,7 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 
 	public static ComplexMatrix operator +(ComplexMatrix a, ComplexMatrix b) => ElementWise(a, b, (x, y) => x + y);
 	public static ComplexMatrix operator -(ComplexMatrix a, ComplexMatrix b) => ElementWise(a, b, (x, y) => x - y);
-	public static ComplexMatrix operator -(ComplexMatrix a) => a.Map(x => -x);
+	public static ComplexMatrix operator -(ComplexMatrix a) => a.Map(ComplexMath.Negate);
 
 	public ComplexMatrix ElementMultiply(ComplexMatrix other) => ElementWise(this, other, ComplexMath.Multiply);
 	public ComplexMatrix ElementDivide(ComplexMatrix other) => ElementWise(this, other, ComplexMath.Divide);
@@ -306,10 +306,14 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 	/// <summary>Formats a complex number as "a", "bi" or "a+bi" using invariant culture.</summary>
 	public static string Format(Complex value, string numberFormat = "G10")
 	{
-		string re = value.Real.ToString(numberFormat, CultureInfo.InvariantCulture);
+		string Number(double x) => double.IsPositiveInfinity(x) ? "Inf"
+			: double.IsNegativeInfinity(x) ? "-Inf"
+			: x.ToString(numberFormat, CultureInfo.InvariantCulture);
+
+		string re = Number(value.Real);
 		if (value.Imaginary == 0)
 			return re;
-		string im = System.Math.Abs(value.Imaginary).ToString(numberFormat, CultureInfo.InvariantCulture);
+		string im = Number(System.Math.Abs(value.Imaginary));
 		if (value.Real == 0)
 			return (value.Imaginary < 0 ? "-" : "") + im + "i";
 		return re + (value.Imaginary < 0 ? "-" : "+") + im + "i";

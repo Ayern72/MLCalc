@@ -276,7 +276,9 @@ public sealed partial class MLCalcInterpreter
 		}
 		catch (ArgumentException ex)
 		{
-			throw new RuntimeError(ex.Message, span, ex);
+			// .NET appends " (Parameter 'name')" to the message; users should not see that.
+			string message = ex.ParamName is null ? ex.Message : ex.Message.Replace($" (Parameter '{ex.ParamName}')", "");
+			throw new RuntimeError(message, span, ex);
 		}
 	}
 

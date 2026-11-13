@@ -129,4 +129,15 @@ public class ComplexMathTests
 	{
 		AssertClose(new Complex(System.Math.Log(2), System.Math.PI), ComplexMath.Ln(-2));
 	}
+
+	[Fact]
+	public void NegativeZeroImaginaryPartStaysOnPrincipalBranch()
+	{
+		// -(1 + 0i) in complex arithmetic is -1 - 0i; that must still behave as the real number -1.
+		var minusOne = -new Complex(1, 0);
+		Assert.Equal(System.Math.PI, ComplexMath.Arg(minusOne));
+		AssertClose(new Complex(0, System.Math.PI), ComplexMath.Ln(minusOne));
+		AssertClose(ComplexMath.I, ComplexMath.Pow(minusOne, 0.5));
+		Assert.False(double.IsNegative(ComplexMath.Negate(1).Imaginary));
+	}
 }

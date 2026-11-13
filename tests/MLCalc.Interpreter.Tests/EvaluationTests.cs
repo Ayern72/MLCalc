@@ -38,6 +38,9 @@ public class EvaluationTests
 		Assert.Equal(new Complex(-1, 0), host.Eval("i^2").ScalarValue);
 		Assert.Equal(new Complex(0, 2), host.Eval("sqrt(-4)").ScalarValue);
 		Assert.Equal(new Complex(1, -2), host.Eval("(1+2i)'").ScalarValue);
+		// A negated literal must stay on the principal branch: ln(-1) = πi, (-1)^0.5 = i.
+		Assert.Equal(System.Math.PI, host.Eval("ln(-1)").ScalarValue.Imaginary, 12);
+		Assert.Equal(1, host.Eval("(-1)^0.5").ScalarValue.Imaginary, 12);
 	}
 
 	[Fact]

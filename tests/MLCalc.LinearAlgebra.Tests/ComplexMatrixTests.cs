@@ -127,6 +127,10 @@ public class ComplexMatrixTests
 	[InlineData(0, -1, "-1i")]
 	[InlineData(1.5, -2, "1.5-2i")]
 	[InlineData(-1, 0.25, "-1+0.25i")]
+	[InlineData(double.PositiveInfinity, 0, "Inf")]
+	[InlineData(double.NegativeInfinity, 0, "-Inf")]
+	[InlineData(double.NaN, 0, "NaN")]
+	[InlineData(1, double.NegativeInfinity, "1-Infi")]
 	public void FormatsComplexNumbers(double re, double im, string expected)
 	{
 		Assert.Equal(expected, ComplexMatrix.Format(new Complex(re, im)));
