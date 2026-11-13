@@ -81,9 +81,73 @@ public class SolverAndPolynomialTests
 		var p = Polynomial.Fit(x, y, 4);
 		Assert.Equal(5, p.Columns);
 		Assert.True(p.IsReal);
-		var residual = Polynomial.Evaluate(p, x) - y;
-		double sumOfSquares = residual.AsSpan().ToArray().Sum(r => r.Real * r.Real);
-		Assert.True(sumOfSquares < 3, $"Residual sum of squares {sumOfSquares}");
+		AssertLeastSquares(x, y, p);
+	}
+
+	/// <summary>
+	/// The defining property of a least-squares fit: the residual y − p(x) is orthogonal to every
+	/// column xʲ of the Vandermonde matrix (the normal equations). Unlike a bound on the residual,
+	/// this fails for any other polynomial.
+	/// </summary>
+	static void AssertLeastSquares(ComplexMatrix x, ComplexMatrix y, ComplexMatrix p, double tolerance = 1e-9)
+	{
+		var xs = x.AsSpan().ToArray();
+		var residual = (y - Polynomial.Evaluate(p, x)).AsSpan().ToArray();
+		double yScale = y.AsSpan().ToArray().Max(Complex.Abs);
+		for (int j = 0; j < p.Columns; j++)
+		{
+			Complex dot = Complex.Zero;
+			double scale = 0;
+			for (int i = 0; i < xs.Length; i++)
+			{
+				var power = Complex.Pow(xs[i], j);
+				dot += Complex.Conjugate(power) * residual[i];
+				scale += Complex.Abs(power) * yScale;
+			}
+			Assert.True(Complex.Abs(dot) <= tolerance * scale, $"Residual not orthogonal to x^{j}: {dot}");
+		}
+	}
+
+	[Fact]
+	public void FitFarFromZeroIsAccurate()
+	{
+		// x = 1000…1010: the normal equations of the original implementation were singular here.
+		var x = ComplexMatrix.Create(1, 11, (_, k) => 1000 + k);
+		var line = Polynomial.Fit(x, x.Map(v => 2 + 3 * v), 1);
+		Assert.True(line.ApproximatelyEquals(ComplexMatrix.RowVector(2, 3), 1e-9), line.ToString());
+
+		var y = x.Map(v => v * v * v);
+		var cubic = Polynomial.Fit(x, y, 3);
+		// The coefficients of x³ for x ≈ 1000 are very sensitive to rounding, but the fitted values are accurate.
+		Assert.True(Polynomial.Evaluate(cubic, x).ApproximatelyEquals(y, 1e-9 * 1e9));
+		Assert.Equal(1, cubic[3].Real, 6);
+	}
+
+	[Fact]
+	public void HighDegreeFitThroughExactPoints()
+	{
+		var x = ComplexMatrix.Create(1, 10, (_, k) => k + 1);
+		var y = x.Map(v => Complex.Pow(v, 9));
+		var p = Polynomial.Fit(x, y, 9);
+		var values = Polynomial.Evaluate(p, x);
+		for (int i = 0; i < 10; i++)
+			Assert.True(Complex.Abs(values[i] - y[i]) <= 1e-8 * Complex.Abs(y[i]), $"x = {i + 1}: {values[i]} vs {y[i]}");
+	}
+
+	[Fact]
+	public void FitOfComplexData()
+	{
+		var x = ComplexMatrix.Create(1, 6, [new(0, 0), new(1, 1), new(2, -1), new(-1, 2), new(3, 0), new(0, -2)]);
+		var p = ComplexMatrix.Create(1, 3, [new(1, -1), new(0.5, 2), new(-1, 0.25)]);
+		var fit = Polynomial.Fit(x, Polynomial.Evaluate(p, x), 2);
+		Assert.True(fit.ApproximatelyEquals(p, 1e-10), fit.ToString());
+	}
+
+	[Fact]
+	public void FitWithTooFewDifferentXValuesIsRefused()
+	{
+		var ex = Assert.Throws<MathException>(() => Polynomial.Fit(ComplexMatrix.RowVector(1, 1, 1, 2), ComplexMatrix.RowVector(1, 2, 3, 4), 2));
+		Assert.Equal(MathError.SingularMatrix, ex.Error);
 	}
 
 	[Fact]

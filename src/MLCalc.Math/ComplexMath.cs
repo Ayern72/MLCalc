@@ -59,9 +59,18 @@ public static class ComplexMath
 	/// </summary>
 	public static Complex Pow(Complex z, Complex w)
 	{
+		// Zero first: 0^-1 is a division by zero, as 1/0 is (Math.Pow would give infinity).
+		if (z == Complex.Zero)
+		{
+			if (w == Complex.Zero)
+				return Complex.One;
+			if (w.Real > 0)
+				return Complex.Zero;
+			throw new MathException(MathError.DivisionByZero, "Zero raised to a negative power is a division by zero.");
+		}
 		if (IsReal(z) && IsReal(w) && (z.Real >= 0 || w.Real == System.Math.Floor(w.Real)))
 			return System.Math.Pow(z.Real, w.Real);
-		if (IsReal(w) && w.Real == System.Math.Floor(w.Real) && System.Math.Abs(w.Real) <= 64 && z != Complex.Zero)
+		if (IsReal(w) && w.Real == System.Math.Floor(w.Real) && System.Math.Abs(w.Real) <= 64)
 		{
 			int n = (int)System.Math.Abs(w.Real);
 			Complex result = Complex.One, factor = z;
@@ -70,8 +79,6 @@ public static class ComplexMath
 					result *= factor;
 			return w.Real < 0 ? 1 / result : result;
 		}
-		if (z == Complex.Zero)
-			return w.Real > 0 ? Complex.Zero : throw new MathException(MathError.DivisionByZero, "Zero raised to a non-positive power.");
 		return Exp(w * Ln(z));
 	}
 
@@ -100,25 +107,48 @@ public static class ComplexMath
 	public static Complex Tanh(Complex z) => IsReal(z) ? System.Math.Tanh(z.Real) : Complex.Tanh(z);
 	public static Complex Coth(Complex z) => Divide(Cosh(z), Sinh(z));
 
-	public static Complex Asin(Complex z) =>
-		IsReal(z) && System.Math.Abs(z.Real) <= 1 ? System.Math.Asin(z.Real) : -I * Ln(I * z + Sqrt(1 - z * z));
+	/// <summary>
+	/// Inverse sine. For real |x| &gt; 1 the result is sign(x)·(π/2 − i·acosh|x|), as in MATLAB;
+	/// complex arguments use <see cref="Complex.Asin"/>, which stays accurate for large |z|
+	/// (a textbook formula such as −i·ln(iz + √(1−z²)) cancels or overflows there).
+	/// </summary>
+	public static Complex Asin(Complex z)
+	{
+		if (!IsReal(z))
+			return Complex.Asin(z);
+		double x = z.Real;
+		if (double.IsNaN(x) || System.Math.Abs(x) <= 1)
+			return System.Math.Asin(x);
+		return System.Math.Sign(x) * new Complex(System.Math.PI / 2, -System.Math.Acosh(System.Math.Abs(x)));
+	}
 
-	public static Complex Acos(Complex z) =>
-		IsReal(z) && System.Math.Abs(z.Real) <= 1 ? System.Math.Acos(z.Real) : System.Math.PI / 2 - Asin(z);
+	/// <summary>Inverse cosine, π/2 − asin(z) for real |x| &gt; 1; <see cref="Complex.Acos"/> for complex z.</summary>
+	public static Complex Acos(Complex z)
+	{
+		if (!IsReal(z))
+			return Complex.Acos(z);
+		double x = z.Real;
+		return double.IsNaN(x) || System.Math.Abs(x) <= 1 ? System.Math.Acos(x) : System.Math.PI / 2 - Asin(z);
+	}
 
+	/// <summary>
+	/// Inverse tangent. Complex arguments use <see cref="Complex.Atan"/>, which gives the principal
+	/// value on the branch cut (atan(2i) = π/2 + 0.549i, and atan(−z) = −atan(z)) and for large |z|.
+	/// </summary>
 	public static Complex Atan(Complex z)
 	{
 		if (IsReal(z))
 			return System.Math.Atan(z.Real);
 		if (z == I || z == -I)
 			throw new MathException(MathError.Domain, "atan is undefined at ±i.");
-		return I / 2 * Ln((I + z) / (I - z));
+		return Complex.Atan(z);
 	}
 
 	/// <summary>Inverse cotangent, atan(1/z); acot(0) = π/2.</summary>
 	public static Complex Acot(Complex z) => z == Complex.Zero ? System.Math.PI / 2 : Atan(1 / z);
 
-	public static Complex Asinh(Complex z) => IsReal(z) ? System.Math.Asinh(z.Real) : Ln(z + Sqrt(z * z + 1));
+	/// <summary>Inverse hyperbolic sine, −i·asin(i·z): accurate for large |z| and odd (asinh(−z) = −asinh(z)).</summary>
+	public static Complex Asinh(Complex z) => IsReal(z) ? System.Math.Asinh(z.Real) : -I * Asin(I * z);
 
 	public static Complex Acosh(Complex z) =>
 		IsReal(z) && z.Real >= 1 ? System.Math.Acosh(z.Real) : Ln(z + Sqrt(z + 1) * Sqrt(z - 1));

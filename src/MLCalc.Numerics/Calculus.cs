@@ -27,6 +27,7 @@ public static class Calculus
 		double lastSimpson = h / 3 * (ends + 4 * odd);
 		double lastEstimate = lastSimpson;
 		double interior = 0;
+		double lastChange = double.PositiveInfinity;
 		long points = 1;
 
 		for (int halving = 1; halving <= maxHalvings; halving++)
@@ -42,27 +43,61 @@ public static class Calculus
 			double estimate = (16 * simpson - lastSimpson) / 15;
 			if (double.IsNaN(estimate))
 				throw new MathException(MathError.Domain, "The function is not defined everywhere on the interval.");
-			if (halving >= 3 && System.Math.Abs(estimate - lastEstimate) <= relativeTolerance * System.Math.Max(1, System.Math.Abs(estimate)))
+			lastChange = System.Math.Abs(estimate - lastEstimate) / System.Math.Max(1, System.Math.Abs(estimate));
+			if (halving >= 3 && lastChange <= relativeTolerance)
 				return estimate;
 			lastSimpson = simpson;
 			lastEstimate = estimate;
 		}
-		return lastEstimate;
+
+		// Out of halvings. Accept a result that has settled to about 8 digits; anything less would be
+		// reported as if it were accurate.
+		if (lastChange <= 1e-8)
+			return lastEstimate;
+		throw new MathException(MathError.NoSolution,
+			"The integral did not converge; the function may be singular or oscillate strongly on the interval.");
 	}
 
 	/// <summary>
 	/// Derivative of <paramref name="f"/> at <paramref name="x"/> (the original <c>Derivata</c>), using
 	/// Ridders' method: central differences with shrinking steps, extrapolated to step zero, keeping
-	/// the estimate with the smallest error.
+	/// the estimate with the smallest error. It starts from several step sizes, so that functions that
+	/// vary quickly (such as sin(1000·x)) are resolved, and reports an error when no estimate is
+	/// reliable, which happens where the function is not differentiable.
 	/// </summary>
 	public static double Derivative(Func<double, double> f, double x)
 	{
 		ArgumentNullException.ThrowIfNull(f);
+		// Large enough that x + h differs from x even for large |x|.
+		double scale = System.Math.Max(1, System.Math.Abs(x) * 1e-5);
+		// Absolute starting steps, plus steps relative to x for small |x|: near a point such as
+		// sqrt at x = 1e-4 the function only looks smooth on a scale smaller than x itself.
+		var starts = new List<double> { 0.1 * scale, 1e-2 * scale, 1e-3 * scale, 1e-4 * scale };
+		if (x != 0 && System.Math.Abs(x) < 1e-3)
+			starts.AddRange([System.Math.Abs(x) / 10, System.Math.Abs(x) / 100]);
+
+		double best = double.NaN, bestError = double.PositiveInfinity;
+		foreach (double start in starts)
+		{
+			var (estimate, error) = Ridders(f, x, start);
+			if (error < bestError)
+				(best, bestError) = (estimate, error);
+			if (bestError <= 1e-13 * System.Math.Max(1, System.Math.Abs(best)))
+				break;
+		}
+
+		if (double.IsNaN(best) || !(bestError <= 1e-4 * System.Math.Max(1, System.Math.Abs(best))))
+			throw new MathException(MathError.Domain, string.Create(System.Globalization.CultureInfo.InvariantCulture,
+				$"The derivative at x = {x:G10} could not be determined; the function may not be differentiable there."));
+		return best;
+	}
+
+	/// <summary>One run of Ridders' method from step <paramref name="h"/>: the best estimate and its error.</summary>
+	static (double Estimate, double Error) Ridders(Func<double, double> f, double x, double h)
+	{
 		const int Levels = 10;
 		const double Shrink = 1.4, Shrink2 = Shrink * Shrink, Safety = 2;
 
-		// Large enough that x + h differs from x even for large |x|.
-		double h = System.Math.Max(0.1, System.Math.Abs(x) * 1e-6);
 		var table = new double[Levels, Levels];
 		table[0, 0] = (f(x + h) - f(x - h)) / (2 * h);
 		double best = table[0, 0], bestError = double.MaxValue;
@@ -86,6 +121,6 @@ public static class Calculus
 			if (System.Math.Abs(table[i, i] - table[i - 1, i - 1]) >= Safety * bestError)
 				break;
 		}
-		return best;
+		return (best, bestError);
 	}
 }

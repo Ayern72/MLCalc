@@ -147,8 +147,11 @@ public static class RootFinding
 			root = double.NaN;
 			return false;
 		}
+		// At a true root |f| is (nearly) zero, at most |f| at either end of the bracket. A pole also
+		// changes sign, but there |f| is huge, larger than at one or both ends (the end that lies
+		// next to the pole may itself be huge, so comparing with the larger end is not enough).
 		double fRoot = System.Math.Abs(f(root));
-		return fRoot <= System.Math.Max(System.Math.Abs(fa), System.Math.Abs(fb));
+		return fRoot <= System.Math.Min(System.Math.Abs(fa), System.Math.Abs(fb));
 	}
 
 	/// <summary>Brent's method cannot continue through NaN; report it as an undefined function value.</summary>

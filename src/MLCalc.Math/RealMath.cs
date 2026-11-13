@@ -26,7 +26,10 @@ public static class RealMath
 		double t = x + 7.5;
 		for (int i = 1; i < LanczosCoefficients.Length; i++)
 			a += LanczosCoefficients[i] / (x + i);
-		return System.Math.Sqrt(2 * System.Math.PI) * System.Math.Pow(t, x + 0.5) * System.Math.Exp(-t) * a;
+		// t^(x+½)·e^(−t), with the power split in two halves around the exponential: t^(x+½) alone
+		// overflows for x > 141 although the product is finite up to Γ(171.6).
+		double halfPower = System.Math.Pow(t, (x + 0.5) / 2);
+		return System.Math.Sqrt(2 * System.Math.PI) * a * halfPower * System.Math.Exp(-t) * halfPower;
 	}
 
 	static readonly double[] LanczosCoefficients =

@@ -154,7 +154,8 @@ ans =
   1.5  -2i
 ```
 
-Numbers that are too large become `Inf`, but **division by zero is an error**, not `Inf`.
+Numbers that are too large become `Inf`, but **division by zero is an error**, not `Inf`, and so is
+raising 0 to a negative power (`0^-1`). `0^0` is 1.
 
 ---
 
@@ -784,7 +785,7 @@ c0 + c1·x + c2·x².
 | Function | Result |
 |---|---|
 | `polyval(p, x)` | the polynomial `p` evaluated at every element of `x` |
-| `polyfit(x, y, n)` | the polynomial of degree `n` that best fits the points (x, y) in the least-squares sense; needs more than `n` points |
+| `polyfit(x, y, n)` | the polynomial of degree `n` that best fits the points (x, y) in the least-squares sense; needs more than `n` points with at least `n + 1` different x values |
 | `polyplot(p)` | draws the polynomial (see [Plotting](#8-plotting)) |
 
 ```
@@ -846,9 +847,12 @@ ans = 1.5
 **How they work:**
 
 - `integral` uses Simpson's rule, halving the step until two successive estimates agree to about
-  12 significant digits. A function that is undefined somewhere in the interval gives an error.
-- `derivata` uses central differences with repeated extrapolation (Ridders' method), accurate to
-  about 10 digits for smooth functions.
+  12 significant digits. A function that is undefined somewhere in the interval gives an error,
+  and so does an integral that does not settle (for example of `sin(1/x)` close to 0).
+- `derivata` uses central differences with repeated extrapolation (Ridders' method), starting from
+  several step sizes, accurate to about 10 digits for smooth functions, also ones that vary quickly
+  such as `sin(1000*x)`. Where no reliable value can be found, for example at a jump such as
+  `sign(x)` at 0, the result is an error.
 - `solve` starts at `x0` and searches outward in both directions, first in steps of 0.01 and then
   with slowly growing steps, until the function changes sign. The root is then refined with
   Brent's method to full precision. It therefore finds the root closest to `x0`. Sign changes
