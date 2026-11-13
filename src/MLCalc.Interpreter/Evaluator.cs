@@ -20,8 +20,19 @@ public sealed partial class MLCalcInterpreter
 
 	/// <summary>Evaluates an expression that must produce a value.</summary>
 	internal ComplexMatrix Evaluate(Expression expression) =>
-		EvaluateStatement(expression)
-		?? throw new RuntimeError($"'{SyntaxPrinter.Print(expression)}' is a command and does not return a value.", expression.Span);
+		EvaluateStatement(expression) ?? throw NotAValue(expression);
+
+	internal static RuntimeError NotAValue(Expression expression)
+	{
+		// Name the command rather than printing the (possibly simplified) syntax tree.
+		string name = expression switch
+		{
+			Identifier id => id.Name,
+			ApplyExpression apply => apply.Target.Name,
+			_ => SyntaxPrinter.Print(expression),
+		};
+		return new($"'{name}' is a command and does not return a value.", expression.Span);
+	}
 
 	/// <summary>Evaluates an expression or command; commands return null.</summary>
 	ComplexMatrix? EvaluateStatement(Expression expression)
@@ -30,6 +41,8 @@ public sealed partial class MLCalcInterpreter
 		{
 			case FoldedConstant constant:
 				return constant.Value;
+			case CompiledExpression compiled:
+				return compiled.Code(compiledArgument!);
 			case Identifier id:
 				if (TryLookup(id.Name, out var value))
 					return value;
@@ -60,8 +73,21 @@ public sealed partial class MLCalcInterpreter
 	{
 		if (!builtins.TryGet(name.Name, out var builtin))
 			throw new RuntimeError($"Unknown function or variable '{name.Name}'.", name.Span);
-		var context = new CallContext(this, name.Name, arguments, span);
-		return Guard(span, () => builtin(context));
+		return CallBuiltin(builtin, name.Name, arguments, span);
+	}
+
+	/// <summary>Calls a built-in that has already been looked up; math errors are reported at <paramref name="span"/>.</summary>
+	internal ComplexMatrix? CallBuiltin(Builtin builtin, string name, IReadOnlyList<Expression> arguments, SourceSpan span)
+	{
+		var context = new CallContext(this, name, arguments, span);
+		try
+		{
+			return builtin(context);
+		}
+		catch (Exception ex) when (ToRuntimeError(ex, span) is { } error)
+		{
+			throw error;
+		}
 	}
 
 	ComplexMatrix EvaluateValue(Expression expression)
@@ -77,49 +103,35 @@ public sealed partial class MLCalcInterpreter
 			case StyleLiteral s:
 				throw new RuntimeError($"'{s.Symbol}' can only be used as a plot style argument.", s.Span);
 			case UnaryExpression u:
-			{
-				var operand = Evaluate(u.Operand);
-				return u.Operator switch
-				{
-					UnaryOperator.Negate => -operand,
-					UnaryOperator.Not => operand.Map(x => x == Complex.Zero ? 1 : 0),
-					_ => operand,
-				};
-			}
+				return Operators.Unary(u.Operator, Evaluate(u.Operand));
 			case BinaryExpression b:
 			{
 				var left = Evaluate(b.Left);
 				var right = Evaluate(b.Right);
-				return Guard(b.Span, () => Operators.Binary(b.Operator, left, right));
+				return Operators.Binary(b.Operator, left, right, b.Span);
 			}
 			case PostfixExpression p:
-			{
-				var operand = Evaluate(p.Operand);
-				return Guard(p.Span, () => p.Operator switch
-				{
-					PostfixOperator.ConjugateTranspose => operand.ConjugateTranspose(),
-					PostfixOperator.Transpose => operand.Transpose(),
-					_ => operand.Map(x => ComplexMath.IsReal(x)
-						? RealMath.Factorial(x.Real)
-						: throw new MathException(MathError.ComplexNotAllowed, "Factorial of a complex number.")),
-				});
-			}
+				return Operators.Postfix(p.Operator, Evaluate(p.Operand), p.Span);
 			case RangeExpression r:
-				return EvaluateRange(r);
+				return MakeRange(r, Evaluate(r.Start), r.Step is null ? null : Evaluate(r.Step), Evaluate(r.End));
 			case MatrixLiteral m:
-				return Guard(m.Span, () => ComplexMatrix.VerticalConcat(
-					m.Rows.Select(row => ComplexMatrix.HorizontalConcat(row.Select(Evaluate).ToList())).ToList()));
+				return Concatenate(m, m.Rows.Select(row => row.Select(Evaluate).ToList()).ToList());
 			default:
 				return EvaluateStatement(expression)
 					?? throw new RuntimeError("This expression does not return a value.", expression.Span);
 		}
 	}
 
-	ComplexMatrix EvaluateRange(RangeExpression range)
+	/// <summary>Builds the rows of a matrix literal from its evaluated elements.</summary>
+	internal static ComplexMatrix Concatenate(MatrixLiteral literal, List<List<ComplexMatrix>> rows) =>
+		Guard(literal.Span, () => ComplexMatrix.VerticalConcat(rows.Select(ComplexMatrix.HorizontalConcat).ToList()));
+
+	/// <summary>The value of a range <c>start:step:end</c> from its evaluated parts.</summary>
+	internal static ComplexMatrix MakeRange(RangeExpression range, ComplexMatrix startValue, ComplexMatrix? stepValue, ComplexMatrix endValue)
 	{
-		double start = RealScalar(Evaluate(range.Start), range.Start.Span, "The start of a range");
-		double step = range.Step is null ? 1 : RealScalar(Evaluate(range.Step), range.Step.Span, "The step of a range");
-		double end = RealScalar(Evaluate(range.End), range.End.Span, "The end of a range");
+		double start = RealScalar(startValue, range.Start.Span, "The start of a range");
+		double step = stepValue is null ? 1 : RealScalar(stepValue, range.Step!.Span, "The step of a range");
+		double end = RealScalar(endValue, range.End.Span, "The end of a range");
 		if (step == 0 || double.IsNaN(start + step + end))
 			throw new RuntimeError("The step of a range must be a non-zero number.", range.Span);
 
@@ -135,10 +147,11 @@ public sealed partial class MLCalcInterpreter
 		expression is ColonAll ? IndexArgument.All : new IndexArgument(Evaluate(expression), expression.Span);
 
 	/// <summary>
-	/// Compiles a function given as text, such as <c>fplot("x", "sin(x)")</c>: evaluating it binds
-	/// <paramref name="variable"/> to the argument while leaving the global variables untouched.
-	/// Branches that do not depend on <paramref name="variable"/> are evaluated once, here
-	/// (see <see cref="ConstantFolder"/>).
+	/// Compiles a function given as text, such as <c>fplot("x", "sin(x)")</c>, into a delegate.
+	/// Calling it evaluates the expression with <paramref name="variable"/> bound to the argument,
+	/// leaving the global variables untouched. Branches that do not depend on
+	/// <paramref name="variable"/> are evaluated once (see <see cref="ConstantFolder"/>), and the
+	/// rest is turned into delegates (see <see cref="FunctionCompiler"/>).
 	/// </summary>
 	internal Func<ComplexMatrix, ComplexMatrix> CompileFunction(string variable, string text, SourceSpan span)
 	{
@@ -148,16 +161,18 @@ public sealed partial class MLCalcInterpreter
 		if (parse.Root.Statements is not [ExpressionStatement { Expression: var parsed }])
 			throw new RuntimeError($"\"{text}\" must be a single expression.", span);
 
-		var expression = FoldConstants(parsed, variable);
+		var code = new FunctionCompiler(this, builtins, variable).Compile(FoldConstants(parsed, variable));
 
 		return argument =>
 		{
-			var previous = locals;
-			locals = new Dictionary<string, ComplexMatrix>(StringComparer.OrdinalIgnoreCase) { [variable] = argument };
+			// Built-in functions called from the compiled code read their arguments back through
+			// CompiledExpression nodes, which need the current value of the variable.
+			var previous = compiledArgument;
+			compiledArgument = argument;
 			try
 			{
 				cancellation.ThrowIfCancellationRequested();
-				return Evaluate(expression);
+				return code(argument);
 			}
 			catch (RuntimeError error)
 			{
@@ -165,10 +180,13 @@ public sealed partial class MLCalcInterpreter
 			}
 			finally
 			{
-				locals = previous;
+				compiledArgument = previous;
 			}
 		};
 	}
+
+	/// <summary>The argument of the compiled function currently being evaluated.</summary>
+	ComplexMatrix? compiledArgument;
 
 	/// <summary>
 	/// Folds constant branches of a function's expression. It runs with no local variables bound,
@@ -196,9 +214,52 @@ internal readonly record struct IndexArgument(ComplexMatrix? Values, SourceSpan 
 	public bool IsAll => Values is null;
 }
 
-/// <summary>The binary operators, with MATLAB meanings.</summary>
+/// <summary>
+/// The operators, with MATLAB meanings. Shared by the tree-walking evaluator and the compiled
+/// functions so both give the same results and the same errors.
+/// </summary>
 internal static class Operators
 {
+	public static ComplexMatrix Unary(UnaryOperator op, ComplexMatrix operand) => op switch
+	{
+		UnaryOperator.Negate => -operand,
+		UnaryOperator.Not => operand.Map(x => x == Complex.Zero ? 1 : 0),
+		_ => operand,
+	};
+
+	/// <summary>A binary operation; math errors are reported at <paramref name="span"/>.</summary>
+	public static ComplexMatrix Binary(BinaryOperator op, ComplexMatrix a, ComplexMatrix b, SourceSpan span)
+	{
+		try
+		{
+			return Binary(op, a, b);
+		}
+		catch (Exception ex) when (MLCalcInterpreter.ToRuntimeError(ex, span) is { } error)
+		{
+			throw error;
+		}
+	}
+
+	/// <summary>A postfix operation; math errors are reported at <paramref name="span"/>.</summary>
+	public static ComplexMatrix Postfix(PostfixOperator op, ComplexMatrix operand, SourceSpan span)
+	{
+		try
+		{
+			return op switch
+			{
+				PostfixOperator.ConjugateTranspose => operand.ConjugateTranspose(),
+				PostfixOperator.Transpose => operand.Transpose(),
+				_ => operand.Map(x => ComplexMath.IsReal(x)
+					? RealMath.Factorial(x.Real)
+					: throw new MathException(MathError.ComplexNotAllowed, "Factorial of a complex number.")),
+			};
+		}
+		catch (Exception ex) when (MLCalcInterpreter.ToRuntimeError(ex, span) is { } error)
+		{
+			throw error;
+		}
+	}
+
 	public static ComplexMatrix Binary(BinaryOperator op, ComplexMatrix a, ComplexMatrix b) => op switch
 	{
 		BinaryOperator.Add => a + b,

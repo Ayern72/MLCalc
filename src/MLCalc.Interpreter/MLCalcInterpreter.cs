@@ -270,17 +270,25 @@ public sealed partial class MLCalcInterpreter
 		{
 			return action();
 		}
-		catch (MathException ex)
+		catch (Exception ex) when (ToRuntimeError(ex, span) is { } error)
 		{
-			throw new RuntimeError(ex.Message, span, ex);
-		}
-		catch (ArgumentException ex)
-		{
-			// .NET appends " (Parameter 'name')" to the message; users should not see that.
-			string message = ex.ParamName is null ? ex.Message : ex.Message.Replace($" (Parameter '{ex.ParamName}')", "");
-			throw new RuntimeError(message, span, ex);
+			throw error;
 		}
 	}
+
+	/// <summary>
+	/// The runtime error to report for a math or argument error at <paramref name="span"/>; null for
+	/// other exceptions, which are not the user's mistake and propagate unchanged.
+	/// </summary>
+	internal static RuntimeError? ToRuntimeError(Exception exception, SourceSpan span) => exception switch
+	{
+		MathException math => new RuntimeError(math.Message, span, math),
+		// .NET appends " (Parameter 'name')" to the message; users should not see that.
+		ArgumentException argument => new RuntimeError(
+			argument.ParamName is null ? argument.Message : argument.Message.Replace($" (Parameter '{argument.ParamName}')", ""),
+			span, argument),
+		_ => null,
+	};
 
 	internal static void Guard(SourceSpan span, Action action) => Guard(span, () =>
 	{

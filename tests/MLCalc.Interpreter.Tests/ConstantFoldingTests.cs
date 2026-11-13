@@ -118,7 +118,25 @@ public class ConstantFoldingTests
 		"polyval([1 a b], x)",
 		"x + 1/0",
 		"x + nope",
+		// Paths specific to compiled functions
+		"x(1) * 2",
+		"v(round(abs(x)) + 1)",
+		"sum(1:x)",
+		"sum(x:a:3)",
+		"nope(x)",
+		"xrange(0, 1) + x",
+		"x!",
+		"rand * 0 + x",
+		"sin(cos(tan(x)))",
 	};
+
+	[Fact]
+	public void CommandUsedAsValueNamesTheCommand()
+	{
+		Assert.Equal("In \"xrange(0, a) + x\": 'xrange' is a command and does not return a value.",
+			host.Fail("feval(\"x\", \"xrange(0, a) + x\", 1)").Message);
+		Assert.Equal("'xrange' is a command and does not return a value.", host.Fail("y = xrange(0, 1)").Message);
+	}
 
 	[Theory]
 	[MemberData(nameof(Expressions))]
@@ -136,16 +154,19 @@ public class ConstantFoldingTests
 	/// <summary>Evaluates normally, with x as a global variable (no folding involved).</summary>
 	string Reference(string expression, string point)
 	{
+		host.Interpreter.DeleteVariable("r__");
 		var result = host.Interpreter.Execute($"x = {point}; r__ = {expression};");
 		host.Interpreter.DeleteVariable("x");
+		Assert.False(result.Parse.HasErrors, string.Join("; ", result.Messages()));
 		return result.Error is { } error ? "error: " + error.Message : Format(host["r__"]);
 	}
 
 	/// <summary>Evaluates through feval, where the expression is compiled and folded.</summary>
 	string Folded(string expression, string point)
 	{
-		string escaped = expression.Replace("\"", "\\\"");
-		var result = host.Interpreter.Execute($"r__ = feval(\"x\", \"{escaped}\", {point});");
+		host.Interpreter.DeleteVariable("r__");
+		var result = host.Interpreter.Execute($"r__ = feval(\"x\", \"{expression}\", {point});");
+		Assert.False(result.Parse.HasErrors, string.Join("; ", result.Messages()));
 		if (result.Error is { } error)
 			return "error: " + error.Message.Replace($"In \"{expression}\": ", "").Replace("feval: the function must return a scalar.", "not a scalar");
 		return Format(host["r__"]);
