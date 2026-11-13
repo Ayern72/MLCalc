@@ -90,6 +90,27 @@ public class ComplexMatrixTests
 		Assert.True(ComplexMatrix.RightDivide(row, A).ApproximatelyEquals(ComplexMatrix.RowVector(1, 2), 1e-12));
 	}
 
+	[Fact]
+	public void MatrixPowerIsRepeatedMatrixProduct()
+	{
+		Assert.Equal(A * A * A, ComplexMatrix.Power(A, 3));
+		Assert.Equal(ComplexMatrix.Identity(2), ComplexMatrix.Power(A, 0));
+		Assert.True(ComplexMatrix.Power(A, -2).ApproximatelyEquals((A * A).Inverse(), 1e-12));
+	}
+
+	[Fact]
+	public void ScalarPowerUsesComplexPower()
+	{
+		Assert.Equal(ComplexMatrix.Scalar(-8), ComplexMatrix.Power(-2, 3));
+	}
+
+	[Fact]
+	public void MatrixPowerRejectsNonSquareAndNonIntegerExponents()
+	{
+		Assert.Equal(MathError.Dimension, Assert.Throws<MathException>(() => ComplexMatrix.Power(ComplexMatrix.RowVector(1, 2), 2)).Error);
+		Assert.Equal(MathError.Domain, Assert.Throws<MathException>(() => ComplexMatrix.Power(A, 0.5)).Error);
+	}
+
 	[Theory]
 	[InlineData(3, 0, "3")]
 	[InlineData(0, 2, "2i")]

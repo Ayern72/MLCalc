@@ -170,7 +170,38 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		return new ComplexMatrix(a.Rows, b.Columns, result);
 	}
 
-	/// <summary>Plain transpose (no conjugation), as the original <c>'</c> operator.</summary>
+	/// <summary>
+	/// Matrix power (MATLAB <c>A^p</c>): the scalar power for 1×1 operands; for a square matrix an
+	/// integer power by repeated squaring, where a negative power uses the inverse.
+	/// </summary>
+	public static ComplexMatrix Power(ComplexMatrix a, ComplexMatrix p)
+	{
+		if (a.IsScalar && p.IsScalar)
+			return ComplexMath.Pow(a.ScalarValue, p.ScalarValue);
+		if (!p.IsScalar)
+			throw new MathException(MathError.Dimension, "The exponent of a matrix power must be a scalar; use .^ for element-wise powers.");
+		if (!a.IsSquare)
+			throw new MathException(MathError.Dimension, $"Matrix power needs a square matrix, got {a.Rows}×{a.Columns}; use .^ for element-wise powers.");
+		var exponent = p.ScalarValue;
+		if (!ComplexMath.IsReal(exponent) || exponent.Real != System.Math.Floor(exponent.Real) || System.Math.Abs(exponent.Real) > int.MaxValue)
+			throw new MathException(MathError.Domain, "A matrix can only be raised to an integer power.");
+
+		long n = (long)exponent.Real;
+		var factor = n < 0 ? a.Inverse() : a;
+		n = System.Math.Abs(n);
+		var result = Identity(a.Rows);
+		while (n > 0)
+		{
+			if ((n & 1) == 1)
+				result *= factor;
+			n >>= 1;
+			if (n > 0)
+				factor *= factor;
+		}
+		return result;
+	}
+
+	/// <summary>Plain transpose (no conjugation): MATLAB <c>.'</c>, and the original MLCalc <c>'</c>.</summary>
 	public ComplexMatrix Transpose() => Create(Columns, Rows, (r, c) => data[c * Columns + r]);
 
 	public ComplexMatrix ConjugateTranspose() => Transpose().Map(Complex.Conjugate);

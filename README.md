@@ -13,6 +13,14 @@ numbers with a zero imaginary part.
 > fplot("x", "x^2 - 2")
 ```
 
+## Differences from the Amiga original
+
+- **Operators follow MATLAB.** `*`, `/`, `\` and `^` are matrix operations and `.*`, `./`, `.^`
+  are element-wise. The original used `*` and `/` element-wise and `.*` for the matrix product.
+  `'` is the conjugate transpose and `.'` the plain transpose.
+- Several numerical routines were replaced with more robust methods (Brent's method for roots,
+  Ridders' method for derivatives) and bugs in some complex inverse functions were fixed.
+
 ## Projects
 
 | Project | Purpose |
