@@ -178,11 +178,11 @@ public sealed class Figure
 	static void RequireRange(double min, double max)
 	{
 		if (!(min < max) || double.IsInfinity(min) || double.IsInfinity(max))
-			throw new ArgumentException($"Invalid range: the lower limit ({min}) must be less than the upper limit ({max}).");
+			throw new ArgumentException(FormattableString.Invariant($"Invalid range: the lower limit ({min:G10}) must be less than the upper limit ({max:G10})."));
 		// The axes divide the span into ticks and pixels, so it must be a finite, normal number:
 		// -1e308..1e308 overflows to infinity and a tiny span such as 0..1e-320 underflows.
 		if (!double.IsNormal(max - min))
-			throw new ArgumentException($"Invalid range: the span from {min} to {max} is too large or too small.");
+			throw new ArgumentException(FormattableString.Invariant($"Invalid range: the span from {min:G10} to {max:G10} is too large or too small."));
 	}
 
 	void ModifyCurrent(Func<Axes, Axes> change) => Update(() =>

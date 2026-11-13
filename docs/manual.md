@@ -763,7 +763,8 @@ ans =
 | `max(A)`, `min(A)` | largest/smallest element of a vector; for a matrix, of each column |
 | `max(A, B)`, `min(A, B)` | element by element, the larger/smaller of `A` and `B` |
 
-`max` and `min` compare real parts.
+`max` and `min` compare real parts and ignore `NaN` values (the result is `NaN` only when all
+values are `NaN`).
 
 ```
 >> sum([1 2; 3 4])
@@ -812,6 +813,8 @@ solve("x", "x^2 - 2", 1)
   `integral("t", "a*t", 0, 1)` is 1.5.
 - The variable named in the first string is local to the function: evaluating it does **not**
   change a variable of the same name.
+- Commands such as `plot`, `xrange`, `del`, `cls` or `savefig` cannot be used in a function given
+  as text, because it is evaluated many times; the function is refused before it runs at all.
 - The expression must give a single number for each value of the variable. For the numerical
   methods below, its real part is used.
 - Parts of the expression that do not depend on the variable, such as `sin(pi/4)*a` in
@@ -966,7 +969,9 @@ cplot(exp(i * (0:0.2:6.4)), +)
 across the current x range and join them. Points where the function is undefined, such as
 `1/x` at 0, are left out, and the curve is broken at poles, such as tan at π/2, rather than
 joined by a vertical line. If the result is complex, the real part is drawn.
-The variable named in the first string does not affect your variables.
+The variable named in the first string does not affect your variables. Errors in the expression
+itself, such as an index outside a matrix or matrices of different sizes, are reported instead of
+leaving the plot empty.
 
 ```
 xrange(-6.3, 6.3); yrange(-6, 6)
@@ -1183,6 +1188,7 @@ Common messages:
 | *sin: expected 1 argument, got 2* | wrong number of arguments |
 | *fplot: argument 1 must be a string in double quotes* | the variable and the expression must be strings |
 | *In "y + x": Unknown function or variable 'y'* | an error inside a function given as text |
+| *'del' is a command and cannot be used in a function given as text* | commands are not allowed in `fplot`, `feval`, `solve` and similar functions |
 | *No root found near 0* | `solve` found no sign change |
 | *A 46341×46341 matrix would have 2147488281 elements; the limit is 25000000* | a matrix (or range) larger than the size limit, see [Limitations](#14-limitations) |
 | *The program is nested too deeply (more than 256 levels …)* | too many nested parentheses, brackets, blocks, or operators in one chain |

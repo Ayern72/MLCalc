@@ -124,7 +124,6 @@ public class ConstantFoldingTests
 		"sum(1:x)",
 		"sum(x:a:3)",
 		"nope(x)",
-		"xrange(0, 1) + x",
 		"x!",
 		"rand * 0 + x",
 		"sin(cos(tan(x)))",
@@ -133,9 +132,29 @@ public class ConstantFoldingTests
 	[Fact]
 	public void CommandUsedAsValueNamesTheCommand()
 	{
-		Assert.Equal("In \"xrange(0, a) + x\": 'xrange' is a command and does not return a value.",
-			host.Fail("feval(\"x\", \"xrange(0, a) + x\", 1)").Message);
 		Assert.Equal("'xrange' is a command and does not return a value.", host.Fail("y = xrange(0, 1)").Message);
+	}
+
+	[Theory]
+	[InlineData("x + del(all)", "del")]
+	[InlineData("xrange(0, a) + x", "xrange")]
+	[InlineData("x + cls", "cls")]
+	[InlineData("pen(2) + x", "pen")]
+	[InlineData("dot(x, x) + x", "dot")]
+	public void CommandsAreRefusedInFunctionsGivenAsTextBeforeAnythingRuns(string expression, string command)
+	{
+		var error = host.Fail($"feval(\"x\", \"{expression}\", 1)");
+		Assert.Equal($"In \"{expression}\": '{command}' is a command and cannot be used in a function given as text.", error.Message);
+		// Nothing ran: the variables are still there and the plot is unchanged.
+		TestHost.AssertClose(1.5, host["a"]);
+		Assert.Equal(-10, host.Figure.Current.XMin);
+	}
+
+	[Fact]
+	public void AVariableNamedLikeACommandIsStillAllowed()
+	{
+		host.Run("grid = 2;");
+		TestHost.AssertClose(6, host.Eval("feval(\"x\", \"grid * x\", 3)"));
 	}
 
 	[Theory]

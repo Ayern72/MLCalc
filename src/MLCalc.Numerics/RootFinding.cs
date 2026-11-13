@@ -18,7 +18,7 @@ public static class RootFinding
 		if (fb == 0)
 			return b;
 		if (System.Math.Sign(fa) == System.Math.Sign(fb))
-			throw new MathException(MathError.NoSolution, $"f({a}) and f({b}) have the same sign.");
+			throw new MathException(MathError.NoSolution, FormattableString.Invariant($"f({a:G10}) and f({b:G10}) have the same sign."));
 
 		if (System.Math.Abs(fa) < System.Math.Abs(fb))
 		{
@@ -106,7 +106,7 @@ public static class RootFinding
 			if (i >= 256)
 				h *= 1.01;
 		}
-		throw new MathException(MathError.NoSolution, $"No root found near {start}.");
+		throw new MathException(MathError.NoSolution, FormattableString.Invariant($"No root found near {start:G10}."));
 	}
 
 	/// <summary>Finds x near <paramref name="start"/> where f(x) = g(x) (the original <c>isect</c>).</summary>
@@ -120,7 +120,7 @@ public static class RootFinding
 		}
 		catch (MathException ex) when (ex.Error == MathError.NoSolution)
 		{
-			throw new MathException(MathError.NoIntersection, $"The functions do not intersect near {start}.");
+			throw new MathException(MathError.NoIntersection, FormattableString.Invariant($"The functions do not intersect near {start:G10}."));
 		}
 	}
 

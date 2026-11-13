@@ -41,6 +41,27 @@ public class SolverAndPolynomialTests
 	}
 
 	[Fact]
+	public void DeterminantKeepsTheSignOfRowSwaps()
+	{
+		// Pivoting swaps rows twice here (|4| and then |5| are the largest pivots); det = -27.
+		var a = ComplexMatrix.FromRows(new double[,] { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 0 } });
+		Assert.Equal(27, a.Determinant().Real, 10);
+		var swapped = ComplexMatrix.FromRows(new double[,] { { 4, 5, 6 }, { 1, 2, 3 }, { 7, 8, 0 } });
+		Assert.Equal(-27, swapped.Determinant().Real, 10);
+	}
+
+	[Fact]
+	public void NearlySingularButSolvableSystems()
+	{
+		// The singularity test is relative to the size of the entries, so tiny or huge scales are fine.
+		var tiny = ComplexMatrix.FromRows(new double[,] { { 1e-200, 0 }, { 0, 1e-200 } });
+		Assert.True(LinearSolver.Solve(tiny, ComplexMatrix.ColumnVector(1e-200, 2e-200)).ApproximatelyEquals(ComplexMatrix.ColumnVector(1, 2), 1e-12));
+		var close = ComplexMatrix.FromRows(new double[,] { { 1, 1 }, { 1, 1 + 1e-10 } });
+		var x = LinearSolver.Solve(close, ComplexMatrix.ColumnVector(2, 2 + 1e-10));
+		Assert.True(x.ApproximatelyEquals(ComplexMatrix.ColumnVector(1, 1), 1e-5), x.ToString());
+	}
+
+	[Fact]
 	public void NonSquareMatrixThrows()
 	{
 		var a = ComplexMatrix.FromRows(new double[,] { { 1, 2, 3 }, { 4, 5, 6 } });

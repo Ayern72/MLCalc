@@ -51,6 +51,29 @@ public class RealMathTests
 		Assert.Equal(expected, RealMath.Perm(n, k));
 	}
 
+	[Theory]
+	[InlineData(60, 30)]
+	[InlineData(100, 50)]
+	[InlineData(1000, 3)]
+	[InlineData(67, 33)]
+	public void CombinationsAreAccurateBeyondExactIntegers(int n, int k)
+	{
+		// Above 2^53 doubles cannot hold every integer, but the result must still be correct to
+		// within rounding; compare with the exact value.
+		var exact = System.Numerics.BigInteger.One;
+		for (int i = 1; i <= k; i++)
+			exact = exact * (n - k + i) / i;
+		double expected = (double)exact;
+		Assert.True(System.Math.Abs(RealMath.Comb(n, k) - expected) <= 1e-12 * expected, $"comb({n},{k})");
+	}
+
+	[Fact]
+	public void PermutationsAreExactWhileTheyFit()
+	{
+		Assert.Equal(3628800, RealMath.Perm(10, 10));
+		Assert.Equal(9.33262154439441e157, RealMath.Perm(100, 100), 9.33262154439441e157 * 1e-12);
+	}
+
 	[Fact]
 	public void CombinationsRejectNegativeAndNonInteger()
 	{

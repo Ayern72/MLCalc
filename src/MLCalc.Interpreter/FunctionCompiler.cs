@@ -74,6 +74,8 @@ internal sealed class FunctionCompiler(MLCalcInterpreter interpreter, Builtins b
 			}
 			case ApplyExpression apply:
 				return CompileApply(apply);
+			case Identifier id when builtins.IsCommand(id.Name) && !interpreter.TryLookup(id.Name, out _):
+				throw CommandNotAllowed(id.Name, id.Span);
 			default:
 				// Names other than the variable (unknown names, rand, commands) and anything else
 				// that does not use the variable: evaluate exactly as the interpreter does.
@@ -104,11 +106,13 @@ internal sealed class FunctionCompiler(MLCalcInterpreter interpreter, Builtins b
 		var target = apply.Target;
 		if (!builtins.TryGet(name, out var builtin))
 			return _ => throw new RuntimeError($"Unknown function or variable '{name}'.", target.Span);
+		if (builtins.IsCommand(name))
+			throw CommandNotAllowed(name, target.Span);
 
 		var arguments = apply.Arguments.Select(argument => argument switch
 		{
 			FoldedConstant or StringLiteral or ColonAll or StyleLiteral => argument,
-			Identifier id when !IsVariable(id.Name) => argument, // a name, as in del(a)
+			Identifier id when !IsVariable(id.Name) => argument, // passed as written, like any other call
 			_ => new CompiledExpression(argument.Span, Compile(argument)),
 		}).ToArray();
 		return _ => interpreter.CallBuiltin(builtin, name, arguments, span) ?? throw MLCalcInterpreter.NotAValue(apply);
@@ -133,4 +137,11 @@ internal sealed class FunctionCompiler(MLCalcInterpreter interpreter, Builtins b
 	}
 
 	bool IsVariable(string name) => string.Equals(name, variable, StringComparison.OrdinalIgnoreCase);
+
+	/// <summary>
+	/// Commands change state (variables, plots, files, the console). A function given as text is
+	/// evaluated many times and must not do that, so commands are refused before it runs at all.
+	/// </summary>
+	static RuntimeError CommandNotAllowed(string name, SourceSpan span) =>
+		new($"'{name}' is a command and cannot be used in a function given as text.", span);
 }

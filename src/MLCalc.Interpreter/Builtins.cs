@@ -12,7 +12,8 @@ internal sealed class Builtins
 {
 	readonly Dictionary<string, Builtin> table = new(StringComparer.OrdinalIgnoreCase);
 	readonly HashSet<string> pure = new(StringComparer.OrdinalIgnoreCase);
-	bool registeringPure;
+	readonly HashSet<string> commands = new(StringComparer.OrdinalIgnoreCase);
+	bool registeringPure, registeringCommands;
 
 	public IEnumerable<string> Names => table.Keys.Order(StringComparer.OrdinalIgnoreCase);
 
@@ -23,6 +24,12 @@ internal sealed class Builtins
 	/// effects, so a call with constant arguments can be evaluated once (see <see cref="ConstantFolder"/>).
 	/// </summary>
 	public bool IsPure(string name) => pure.Contains(name);
+
+	/// <summary>
+	/// True for commands: plotting, console and file commands such as <c>plot</c>, <c>del</c> or
+	/// <c>savefig</c>. They change state and are not allowed in functions given as text.
+	/// </summary>
+	public bool IsCommand(string name) => commands.Contains(name);
 
 	public Builtins()
 	{
@@ -35,8 +42,10 @@ internal sealed class Builtins
 
 		// Not marked pure: functions given as text (they run their own evaluations), and commands.
 		RegisterNumericFunctions();
+		registeringCommands = true;
 		RegisterPlotCommands();
 		RegisterConsoleCommands();
+		registeringCommands = false;
 	}
 
 	void Add(Builtin builtin, params string[] names)
@@ -46,6 +55,8 @@ internal sealed class Builtins
 			table.Add(name, builtin);
 			if (registeringPure)
 				pure.Add(name);
+			if (registeringCommands)
+				commands.Add(name);
 		}
 	}
 
@@ -219,15 +230,19 @@ internal sealed class Builtins
 	}
 
 	/// <summary>max/min of a vector, of each column of a matrix, or element-wise of two arguments (by real part).</summary>
+	/// <remarks>NaN values are ignored, as in MATLAB; the result is NaN only when all values are NaN.</remarks>
 	static ComplexMatrix Extreme(CallContext call, Func<Complex, Complex, bool> better)
 	{
+		static bool IsNaN(Complex z) => double.IsNaN(z.Real) || double.IsNaN(z.Imaginary);
+		Complex Choose(Complex a, Complex b) => IsNaN(a) ? b : IsNaN(b) ? a : better(b, a) ? b : a;
+
 		call.RequireCount(1, 2);
 		if (call.Count == 2)
-			return ComplexMatrix.ElementWise(call.Matrix(0), call.Matrix(1), (a, b) => better(b, a) ? b : a);
+			return ComplexMatrix.ElementWise(call.Matrix(0), call.Matrix(1), Choose);
 		var m = call.Matrix(0);
 		if (m.IsEmpty)
 			return ComplexMatrix.Zeros(0, 0);
-		Complex Pick(IEnumerable<Complex> values) => values.Aggregate((a, b) => better(b, a) ? b : a);
+		Complex Pick(IEnumerable<Complex> values) => values.Aggregate(Choose);
 		if (m.IsVector)
 			return Pick(m.AsSpan().ToArray());
 		return ComplexMatrix.Create(1, m.Columns, (_, c) => Pick(Enumerable.Range(0, m.Rows).Select(r => m[r, c])));
@@ -459,24 +474,28 @@ internal sealed class Builtins
 		return null;
 	}
 
-	/// <summary>Plots the real part; points where the function is undefined (a math error) become gaps.</summary>
+	/// <summary>
+	/// Plots the real part. Points where the function is undefined (division by zero, a logarithm
+	/// of zero, …) become gaps; errors in the expression itself (a wrong index or size) are reported,
+	/// since they would otherwise just leave the plot empty.
+	/// </summary>
 	static Func<double, double> PlotFunction(Func<double, double> function) => x =>
 	{
 		try
 		{
 			return function(x);
 		}
-		catch (RuntimeError error) when (IsMathError(error))
+		catch (RuntimeError error) when (IsUndefinedHere(error))
 		{
 			return double.NaN;
 		}
 	};
 
-	static bool IsMathError(Exception error)
+	static bool IsUndefinedHere(Exception error)
 	{
 		for (Exception? e = error; e is not null; e = e.InnerException)
-			if (e is MathException)
-				return true;
+			if (e is MathException math)
+				return math.Error is not (MathError.Index or MathError.Dimension or MathError.TooLarge);
 		return false;
 	}
 

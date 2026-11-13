@@ -169,7 +169,15 @@ public sealed partial class MLCalcInterpreter
 		if (parse.Root.Statements is not [ExpressionStatement { Expression: var parsed }])
 			throw new RuntimeError($"\"{text}\" must be a single expression.", span);
 
-		var code = new FunctionCompiler(this, builtins, variable).Compile(FoldConstants(parsed, variable));
+		Func<ComplexMatrix, ComplexMatrix> code;
+		try
+		{
+			code = new FunctionCompiler(this, builtins, variable).Compile(FoldConstants(parsed, variable));
+		}
+		catch (RuntimeError error)
+		{
+			throw new RuntimeError($"In \"{text}\": {error.Message}", span, error);
+		}
 
 		return argument =>
 		{

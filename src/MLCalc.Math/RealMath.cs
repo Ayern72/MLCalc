@@ -47,7 +47,9 @@ public static class RealMath
 			return 0;
 		k = System.Math.Min(k, n - k);
 		double result = 1;
-		for (double i = 1; i <= k; i++)
+		// The result at least doubles every step while i ≤ k ≤ n/2, so it overflows within about a
+		// thousand steps; stopping there keeps huge arguments such as comb(1e12, 5e11) instant.
+		for (double i = 1; i <= k && !double.IsInfinity(result); i++)
 			result = result * (n - k + i) / i;
 		return System.Math.Round(result);
 	}
@@ -59,7 +61,8 @@ public static class RealMath
 		if (k > n)
 			return 0;
 		double result = 1;
-		for (double i = n; i > n - k; i--)
+		// Stop once the product has overflowed: perm(1e12, 1e12) would otherwise loop for hours.
+		for (double i = n; i > n - k && !double.IsInfinity(result); i--)
 			result *= i;
 		return result;
 	}

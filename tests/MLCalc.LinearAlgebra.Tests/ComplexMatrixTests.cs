@@ -153,6 +153,8 @@ public class ComplexMatrixTests
 	[InlineData(double.NegativeInfinity, 0, "-Inf")]
 	[InlineData(double.NaN, 0, "NaN")]
 	[InlineData(1, double.NegativeInfinity, "1-Infi")]
+	[InlineData(1, double.NaN, "1+NaNi")]
+	[InlineData(double.NaN, double.NaN, "NaN+NaNi")]
 	public void FormatsComplexNumbers(double re, double im, string expected)
 	{
 		Assert.Equal(expected, ComplexMatrix.Format(new Complex(re, im)));

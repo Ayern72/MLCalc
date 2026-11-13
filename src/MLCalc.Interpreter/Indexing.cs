@@ -133,7 +133,7 @@ internal static class Indexing
 			if (v.Imaginary != 0 || v.Real != System.Math.Floor(v.Real) || v.Real < 1)
 				throw new MathException(MathError.Index, $"{what} must be a positive integer, got {ComplexMatrix.Format(v)}.");
 			if (v.Real > limit)
-				throw new MathException(MathError.Index, $"{what} {v.Real} exceeds the size {limit}.");
+				throw new MathException(MathError.Index, FormattableString.Invariant($"{what} {v.Real:G10} exceeds the size {limit}."));
 			result[i] = (int)v.Real - 1;
 		}
 		return result;

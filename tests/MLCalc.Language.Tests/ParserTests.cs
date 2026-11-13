@@ -243,6 +243,7 @@ public class ParserErrorTests
 	[InlineData("if a\n x\nelseif b\n y")]
 	[InlineData("while k < 3\n k = k + 1;")]
 	[InlineData("for k = 1:3")]
+	[InlineData("(1 + 2")]
 	public void InputEndingMidConstructIsIncomplete(string text)
 	{
 		var result = Parser.Parse(text);
@@ -255,13 +256,24 @@ public class ParserErrorTests
 	[InlineData("a b")]
 	[InlineData("if a b")]
 	[InlineData("end")]
-	[InlineData("(1 + 2")]
 	public void InvalidInputIsReportedButNotIncomplete(string text)
 	{
 		var result = Parser.Parse(text);
 		Assert.True(result.HasErrors);
-		if (text != "(1 + 2")
-			Assert.False(result.IsIncomplete);
+		Assert.False(result.IsIncomplete);
+	}
+
+	[Fact]
+	public void HugeNumbersBecomeInfinity()
+	{
+		var statement = Assert.IsType<ExpressionStatement>(Assert.Single(Parser.Parse("1e400").Root.Statements));
+		Assert.Equal(double.PositiveInfinity, Assert.IsType<NumberLiteral>(statement.Expression).Value);
+	}
+
+	[Fact]
+	public void TwoDecimalPointsAreAnError()
+	{
+		Assert.True(Parser.Parse("x = 1..2").HasErrors);
 	}
 
 	[Fact]
