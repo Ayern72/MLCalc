@@ -34,8 +34,8 @@ numbers with a zero imaginary part.
 | `MLCalc.Wpf` | Windows desktop application |
 
 The libraries target `net10.0` with no Windows dependencies, so they can be reused by other
-front-ends. Dependencies only point downward:
-`Math` ← `LinearAlgebra` ← `Numerics` / `Plotting` ← `Interpreter` ← `Wpf`, and `Language` ← `Interpreter`.
+front-ends. Dependencies only point downward: `Math` ← `LinearAlgebra` ← `Numerics` ← `Interpreter` ← `Wpf`.
+`Language` and `Plotting` have no dependencies and are used by `Interpreter`; `Wpf` also renders `Plotting`.
 
 `samples/` contains scripts written for the original Amiga version.
 

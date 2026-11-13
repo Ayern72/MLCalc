@@ -19,6 +19,13 @@ public static class ComplexMath
 
 	public static Complex Conj(Complex z) => Complex.Conjugate(z);
 
+	/// <summary>
+	/// Product that stays exactly real for real operands, so that e.g. ∞·2 is ∞ rather than ∞ + NaN·i
+	/// (complex multiplication would compute ∞·0 for the imaginary part).
+	/// </summary>
+	public static Complex Multiply(Complex a, Complex b) =>
+		IsReal(a) && IsReal(b) ? a.Real * b.Real : a * b;
+
 	public static Complex Divide(Complex a, Complex b)
 	{
 		if (b == Complex.Zero)
@@ -39,11 +46,23 @@ public static class ComplexMath
 	/// <summary>Base-10 logarithm.</summary>
 	public static Complex Log10(Complex z) => IsReal(z) && z.Real > 0 ? System.Math.Log10(z.Real) : Ln(z) / System.Math.Log(10);
 
-	/// <summary>z^w; real when z ≥ 0, or when z is a negative real and w an integer.</summary>
+	/// <summary>
+	/// z^w; real when z ≥ 0, or when z is a negative real and w an integer. Small integer powers of
+	/// complex numbers use exact repeated multiplication, so i^2 is exactly -1.
+	/// </summary>
 	public static Complex Pow(Complex z, Complex w)
 	{
 		if (IsReal(z) && IsReal(w) && (z.Real >= 0 || w.Real == System.Math.Floor(w.Real)))
 			return System.Math.Pow(z.Real, w.Real);
+		if (IsReal(w) && w.Real == System.Math.Floor(w.Real) && System.Math.Abs(w.Real) <= 64 && z != Complex.Zero)
+		{
+			int n = (int)System.Math.Abs(w.Real);
+			Complex result = Complex.One, factor = z;
+			for (; n > 0; n >>= 1, factor *= factor)
+				if ((n & 1) == 1)
+					result *= factor;
+			return w.Real < 0 ? 1 / result : result;
+		}
 		if (z == Complex.Zero)
 			return w.Real > 0 ? Complex.Zero : throw new MathException(MathError.DivisionByZero, "Zero raised to a non-positive power.");
 		return Exp(w * Ln(z));

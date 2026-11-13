@@ -105,6 +105,43 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		? data[0]
 		: throw new MathException(MathError.Dimension, $"Expected a scalar, got a {Rows}×{Columns} matrix.");
 
+	/// <summary>Joins matrices side by side (<c>[A, B]</c>). Empty matrices are ignored; the rest must have equal row counts.</summary>
+	public static ComplexMatrix HorizontalConcat(IEnumerable<ComplexMatrix> parts)
+	{
+		var list = parts.Where(p => !p.IsEmpty).ToList();
+		if (list.Count == 0)
+			return Zeros(0, 0);
+		if (list.Count == 1)
+			return list[0];
+		int rows = list[0].Rows;
+		if (list.Any(p => p.Rows != rows))
+			throw new MathException(MathError.Dimension, "Matrices placed side by side must have the same number of rows.");
+		int columns = list.Sum(p => p.Columns);
+		var result = new Complex[rows * columns];
+		int offset = 0;
+		foreach (var part in list)
+		{
+			for (int r = 0; r < rows; r++)
+				part.data.AsSpan(r * part.Columns, part.Columns).CopyTo(result.AsSpan(r * columns + offset));
+			offset += part.Columns;
+		}
+		return new ComplexMatrix(rows, columns, result);
+	}
+
+	/// <summary>Stacks matrices on top of each other (<c>[A; B]</c>). Empty matrices are ignored; the rest must have equal column counts.</summary>
+	public static ComplexMatrix VerticalConcat(IEnumerable<ComplexMatrix> parts)
+	{
+		var list = parts.Where(p => !p.IsEmpty).ToList();
+		if (list.Count == 0)
+			return Zeros(0, 0);
+		if (list.Count == 1)
+			return list[0];
+		int columns = list[0].Columns;
+		if (list.Any(p => p.Columns != columns))
+			throw new MathException(MathError.Dimension, "Matrices stacked vertically must have the same number of columns.");
+		return new ComplexMatrix(list.Sum(p => p.Rows), columns, list.SelectMany(p => p.data).ToArray());
+	}
+
 	public ComplexMatrix Row(int row) => Create(1, Columns, (_, c) => this[row, c]);
 	public ComplexMatrix Column(int column) => Create(Rows, 1, (r, _) => this[r, column]);
 
@@ -147,7 +184,7 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 	public static ComplexMatrix operator -(ComplexMatrix a, ComplexMatrix b) => ElementWise(a, b, (x, y) => x - y);
 	public static ComplexMatrix operator -(ComplexMatrix a) => a.Map(x => -x);
 
-	public ComplexMatrix ElementMultiply(ComplexMatrix other) => ElementWise(this, other, (x, y) => x * y);
+	public ComplexMatrix ElementMultiply(ComplexMatrix other) => ElementWise(this, other, ComplexMath.Multiply);
 	public ComplexMatrix ElementDivide(ComplexMatrix other) => ElementWise(this, other, ComplexMath.Divide);
 	public ComplexMatrix ElementPower(ComplexMatrix other) => ElementWise(this, other, ComplexMath.Pow);
 
@@ -164,7 +201,7 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 			{
 				Complex sum = Complex.Zero;
 				for (int k = 0; k < a.Columns; k++)
-					sum += a.data[r * a.Columns + k] * b.data[k * b.Columns + c];
+					sum += ComplexMath.Multiply(a.data[r * a.Columns + k], b.data[k * b.Columns + c]);
 				result[r * b.Columns + c] = sum;
 			}
 		return new ComplexMatrix(a.Rows, b.Columns, result);

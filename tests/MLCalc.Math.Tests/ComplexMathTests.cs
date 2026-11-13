@@ -80,6 +80,22 @@ public class ComplexMathTests
 	}
 
 	[Fact]
+	public void IntegerPowersOfComplexNumbersAreExact()
+	{
+		Assert.Equal(new Complex(-1, 0), ComplexMath.Pow(ComplexMath.I, 2));
+		Assert.Equal(new Complex(-4, 0), ComplexMath.Pow(new Complex(1, 1), 4));
+		Assert.Equal(new Complex(0, -1), ComplexMath.Pow(ComplexMath.I, -1));
+	}
+
+	[Fact]
+	public void RealProductWithInfinityStaysReal()
+	{
+		var product = ComplexMath.Multiply(double.PositiveInfinity, -2);
+		Assert.Equal(double.NegativeInfinity, product.Real);
+		Assert.Equal(0, product.Imaginary);
+	}
+
+	[Fact]
 	public void EulerIdentity()
 	{
 		AssertClose(-1, ComplexMath.Exp(ComplexMath.I * System.Math.PI));

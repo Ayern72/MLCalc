@@ -91,6 +91,16 @@ public class ComplexMatrixTests
 	}
 
 	[Fact]
+	public void ConcatenationJoinsAndSkipsEmpty()
+	{
+		var joined = ComplexMatrix.HorizontalConcat([A, ComplexMatrix.ColumnVector(5, 6), ComplexMatrix.Zeros(0, 0)]);
+		Assert.Equal(ComplexMatrix.FromRows(new double[,] { { 1, 2, 5 }, { 3, 4, 6 } }), joined);
+		var stacked = ComplexMatrix.VerticalConcat([A, ComplexMatrix.RowVector(7, 8)]);
+		Assert.Equal(ComplexMatrix.FromRows(new double[,] { { 1, 2 }, { 3, 4 }, { 7, 8 } }), stacked);
+		Assert.Throws<MathException>(() => ComplexMatrix.HorizontalConcat([A, ComplexMatrix.RowVector(1)]));
+	}
+
+	[Fact]
 	public void MatrixPowerIsRepeatedMatrixProduct()
 	{
 		Assert.Equal(A * A * A, ComplexMatrix.Power(A, 3));

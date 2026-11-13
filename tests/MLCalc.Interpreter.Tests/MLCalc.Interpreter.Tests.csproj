@@ -14,4 +14,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\MLCalc.Interpreter\MLCalc.Interpreter.csproj" />
 	</ItemGroup>
+	<ItemGroup>
+		<None Include="..\..\samples\*.m" LinkBase="samples" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
 </Project>
