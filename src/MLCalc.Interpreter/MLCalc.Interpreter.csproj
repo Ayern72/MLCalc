@@ -6,4 +6,7 @@
 		<ProjectReference Include="..\MLCalc.Language\MLCalc.Language.csproj" />
 		<ProjectReference Include="..\MLCalc.Plotting\MLCalc.Plotting.csproj" />
 	</ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="MLCalc.Interpreter.Tests" />
+	</ItemGroup>
 </Project>

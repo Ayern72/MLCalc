@@ -11,15 +11,29 @@ namespace MLCalc.Interpreter;
 internal sealed class Builtins
 {
 	readonly Dictionary<string, Builtin> table = new(StringComparer.OrdinalIgnoreCase);
+	readonly HashSet<string> pure = new(StringComparer.OrdinalIgnoreCase);
+	bool registeringPure;
 
 	public IEnumerable<string> Names => table.Keys.Order(StringComparer.OrdinalIgnoreCase);
 
 	public bool TryGet(string name, out Builtin builtin) => table.TryGetValue(name, out builtin!);
 
+	/// <summary>
+	/// True for functions whose result depends only on their arguments and that have no side
+	/// effects, so a call with constant arguments can be evaluated once (see <see cref="ConstantFolder"/>).
+	/// </summary>
+	public bool IsPure(string name) => pure.Contains(name);
+
 	public Builtins()
 	{
+		// Element-wise and matrix functions are pure, except rand.
+		registeringPure = true;
 		RegisterElementFunctions();
 		RegisterMatrixFunctions();
+		registeringPure = false;
+		pure.Remove("rand");
+
+		// Not marked pure: functions given as text (they run their own evaluations), and commands.
 		RegisterNumericFunctions();
 		RegisterPlotCommands();
 		RegisterConsoleCommands();
@@ -28,7 +42,11 @@ internal sealed class Builtins
 	void Add(Builtin builtin, params string[] names)
 	{
 		foreach (var name in names)
+		{
 			table.Add(name, builtin);
+			if (registeringPure)
+				pure.Add(name);
+		}
 	}
 
 	void Element(Func<Complex, Complex> function, params string[] names) => Add(call =>

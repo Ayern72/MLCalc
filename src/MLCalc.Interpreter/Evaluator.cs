@@ -28,6 +28,8 @@ public sealed partial class MLCalcInterpreter
 	{
 		switch (expression)
 		{
+			case FoldedConstant constant:
+				return constant.Value;
 			case Identifier id:
 				if (TryLookup(id.Name, out var value))
 					return value;
@@ -44,14 +46,14 @@ public sealed partial class MLCalcInterpreter
 		}
 	}
 
-	bool TryLookupVariable(string name, out ComplexMatrix value)
+	internal bool TryLookupVariable(string name, out ComplexMatrix value)
 	{
 		if (locals is not null && locals.TryGetValue(name, out value!))
 			return true;
 		return variables.TryGetValue(name, out value!);
 	}
 
-	bool TryLookup(string name, out ComplexMatrix value) =>
+	internal bool TryLookup(string name, out ComplexMatrix value) =>
 		TryLookupVariable(name, out value) || Constants.TryGetValue(name, out value!);
 
 	ComplexMatrix? Call(Identifier name, IReadOnlyList<Expression> arguments, SourceSpan span)
@@ -135,14 +137,18 @@ public sealed partial class MLCalcInterpreter
 	/// <summary>
 	/// Compiles a function given as text, such as <c>fplot("x", "sin(x)")</c>: evaluating it binds
 	/// <paramref name="variable"/> to the argument while leaving the global variables untouched.
+	/// Branches that do not depend on <paramref name="variable"/> are evaluated once, here
+	/// (see <see cref="ConstantFolder"/>).
 	/// </summary>
 	internal Func<ComplexMatrix, ComplexMatrix> CompileFunction(string variable, string text, SourceSpan span)
 	{
 		var parse = Parser.Parse(text);
 		if (parse.HasErrors)
 			throw new RuntimeError($"In \"{text}\": {parse.Diagnostics[0].Message}", span);
-		if (parse.Root.Statements is not [ExpressionStatement { Expression: var expression }])
+		if (parse.Root.Statements is not [ExpressionStatement { Expression: var parsed }])
 			throw new RuntimeError($"\"{text}\" must be a single expression.", span);
+
+		var expression = FoldConstants(parsed, variable);
 
 		return argument =>
 		{
@@ -162,6 +168,24 @@ public sealed partial class MLCalcInterpreter
 				locals = previous;
 			}
 		};
+	}
+
+	/// <summary>
+	/// Folds constant branches of a function's expression. It runs with no local variables bound,
+	/// so constants are computed from the same variables the function sees when it is evaluated.
+	/// </summary>
+	internal Expression FoldConstants(Expression expression, string variable)
+	{
+		var previous = locals;
+		locals = new Dictionary<string, ComplexMatrix>(StringComparer.OrdinalIgnoreCase);
+		try
+		{
+			return new ConstantFolder(this, builtins, variable).Fold(expression);
+		}
+		finally
+		{
+			locals = previous;
+		}
 	}
 }
 

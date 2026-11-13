@@ -812,6 +812,9 @@ solve("x", "x^2 - 2", 1)
   change a variable of the same name.
 - The expression must give a single number for each value of the variable. For the numerical
   methods below, its real part is used.
+- Parts of the expression that do not depend on the variable, such as `sin(pi/4)*a` in
+  `"sin(pi/4)*a*x^2"`, are computed only once, which makes plots and numerical methods faster.
+  `rand` is always evaluated again.
 
 | Function | Result |
 |---|---|
