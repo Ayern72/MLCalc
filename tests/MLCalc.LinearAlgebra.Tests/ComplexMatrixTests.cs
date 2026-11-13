@@ -91,6 +91,28 @@ public class ComplexMatrixTests
 	}
 
 	[Fact]
+	public void ElementCountIsLimitedWithoutIntegerOverflow()
+	{
+		Assert.Equal(ComplexMatrix.MaxElements, ComplexMatrix.ElementCount(5000, 5000));
+		Assert.Equal(MathError.TooLarge, Assert.Throws<MathException>(() => ComplexMatrix.ElementCount(5000, 5001)).Error);
+		// 65536 × 65536 wraps around to 0 in 32-bit arithmetic.
+		Assert.Equal(MathError.TooLarge, Assert.Throws<MathException>(() => ComplexMatrix.Zeros(65536, 65536)).Error);
+		Assert.Equal(MathError.TooLarge, Assert.Throws<MathException>(() => ComplexMatrix.Ones(46341, 46341)).Error);
+		Assert.Equal(MathError.Dimension, Assert.Throws<MathException>(() => ComplexMatrix.ElementCount(-1, 2)).Error);
+	}
+
+	[Fact]
+	public void ProductAndConcatenationRespectTheLimit()
+	{
+		var tall = ComplexMatrix.Zeros(10_000, 1);
+		var wide = ComplexMatrix.Zeros(1, 10_000);
+		Assert.Equal(MathError.TooLarge, Assert.Throws<MathException>(() => tall * wide).Error);
+		var big = ComplexMatrix.Zeros(1, 20_000_000);
+		Assert.Equal(MathError.TooLarge, Assert.Throws<MathException>(() => ComplexMatrix.HorizontalConcat([big, big])).Error);
+		Assert.Equal(MathError.TooLarge, Assert.Throws<MathException>(() => ComplexMatrix.VerticalConcat([big, big])).Error);
+	}
+
+	[Fact]
 	public void ConcatenationJoinsAndSkipsEmpty()
 	{
 		var joined = ComplexMatrix.HorizontalConcat([A, ComplexMatrix.ColumnVector(5, 6), ComplexMatrix.Zeros(0, 0)]);

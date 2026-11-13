@@ -185,6 +185,12 @@ public sealed partial class MainViewModel : ObservableObject, IConsoleOutput
 		{
 			Add(ConsoleEntryKind.Error, ex.Message);
 		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			// The interpreter reports errors itself; this is a last resort so that an unexpected
+			// exception is shown in the console instead of closing the application.
+			Add(ConsoleEntryKind.Error, MLCalcInterpreter.InternalError(ex, default).Message);
+		}
 		finally
 		{
 			cancellation.Dispose();

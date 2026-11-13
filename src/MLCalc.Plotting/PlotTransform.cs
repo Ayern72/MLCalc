@@ -28,6 +28,9 @@ public readonly struct PlotTransform(Axes axes, ScreenRect screen)
 /// <summary>Chooses "nice" tick positions (multiples of 1, 2 or 5 × 10ⁿ) for an axis.</summary>
 public static class AxisTicks
 {
+	/// <summary>A safety limit; a normal axis has fewer than 20 ticks.</summary>
+	const int MaxTicks = 1000;
+
 	/// <summary>Tick values covering [min, max], aiming for about <paramref name="targetCount"/> ticks.</summary>
 	public static IReadOnlyList<double> Compute(double min, double max, int targetCount = 6)
 	{
@@ -35,10 +38,14 @@ public static class AxisTicks
 			return [];
 		double step = NiceStep((max - min) / targetCount);
 		double first = Math.Ceiling(min / step) * step;
+		// A span that overflows (-1e308..1e308) or underflows gives a step of infinity, 0 or NaN,
+		// and the loop below would never end.
+		if (!double.IsFinite(step) || step <= 0 || !double.IsFinite(first))
+			return [];
 		// Round to the step's decimals so 3 × 0.1 becomes 0.3, not 0.30000000000000004.
 		int decimals = Math.Clamp(-(int)Math.Floor(Math.Log10(step)), 0, 15);
 		var ticks = new List<double>();
-		for (int i = 0; ; i++)
+		for (int i = 0; i <= MaxTicks; i++)
 		{
 			double value = first + i * step;
 			if (value > max + step * 1e-9)

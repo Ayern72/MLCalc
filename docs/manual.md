@@ -139,7 +139,8 @@ unit.
 - Numbers are shown with up to 10 significant digits: `1/3` gives `0.3333333333`.
 - Complex numbers are shown as `a+bi`: `0.5-0.5i`, `2i`.
 - Infinity is `Inf` or `-Inf`; undefined results are `NaN`.
-- Matrices are shown with their columns right-aligned.
+- Matrices are shown with their columns right-aligned. Matrices with more than 10 000 elements
+  are summarised instead; show a part of them with indexing, e.g. `A(1:5, 1:5)`.
 
 ```
 >> 1/3
@@ -1179,6 +1180,10 @@ Common messages:
 | *fplot: argument 1 must be a string in double quotes* | the variable and the expression must be strings |
 | *In "y + x": Unknown function or variable 'y'* | an error inside a function given as text |
 | *No root found near 0* | `solve` found no sign change |
+| *A 46341×46341 matrix would have 2147488281 elements; the limit is 25000000* | a matrix (or range) larger than the size limit, see [Limitations](#14-limitations) |
+| *The program is nested too deeply (more than 256 levels …)* | too many nested parentheses, brackets, blocks, or operators in one chain |
+| *Scripts are nested too deeply (does a script run itself?)* | scripts running each other more than 32 levels deep |
+| *Internal error (…): …* | an unexpected problem in MLCalc itself; the program stops, but MLCalc keeps working |
 | *Strings can only be used as arguments to functions such as fplot or title* | strings are not values |
 
 ---
@@ -1227,6 +1232,17 @@ MLCalc's operators and indexing follow MATLAB, but it is a much smaller language
 - No user-defined functions, `break`, `continue` or string variables.
 - Up to 3×3 plot windows; no logarithmic or polar axes and no legends.
 - `savefig` to PNG only in the desktop application; the command-line tool saves SVG.
+
+To protect the computer running MLCalc, a few sizes are limited. Exceeding a limit gives an error
+message; nothing is changed.
+
+| Limit | Value |
+|---|---|
+| Elements in one matrix or range | 25 000 000 (for example 5000×5000); each element takes 16 bytes |
+| Nesting of parentheses, brackets, blocks and operator chains | 256 levels (a sum of up to about 250 terms) |
+| Scripts running other scripts | 32 levels |
+| Elements shown in the console | 10 000; larger results are summarised as, for example, `A = [200×200 matrix, too large to show; …]` |
+| `savefig` image size | 50 to 16000 |
 
 ---
 

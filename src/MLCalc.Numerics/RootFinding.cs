@@ -12,7 +12,7 @@ public static class RootFinding
 	public static double FindRoot(Func<double, double> f, double a, double b, double tolerance = 1e-14, int maxIterations = 200)
 	{
 		ArgumentNullException.ThrowIfNull(f);
-		double fa = f(a), fb = f(b);
+		double fa = Defined(f(a), a), fb = Defined(f(b), b);
 		if (fa == 0)
 			return a;
 		if (fb == 0)
@@ -51,7 +51,7 @@ public static class RootFinding
 			else
 				bisected = false;
 
-			double fs = f(s);
+			double fs = Defined(f(s), s);
 			d = c;
 			c = b;
 			fc = fb;
@@ -137,10 +137,25 @@ public static class RootFinding
 	/// </summary>
 	static bool TryRefine(Func<double, double> f, double a, double fa, double b, double fb, out double root)
 	{
-		root = FindRoot(f, a, b);
+		try
+		{
+			root = FindRoot(f, a, b);
+		}
+		catch (MathException ex) when (ex.Error == MathError.Domain)
+		{
+			// The function is undefined somewhere in this bracket: no usable root here, keep searching.
+			root = double.NaN;
+			return false;
+		}
 		double fRoot = System.Math.Abs(f(root));
 		return fRoot <= System.Math.Max(System.Math.Abs(fa), System.Math.Abs(fb));
 	}
+
+	/// <summary>Brent's method cannot continue through NaN; report it as an undefined function value.</summary>
+	static double Defined(double value, double x) =>
+		double.IsNaN(value)
+			? throw new MathException(MathError.Domain, string.Create(System.Globalization.CultureInfo.InvariantCulture, $"The function is not defined at x = {x:G10}."))
+			: value;
 
 	static bool IsSignChange(double a, double b) =>
 		!double.IsNaN(a) && !double.IsNaN(b) && (a == 0 || b == 0 || System.Math.Sign(a) != System.Math.Sign(b))

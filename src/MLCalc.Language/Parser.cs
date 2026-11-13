@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 
 namespace MLCalc.Language;
 
@@ -33,6 +34,24 @@ public sealed class Parser
 	readonly Stack<bool> matrixContext = new();
 	int position;
 	bool isIncomplete;
+	int depth;
+
+	/// <summary>
+	/// The deepest nesting allowed: parentheses, brackets, unary operators, blocks and chains of
+	/// binary operators such as <c>1+1+…+1</c> all count, because each level becomes a level of the
+	/// syntax tree, and parsing and evaluating it is recursive. Without a limit, deeply nested input
+	/// would overflow the stack, which ends the process.
+	/// </summary>
+	public const int MaxDepth = 256;
+
+	/// <summary>Enters one more level of nesting; pair with <c>depth--</c> in a <c>finally</c>.</summary>
+	void Deeper()
+	{
+		bool enoughStack = RuntimeHelpers.TryEnsureSufficientExecutionStack();
+		if (depth >= MaxDepth || !enoughStack)
+			throw Error($"The program is nested too deeply (more than {MaxDepth} levels of parentheses, operators or blocks).");
+		depth++;
+	}
 
 	Parser(IReadOnlyList<Token> tokens) => this.tokens = tokens;
 
@@ -158,16 +177,27 @@ public sealed class Parser
 			Advance();
 	}
 
-	Statement ParseStatement() => Current.Kind switch
+	Statement ParseStatement()
 	{
-		TokenKind.If => ParseIf(),
-		TokenKind.While => ParseWhile(),
-		TokenKind.For => ParseFor(),
-		TokenKind.Begin => ParseBlock(),
-		TokenKind.Then or TokenKind.Do or TokenKind.Else or TokenKind.Elseif or TokenKind.End or TokenKind.To =>
-			throw Error($"Unexpected {Describe(Current)}."),
-		_ => ParseSimpleStatement(),
-	};
+		Deeper();
+		try
+		{
+			return Current.Kind switch
+			{
+				TokenKind.If => ParseIf(),
+				TokenKind.While => ParseWhile(),
+				TokenKind.For => ParseFor(),
+				TokenKind.Begin => ParseBlock(),
+				TokenKind.Then or TokenKind.Do or TokenKind.Else or TokenKind.Elseif or TokenKind.End or TokenKind.To =>
+					throw Error($"Unexpected {Describe(Current)}."),
+				_ => ParseSimpleStatement(),
+			};
+		}
+		finally
+		{
+			depth--;
+		}
+	}
 
 	/// <summary>
 	/// <c>if c then s [else s]</c> (original style), or the MATLAB style
@@ -190,8 +220,16 @@ public sealed class Parser
 			return new IfStatement(SpanFrom(start), condition, then, null);
 		}
 		Advance();
-		var @else = At(TokenKind.If) ? ParseIf() : ParseBody();
-		return new IfStatement(SpanFrom(start), condition, then, @else);
+		Deeper(); // an else-if chain nests one if inside the next
+		try
+		{
+			var @else = At(TokenKind.If) ? ParseIf() : ParseBody();
+			return new IfStatement(SpanFrom(start), condition, then, @else);
+		}
+		finally
+		{
+			depth--;
+		}
 	}
 
 	/// <summary>The rest of a MATLAB-style if after its condition; an elseif chain shares the final <c>end</c>.</summary>
@@ -203,9 +241,17 @@ public sealed class Parser
 		if (At(TokenKind.Elseif))
 		{
 			int elseifStart = Advance().Span.Start;
-			var elseifCondition = ParseExpression();
-			@else = ParseMatlabIf(elseifStart, elseifCondition);
-			return new IfStatement(SpanFrom(start), condition, then, @else);
+			Deeper(); // an elseif chain nests one if inside the next
+			try
+			{
+				var elseifCondition = ParseExpression();
+				@else = ParseMatlabIf(elseifStart, elseifCondition);
+				return new IfStatement(SpanFrom(start), condition, then, @else);
+			}
+			finally
+			{
+				depth--;
+			}
 		}
 		if (At(TokenKind.Else))
 		{
@@ -398,20 +444,45 @@ public sealed class Parser
 
 	// ───────────── Expressions ─────────────
 
-	public Expression ParseExpression() => ParseOr();
+	public Expression ParseExpression()
+	{
+		Deeper();
+		try
+		{
+			return ParseOr();
+		}
+		finally
+		{
+			depth--;
+		}
+	}
 
+	/// <summary>
+	/// A left-associative chain such as <c>a + b + c</c>. Each operator adds a level to the syntax
+	/// tree (<c>(a + b) + c</c>), so each one counts towards <see cref="MaxDepth"/>.
+	/// </summary>
 	Expression ParseBinaryLevel(Func<Expression> operand, Func<TokenKind, BinaryOperator?> map)
 	{
 		var left = operand();
-		while (map(Current.Kind) is { } op)
+		int levels = 0;
+		try
 		{
-			if (InMatrix && IsMatrixElementBreak())
-				break;
-			Advance();
-			var right = operand();
-			left = new BinaryExpression(SourceSpan.FromBounds(left.Span.Start, right.Span.End), op, left, right);
+			while (map(Current.Kind) is { } op)
+			{
+				if (InMatrix && IsMatrixElementBreak())
+					break;
+				Advance();
+				Deeper();
+				levels++;
+				var right = operand();
+				left = new BinaryExpression(SourceSpan.FromBounds(left.Span.Start, right.Span.End), op, left, right);
+			}
+			return left;
 		}
-		return left;
+		finally
+		{
+			depth -= levels;
+		}
 	}
 
 	Expression ParseOr() => ParseBinaryLevel(ParseAnd, kind => kind switch
@@ -493,8 +564,16 @@ public sealed class Parser
 		if (UnaryOperatorFor(Current.Kind) is { } op)
 		{
 			int start = Advance().Span.Start;
-			var operand = ParseUnary();
-			return new UnaryExpression(SourceSpan.FromBounds(start, operand.Span.End), op, operand);
+			Deeper();
+			try
+			{
+				var operand = ParseUnary();
+				return new UnaryExpression(SourceSpan.FromBounds(start, operand.Span.End), op, operand);
+			}
+			finally
+			{
+				depth--;
+			}
 		}
 		return ParsePower();
 	}
@@ -502,13 +581,23 @@ public sealed class Parser
 	Expression ParsePower()
 	{
 		var left = ParsePostfix();
-		while (AtAny(TokenKind.Caret, TokenKind.DotCaret))
+		int levels = 0;
+		try
 		{
-			var op = Advance().Kind == TokenKind.Caret ? BinaryOperator.Power : BinaryOperator.ElementPower;
-			var right = ParsePowerOperand();
-			left = new BinaryExpression(SourceSpan.FromBounds(left.Span.Start, right.Span.End), op, left, right);
+			while (AtAny(TokenKind.Caret, TokenKind.DotCaret))
+			{
+				var op = Advance().Kind == TokenKind.Caret ? BinaryOperator.Power : BinaryOperator.ElementPower;
+				Deeper();
+				levels++;
+				var right = ParsePowerOperand();
+				left = new BinaryExpression(SourceSpan.FromBounds(left.Span.Start, right.Span.End), op, left, right);
+			}
+			return left;
 		}
-		return left;
+		finally
+		{
+			depth -= levels;
+		}
 	}
 
 	/// <summary>The exponent may carry its own sign: <c>2^-1</c>.</summary>
@@ -517,8 +606,16 @@ public sealed class Parser
 		if (UnaryOperatorFor(Current.Kind) is { } op)
 		{
 			int start = Advance().Span.Start;
-			var operand = ParsePowerOperand();
-			return new UnaryExpression(SourceSpan.FromBounds(start, operand.Span.End), op, operand);
+			Deeper();
+			try
+			{
+				var operand = ParsePowerOperand();
+				return new UnaryExpression(SourceSpan.FromBounds(start, operand.Span.End), op, operand);
+			}
+			finally
+			{
+				depth--;
+			}
 		}
 		return ParsePostfix();
 	}
@@ -526,19 +623,29 @@ public sealed class Parser
 	Expression ParsePostfix()
 	{
 		var expression = ParsePrimary();
-		while (true)
+		int levels = 0;
+		try
 		{
-			PostfixOperator? op = Current.Kind switch
+			while (true)
 			{
-				TokenKind.Apostrophe => PostfixOperator.ConjugateTranspose,
-				TokenKind.DotApostrophe => PostfixOperator.Transpose,
-				TokenKind.Bang => PostfixOperator.Factorial,
-				_ => null,
-			};
-			if (op is null)
-				return expression;
-			int end = Advance().Span.End;
-			expression = new PostfixExpression(SourceSpan.FromBounds(expression.Span.Start, end), op.Value, expression);
+				PostfixOperator? op = Current.Kind switch
+				{
+					TokenKind.Apostrophe => PostfixOperator.ConjugateTranspose,
+					TokenKind.DotApostrophe => PostfixOperator.Transpose,
+					TokenKind.Bang => PostfixOperator.Factorial,
+					_ => null,
+				};
+				if (op is null)
+					return expression;
+				Deeper();
+				levels++;
+				int end = Advance().Span.End;
+				expression = new PostfixExpression(SourceSpan.FromBounds(expression.Span.Start, end), op.Value, expression);
+			}
+		}
+		finally
+		{
+			depth -= levels;
 		}
 	}
 

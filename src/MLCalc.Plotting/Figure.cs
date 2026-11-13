@@ -179,6 +179,10 @@ public sealed class Figure
 	{
 		if (!(min < max) || double.IsInfinity(min) || double.IsInfinity(max))
 			throw new ArgumentException($"Invalid range: the lower limit ({min}) must be less than the upper limit ({max}).");
+		// The axes divide the span into ticks and pixels, so it must be a finite, normal number:
+		// -1e308..1e308 overflows to infinity and a tiny span such as 0..1e-320 underflows.
+		if (!double.IsNormal(max - min))
+			throw new ArgumentException($"Invalid range: the span from {min} to {max} is too large or too small.");
 	}
 
 	void ModifyCurrent(Func<Axes, Axes> change) => Update(() =>

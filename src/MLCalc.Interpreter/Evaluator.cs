@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using MLCalc.Language;
 using MLCalc.LinearAlgebra;
 using MLCalc.Math;
@@ -19,8 +21,13 @@ public sealed partial class MLCalcInterpreter
 	};
 
 	/// <summary>Evaluates an expression that must produce a value.</summary>
-	internal ComplexMatrix Evaluate(Expression expression) =>
-		EvaluateStatement(expression) ?? throw NotAValue(expression);
+	internal ComplexMatrix Evaluate(Expression expression)
+	{
+		// The parser limits nesting, but check the stack anyway: running out of it would end the
+		// process, while this throws an exception that is reported as an error.
+		RuntimeHelpers.EnsureSufficientExecutionStack();
+		return EvaluateStatement(expression) ?? throw NotAValue(expression);
+	}
 
 	internal static RuntimeError NotAValue(Expression expression)
 	{
@@ -138,8 +145,9 @@ public sealed partial class MLCalcInterpreter
 		double count = System.Math.Floor((end - start) / step + 1e-10) + 1;
 		if (count <= 0)
 			return ComplexMatrix.Zeros(1, 0);
-		if (count > 100_000_000)
-			throw new RuntimeError("The range has too many elements.", range.Span);
+		if (!(count <= ComplexMatrix.MaxElements))
+			throw new RuntimeError(string.Create(CultureInfo.InvariantCulture,
+				$"The range would have {count:0} elements; the limit is {ComplexMatrix.MaxElements}."), range.Span);
 		return ComplexMatrix.Create(1, (int)count, (_, k) => start + k * step);
 	}
 

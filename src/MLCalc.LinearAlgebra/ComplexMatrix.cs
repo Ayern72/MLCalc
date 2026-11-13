@@ -24,19 +24,40 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		this.data = data;
 	}
 
+	/// <summary>
+	/// The largest number of elements a matrix may have: 25 million, which takes 400 MB. Larger
+	/// matrices are refused with a <see cref="MathError.TooLarge"/> error, so that a single statement
+	/// such as <c>ones(50000)</c> cannot exhaust the computer's memory.
+	/// </summary>
+	public const int MaxElements = 25_000_000;
+
+	/// <summary>
+	/// The number of elements of a rows×columns matrix. Throws <see cref="MathError.TooLarge"/> when it
+	/// exceeds <see cref="MaxElements"/> (computed without integer overflow).
+	/// </summary>
+	public static int ElementCount(long rows, long columns)
+	{
+		if (rows < 0 || columns < 0)
+			throw new MathException(MathError.Dimension, $"A matrix cannot have a negative size ({rows}×{columns}).");
+		long count = rows * columns; // both are at most int.MaxValue, so this cannot overflow a long
+		if (count > MaxElements)
+			throw new MathException(MathError.TooLarge,
+				string.Create(CultureInfo.InvariantCulture, $"A {rows}×{columns} matrix would have {count} elements; the limit is {MaxElements}."));
+		return (int)count;
+	}
+
 	/// <summary>Creates a matrix from row-major data. The array is copied.</summary>
 	public static ComplexMatrix Create(int rows, int columns, ReadOnlySpan<Complex> rowMajorData)
 	{
-		ArgumentOutOfRangeException.ThrowIfNegative(rows);
-		ArgumentOutOfRangeException.ThrowIfNegative(columns);
-		if (rowMajorData.Length != rows * columns)
-			throw new ArgumentException($"Expected {rows * columns} elements, got {rowMajorData.Length}.", nameof(rowMajorData));
+		int count = ElementCount(rows, columns);
+		if (rowMajorData.Length != count)
+			throw new ArgumentException($"Expected {count} elements, got {rowMajorData.Length}.", nameof(rowMajorData));
 		return new ComplexMatrix(rows, columns, rowMajorData.ToArray());
 	}
 
 	public static ComplexMatrix Create(int rows, int columns, Func<int, int, Complex> element)
 	{
-		var values = new Complex[rows * columns];
+		var values = new Complex[ElementCount(rows, columns)];
 		for (int r = 0; r < rows; r++)
 			for (int c = 0; c < columns; c++)
 				values[r * columns + c] = element(r, c);
@@ -61,7 +82,7 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 
 	public static ComplexMatrix ColumnVector(params ReadOnlySpan<double> values) => RowVector(values).Transpose();
 
-	public static ComplexMatrix Zeros(int rows, int columns) => new(rows, columns, new Complex[rows * columns]);
+	public static ComplexMatrix Zeros(int rows, int columns) => new(rows, columns, new Complex[ElementCount(rows, columns)]);
 
 	public static ComplexMatrix Ones(int rows, int columns) => Create(rows, columns, (_, _) => Complex.One);
 
@@ -116,8 +137,8 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		int rows = list[0].Rows;
 		if (list.Any(p => p.Rows != rows))
 			throw new MathException(MathError.Dimension, "Matrices placed side by side must have the same number of rows.");
-		int columns = list.Sum(p => p.Columns);
-		var result = new Complex[rows * columns];
+		int columns = (int)System.Math.Min(int.MaxValue, list.Sum(p => (long)p.Columns));
+		var result = new Complex[ElementCount(rows, columns)];
 		int offset = 0;
 		foreach (var part in list)
 		{
@@ -139,7 +160,9 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		int columns = list[0].Columns;
 		if (list.Any(p => p.Columns != columns))
 			throw new MathException(MathError.Dimension, "Matrices stacked vertically must have the same number of columns.");
-		return new ComplexMatrix(list.Sum(p => p.Rows), columns, list.SelectMany(p => p.data).ToArray());
+		int rows = (int)System.Math.Min(int.MaxValue, list.Sum(p => (long)p.Rows));
+		ElementCount(rows, columns);
+		return new ComplexMatrix(rows, columns, list.SelectMany(p => p.data).ToArray());
 	}
 
 	public ComplexMatrix Row(int row) => Create(1, Columns, (_, c) => this[row, c]);
@@ -195,7 +218,7 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 			return a.ElementMultiply(b);
 		if (a.Columns != b.Rows)
 			throw new MathException(MathError.Dimension, $"Cannot multiply a {a.Rows}×{a.Columns} matrix by a {b.Rows}×{b.Columns} matrix.");
-		var result = new Complex[a.Rows * b.Columns];
+		var result = new Complex[ElementCount(a.Rows, b.Columns)];
 		for (int r = 0; r < a.Rows; r++)
 			for (int c = 0; c < b.Columns; c++)
 			{

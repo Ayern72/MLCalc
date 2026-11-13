@@ -100,7 +100,7 @@ internal sealed class Builtins
 		Element(z => new Complex(System.Math.Ceiling(z.Real), System.Math.Ceiling(z.Imaginary)), "ceil");
 		Element(z => new Complex(System.Math.Floor(z.Real), System.Math.Floor(z.Imaginary)), "floor");
 		Element(z => new Complex(System.Math.Truncate(z.Real), System.Math.Truncate(z.Imaginary)), "fix");
-		Element(z => ComplexMath.IsReal(z) ? System.Math.Sign(z.Real) : z / ComplexMath.Abs(z), "sign");
+		Element(z => ComplexMath.IsReal(z) ? (double.IsNaN(z.Real) ? double.NaN : System.Math.Sign(z.Real)) : z / ComplexMath.Abs(z), "sign");
 		Element(z => ComplexMath.IsReal(z) ? RealMath.Factorial(z.Real) : throw new MathException(MathError.ComplexNotAllowed, "Factorial of a complex number."), "factorial");
 		Element2(ComplexMath.Root, "xroot");
 		Element2(RealOnly(RealMath.Comb, "comb"), "comb");
@@ -379,13 +379,18 @@ internal sealed class Builtins
 		{
 			call.RequireCount(1, 3);
 			string path = call.String(0);
+			// A ':' in the file name would write to an NTFS alternate data stream ("a.txt:b.svg"
+			// creates a.txt), getting around the file type check below.
+			if (Path.GetFileName(path).Contains(':'))
+				throw call.Error("the file name must not contain ':'.", 0);
 			string extension = Path.GetExtension(path);
 			MLCalcInterpreter.FigureSaver? saver = null;
 			if (!extension.Equals(".svg", StringComparison.OrdinalIgnoreCase) && !call.Interpreter.TryGetFigureFormat(extension, out saver))
 				throw call.Error($"unsupported file type '{extension}'; use {string.Join(" or ", call.Interpreter.FigureFormats)}.", 0);
 			double width = call.Count > 1 ? call.Real(1) : 800;
 			double height = call.Count > 2 ? call.Real(2) : 600;
-			if (width < 50 || height < 50 || width > 16000 || height > 16000)
+			// Written so that NaN is rejected too (every comparison with NaN is false).
+			if (!(width >= 50 && height >= 50 && width <= 16000 && height <= 16000))
 				throw call.Error("the size must be between 50 and 16000.", 1);
 			string fullPath = call.Interpreter.ResolvePath(path);
 			try

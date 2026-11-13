@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using MLCalc.Language;
 using MLCalc.LinearAlgebra;
@@ -102,21 +103,44 @@ public sealed partial class MLCalcInterpreter
 		}
 	}
 
+	/// <summary>How deeply scripts may run other scripts (with <c>run</c> or by typing a file name).</summary>
+	public const int MaxScriptDepth = 32;
+
 	/// <summary>Runs a script file. Relative paths are resolved against <see cref="WorkingDirectory"/>.</summary>
 	public ExecutionResult ExecuteFile(string path, CancellationToken cancellationToken = default)
 	{
 		string fullPath = ResolvePath(path);
-		var previousDirectory = WorkingDirectory;
-		WorkingDirectory = Path.GetDirectoryName(fullPath) ?? WorkingDirectory;
+		// Checked here so that it covers both run("file.m") and a script containing a file name;
+		// a script that runs itself would otherwise recurse until the process crashes.
+		if (scriptDepth >= MaxScriptDepth)
+			return Failure("Scripts are nested too deeply (does a script run itself?).");
+
+		string source;
 		try
 		{
-			return Execute(File.ReadAllText(fullPath), cancellationToken);
+			source = File.ReadAllText(fullPath);
+		}
+		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+		{
+			return Failure($"Cannot read '{path}': {ex.Message}");
+		}
+
+		var previousDirectory = WorkingDirectory;
+		WorkingDirectory = Path.GetDirectoryName(fullPath) ?? WorkingDirectory;
+		scriptDepth++;
+		try
+		{
+			return Execute(source, cancellationToken);
 		}
 		finally
 		{
+			scriptDepth--;
 			WorkingDirectory = previousDirectory;
 		}
 	}
+
+	/// <summary>A result for an error that happens before any code is parsed.</summary>
+	static ExecutionResult Failure(string message) => new(Parser.Parse(""), new RuntimeError(message, default));
 
 	internal string ResolvePath(string path) => Path.GetFullPath(Path.Combine(WorkingDirectory, path));
 
@@ -129,27 +153,42 @@ public sealed partial class MLCalcInterpreter
 		string fullPath = ResolvePath(path);
 		if (!File.Exists(fullPath))
 			throw new RuntimeError($"Cannot find the script '{path}'.", span);
-		if (scriptDepth >= 32)
-			throw new RuntimeError("Scripts are nested too deeply (does a script run itself?).", span);
 
-		scriptDepth++;
-		try
-		{
-			var result = ExecuteFile(fullPath, cancellation);
-			cancellation.ThrowIfCancellationRequested();
-			var message = result.Messages().FirstOrDefault();
-			if (message is not null)
-				throw new RuntimeError($"In {Path.GetFileName(fullPath)} at {message}", span);
-		}
-		finally
-		{
-			scriptDepth--;
-		}
+		var result = ExecuteFile(fullPath, cancellation);
+		cancellation.ThrowIfCancellationRequested();
+		var message = result.Messages().FirstOrDefault();
+		if (message is not null)
+			throw new RuntimeError($"In {Path.GetFileName(fullPath)} at {message}", span);
 	}
 
 	// ───────────── Statements ─────────────
 
+	/// <summary>
+	/// Runs a statement. Any unexpected exception (one that is not already a <see cref="RuntimeError"/>
+	/// or a cancellation) is reported as an error at this statement instead of ending the program.
+	/// </summary>
 	void Execute(Statement statement)
+	{
+		try
+		{
+			RuntimeHelpers.EnsureSufficientExecutionStack();
+			ExecuteCore(statement);
+		}
+		catch (Exception ex) when (ex is not RuntimeError and not OperationCanceledException)
+		{
+			throw InternalError(ex, statement.Span);
+		}
+	}
+
+	/// <summary>The error to report for an unexpected exception: running out of stack or memory, or a bug.</summary>
+	public static RuntimeError InternalError(Exception exception, SourceSpan span) => exception switch
+	{
+		InsufficientExecutionStackException => new RuntimeError("The program is nested too deeply.", span, exception),
+		OutOfMemoryException => new RuntimeError("There is not enough memory for this calculation.", span, exception),
+		_ => new RuntimeError($"Internal error ({exception.GetType().Name}): {exception.Message}", span, exception),
+	};
+
+	void ExecuteCore(Statement statement)
 	{
 		cancellation.ThrowIfCancellationRequested();
 		switch (statement)

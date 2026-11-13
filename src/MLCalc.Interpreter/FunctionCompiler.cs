@@ -24,6 +24,7 @@ internal sealed class FunctionCompiler(MLCalcInterpreter interpreter, Builtins b
 {
 	public Func<ComplexMatrix, ComplexMatrix> Compile(Expression expression)
 	{
+		System.Runtime.CompilerServices.RuntimeHelpers.EnsureSufficientExecutionStack();
 		switch (expression)
 		{
 			case FoldedConstant constant:

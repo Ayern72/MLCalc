@@ -11,8 +11,9 @@ public static class SvgWriter
 
 	public static string Render(FigureSnapshot figure, double width = 800, double height = 600)
 	{
-		if (width < 50 || height < 50)
-			throw new ArgumentOutOfRangeException(nameof(width), "The image must be at least 50×50.");
+		// Written so that NaN is rejected too (every comparison with NaN is false).
+		if (!(width >= 50 && height >= 50 && width <= 16000 && height <= 16000))
+			throw new ArgumentOutOfRangeException(nameof(width), "The image size must be between 50 and 16000.");
 
 		var svg = new StringBuilder();
 		svg.Append(CultureInfo.InvariantCulture, $"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" viewBox=\"0 0 {width} {height}\" font-family=\"Segoe UI, Helvetica, Arial, sans-serif\">\n");

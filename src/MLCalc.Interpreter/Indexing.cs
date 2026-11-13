@@ -111,9 +111,10 @@ internal static class Indexing
 			$"Cannot assign a {value.Rows}×{value.Columns} matrix to {rows}×{columns} elements.");
 	}
 
+	/// <summary>A copy of the matrix enlarged to rows×columns; refuses sizes over <see cref="ComplexMatrix.MaxElements"/>.</summary>
 	static Complex[] Grow(ComplexMatrix current, int rows, int columns)
 	{
-		var data = new Complex[rows * columns];
+		var data = new Complex[ComplexMatrix.ElementCount(rows, columns)];
 		for (int r = 0; r < current.Rows; r++)
 			for (int c = 0; c < current.Columns; c++)
 				data[r * columns + c] = current[r, c];

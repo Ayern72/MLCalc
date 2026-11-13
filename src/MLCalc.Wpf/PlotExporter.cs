@@ -16,9 +16,10 @@ public static class PlotExporter
 	/// </summary>
 	public static BitmapSource Render(FigureSnapshot snapshot, double width, double height, double scale = 1)
 	{
-		if (width < 50 || height < 50)
+		// Written so that NaN is rejected too (every comparison with NaN is false).
+		if (!(width >= 50 && height >= 50 && scale > 0))
 			throw new ArgumentOutOfRangeException(nameof(width), "The image must be at least 50×50.");
-		if (width * scale > 16000 || height * scale > 16000)
+		if (!(width * scale <= 16000 && height * scale <= 16000))
 			throw new ArgumentOutOfRangeException(nameof(width), "The image is too large (at most 16000 pixels per side).");
 
 		var view = new PlotView { FixedSnapshot = snapshot };

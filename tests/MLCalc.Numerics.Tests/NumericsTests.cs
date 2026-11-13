@@ -91,6 +91,23 @@ public class RootFindingTests
 		Assert.Equal(0, RootFinding.FindRootNear(System.Math.Tan, 1.4), 10);	}
 
 	[Fact]
+	public void NaNInsideTheBracketIsReportedAsUndefined()
+	{
+		// Brent's method cannot continue through NaN; it used to crash with an ArithmeticException.
+		var ex = Assert.Throws<MathException>(() => RootFinding.FindRoot(x => x > 0.4 && x < 0.6 ? double.NaN : x - 0.5, 0, 1));
+		Assert.Equal(MathError.Domain, ex.Error);
+		Assert.Equal(MathError.Domain, Assert.Throws<MathException>(() => RootFinding.FindRoot(_ => double.NaN, 0, 1)).Error);
+	}
+
+	[Fact]
+	public void SearchSkipsBracketsWhereTheFunctionIsUndefined()
+	{
+		// Undefined between 0.9 and 1.1, where the first sign change is; the next root, at 3, is found.
+		double f(double x) => x > 0.9 && x < 1.1 ? double.NaN : (x - 1) * (x - 3);
+		Assert.Equal(3, RootFinding.FindRootNear(f, 2.5), 10);
+	}
+
+	[Fact]
 	public void NoRootThrows()
 	{
 		Assert.Throws<MathException>(() => RootFinding.FindRootNear(x => x * x + 1, 0, maxSteps: 100));

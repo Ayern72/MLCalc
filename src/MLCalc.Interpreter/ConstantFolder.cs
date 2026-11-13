@@ -41,6 +41,7 @@ internal sealed class ConstantFolder(MLCalcInterpreter interpreter, Builtins bui
 
 	Result Visit(Expression expression)
 	{
+		System.Runtime.CompilerServices.RuntimeHelpers.EnsureSufficientExecutionStack();
 		switch (expression)
 		{
 			case FoldedConstant:

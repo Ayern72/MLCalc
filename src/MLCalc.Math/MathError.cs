@@ -12,6 +12,8 @@ public enum MathError
 	SingularMatrix,
 	NoSolution,
 	NoIntersection,
+	/// <summary>A result would be too large (too many matrix elements, too many range elements).</summary>
+	TooLarge,
 }
 
 /// <summary>Thrown when a mathematical operation cannot be performed.</summary>

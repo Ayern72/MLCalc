@@ -200,6 +200,12 @@ internal sealed class CliApp : IConsoleOutput
 		{
 			return run(cancellation.Token);
 		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			// The interpreter reports errors itself; this is a last resort so that an unexpected
+			// exception is shown as an error instead of ending the program.
+			return new ExecutionResult(Parser.Parse(""), MLCalcInterpreter.InternalError(ex, default));
+		}
 		finally
 		{
 			lock (gate)
