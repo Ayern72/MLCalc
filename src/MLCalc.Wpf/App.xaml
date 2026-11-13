@@ -1,9 +1,8 @@
 ﻿<Application x:Class="MLCalc.Wpf.App"
-			 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-			 xmlns:local="clr-namespace:MLCalc.Wpf"
-			 StartupUri="MainWindow.xaml">
+		xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+		Startup="OnStartup">
 	<Application.Resources>
-		 
+		<FontFamily x:Key="ConsoleFont">Cascadia Mono, Consolas, Courier New</FontFamily>
 	</Application.Resources>
 </Application>

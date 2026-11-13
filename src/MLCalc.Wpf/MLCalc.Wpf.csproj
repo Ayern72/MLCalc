@@ -4,6 +4,8 @@
 		<TargetFramework>net10.0-windows</TargetFramework>
 		<UseWPF>true</UseWPF>
 		<IsPackable>false</IsPackable>
+		<AssemblyName>MLCalc</AssemblyName>
+		<RootNamespace>MLCalc.Wpf</RootNamespace>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" />
@@ -11,5 +13,8 @@
 	<ItemGroup>
 		<ProjectReference Include="..\MLCalc.Interpreter\MLCalc.Interpreter.csproj" />
 		<ProjectReference Include="..\MLCalc.Plotting\MLCalc.Plotting.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="..\..\samples\*.m" LinkBase="samples" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 </Project>

@@ -7,11 +7,41 @@ re-implementation, starting with a WPF desktop front-end.
 Every value in MLCalc is a complex matrix: scalars are 1×1 matrices and real numbers are complex
 numbers with a zero imaginary part.
 
+![MLCalc running interactively](docs/screenshot.png)
+
+## The language
+
 ```
-> [1, 2; 3, 4] * [1; 1]
-> sin(PI/2)
-> fplot("x", "x^2 - 2")
+A = [1, 2; 3, 4]           % matrices: ',' or space between elements, ';' or newline between rows
+A * [1; 1]                  % matrix product; .* ./ .^ work element by element
+z = (1 + 2i)^2              % complex numbers
+t = 0:0.1:2*pi;             % ranges; ';' suppresses output
+x = A(2, :)                 % indexing is 1-based; ':' selects a whole row or column
+
+k = 0;
+while k < 3 do              % control flow: if … then … else, while … do, for k = 1 to 10 do
+begin
+	k = k + 1
+end
+
+xrange(-6.3, 6.3); yrange(-6, 6); grid
+fplot("x", "x*sin(x)")      % functions are given as strings
+plot(t, sin(t), +)          % styles: - (line), + (crosses), * (stars)
+p = polyfit(t, cos(t), 4); polyplot(p)
+solve("x", "x^2 - 2", 1)    % also integral, derivata, isect, extreme, feval
 ```
+
+Names are case-insensitive. **Help › List Functions** shows every function and command.
+
+## Using the app
+
+- Type an expression and press **Enter**. Unfinished input (an open `begin`, bracket or
+  `while … do`) continues on the next line with a `...` prompt; an empty line forces evaluation.
+- **Up/Down** recall earlier input, **Esc** stops a running script (or discards unfinished input).
+- Run a script by typing its file name (e.g. `FEIGENBA.m`), with **File › Run Script** (Ctrl+O), by
+  dropping a `.m` file on the window, or from the command line: `MLCalc --run script.m`.
+- The original sample scripts are copied next to the executable, in `samples/`.
+- `initdisplay(rows, columns)` splits the plot area; `currentwin(r, c)` selects a window.
 
 ## Differences from the Amiga original
 
