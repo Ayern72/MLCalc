@@ -2,6 +2,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Win32;
 
@@ -10,6 +11,13 @@ namespace MLCalc.Wpf;
 public partial class MainWindow : Window
 {
 	public static readonly RoutedUICommand RunScriptCommand = new("Run Script", nameof(RunScriptCommand), typeof(MainWindow));
+	public static readonly RoutedUICommand ExportPlotCommand = new("Export Plot", nameof(ExportPlotCommand), typeof(MainWindow));
+	public static readonly RoutedUICommand CopyPlotCommand = new("Copy Plot", nameof(CopyPlotCommand), typeof(MainWindow));
+
+	/// <summary>PNG exports use twice the on-screen resolution so they stay sharp in documents.</summary>
+	const double PngScale = 2;
+
+	string? lastExportDirectory;
 
 	readonly MainViewModel viewModel;
 	bool scrollPending;
@@ -92,6 +100,46 @@ public partial class MainWindow : Window
 		if (dialog.ShowDialog(this) == true)
 			await viewModel.RunScriptAsync(dialog.FileName);
 		InputBox.Focus();
+	}
+
+	/// <summary>Saves the plot as PNG or SVG at the size it has on screen.</summary>
+	void OnExportPlot(object sender, ExecutedRoutedEventArgs e)
+	{
+		var dialog = new SaveFileDialog
+		{
+			Title = "Export Plot",
+			Filter = "PNG image (*.png)|*.png|SVG image (*.svg)|*.svg",
+			FileName = "plot.png",
+			InitialDirectory = lastExportDirectory ?? viewModel.WorkingDirectory,
+		};
+		if (dialog.ShowDialog(this) != true)
+			return;
+		lastExportDirectory = Path.GetDirectoryName(dialog.FileName);
+		try
+		{
+			PlotExporter.Save(viewModel.Figure.Snapshot(), dialog.FileName, Plot.ActualWidth, Plot.ActualHeight, PngScale);
+			viewModel.Report(ConsoleEntryKind.Info, $"Saved {dialog.FileName}");
+		}
+		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+		{
+			viewModel.Report(ConsoleEntryKind.Error, $"Could not save the plot: {ex.Message}");
+		}
+		InputBox.Focus();
+	}
+
+	/// <summary>Copies the plot to the clipboard as an image, at the screen's resolution.</summary>
+	void OnCopyPlot(object sender, ExecutedRoutedEventArgs e)
+	{
+		try
+		{
+			double scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
+			Clipboard.SetImage(PlotExporter.Render(viewModel.Figure.Snapshot(), Plot.ActualWidth, Plot.ActualHeight, scale));
+			viewModel.Report(ConsoleEntryKind.Info, "The plot was copied to the clipboard.");
+		}
+		catch (Exception ex) when (ex is ArgumentException or System.Runtime.InteropServices.COMException)
+		{
+			viewModel.Report(ConsoleEntryKind.Error, $"Could not copy the plot: {ex.Message}");
+		}
 	}
 
 	void OnDragOver(object sender, DragEventArgs e)

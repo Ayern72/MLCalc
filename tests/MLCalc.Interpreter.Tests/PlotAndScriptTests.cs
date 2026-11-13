@@ -72,6 +72,22 @@ public class PlotCommandTests
 	}
 
 	[Fact]
+	public void SavefigUsesRegisteredFormatsAndRejectsOthers()
+	{
+		var saved = new List<(string Path, double Width, double Height, int Items)>();
+		host.Interpreter.RegisterFigureFormat("png", (figure, path, width, height) => saved.Add((path, width, height, figure[0, 0].Items.Length)));
+		host.Interpreter.WorkingDirectory = Path.GetTempPath();
+		host.Run("dot(1, 1); savefig(\"a.PNG\", 300, 200)");
+		var (path, width, height, items) = Assert.Single(saved);
+		Assert.Equal(Path.Combine(Path.GetTempPath(), "a.PNG"), path);
+		Assert.Equal((300, 200, 1), (width, height, items));
+
+		var error = host.Fail("savefig(\"a.gif\")");
+		Assert.Contains("unsupported file type '.gif'; use .svg or .png", error.Message);
+		Assert.Contains("between 50 and 16000", host.Fail("savefig(\"a.png\", 10, 10)").Message);
+	}
+
+	[Fact]
 	public void GridOfWindows()
 	{
 		host.Run("initdisplay(2, 2); currentwin(2, 1); dot(1, 1)");

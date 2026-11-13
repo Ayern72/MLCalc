@@ -7,9 +7,13 @@
 	<Window.InputBindings>
 		<KeyBinding Gesture="Ctrl+O" Command="{x:Static local:MainWindow.RunScriptCommand}" />
 		<KeyBinding Gesture="Ctrl+L" Command="{Binding ClearConsoleCommand}" />
+		<KeyBinding Gesture="Ctrl+E" Command="{x:Static local:MainWindow.ExportPlotCommand}" />
+		<KeyBinding Gesture="Ctrl+Shift+C" Command="{x:Static local:MainWindow.CopyPlotCommand}" />
 	</Window.InputBindings>
 	<Window.CommandBindings>
 		<CommandBinding Command="{x:Static local:MainWindow.RunScriptCommand}" Executed="OnRunScript" />
+		<CommandBinding Command="{x:Static local:MainWindow.ExportPlotCommand}" Executed="OnExportPlot" />
+		<CommandBinding Command="{x:Static local:MainWindow.CopyPlotCommand}" Executed="OnCopyPlot" />
 		<CommandBinding Command="ApplicationCommands.Copy" Executed="OnCopy" CanExecute="OnCanCopy" />
 	</Window.CommandBindings>
 
@@ -17,11 +21,13 @@
 		<Menu DockPanel.Dock="Top">
 			<MenuItem Header="_File">
 				<MenuItem Header="_Run Script…" InputGestureText="Ctrl+O" Command="{x:Static local:MainWindow.RunScriptCommand}" />
+				<MenuItem Header="_Export Plot…" InputGestureText="Ctrl+E" Command="{x:Static local:MainWindow.ExportPlotCommand}" />
 				<Separator />
 				<MenuItem Header="E_xit" Click="OnExit" />
 			</MenuItem>
 			<MenuItem Header="_Edit">
 				<MenuItem Header="_Copy Output" Command="ApplicationCommands.Copy" CommandTarget="{Binding ElementName=Output}" />
+				<MenuItem Header="Copy _Plot" InputGestureText="Ctrl+Shift+C" Command="{x:Static local:MainWindow.CopyPlotCommand}" />
 				<MenuItem Header="_Stop Script" InputGestureText="Esc" Command="{Binding CancelCommand}" />
 			</MenuItem>
 			<MenuItem Header="_View">

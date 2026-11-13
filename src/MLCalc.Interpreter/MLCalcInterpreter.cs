@@ -39,6 +39,26 @@ public sealed partial class MLCalcInterpreter
 	/// <summary>Names of all built-in functions and commands.</summary>
 	public IEnumerable<string> BuiltinNames => builtins.Names;
 
+	readonly Dictionary<string, FigureSaver> figureFormats = new(StringComparer.OrdinalIgnoreCase);
+
+	/// <summary>Saves a figure to a file: (figure, full path, width, height).</summary>
+	public delegate void FigureSaver(FigureSnapshot figure, string path, double width, double height);
+
+	/// <summary>
+	/// Lets a front-end add an image format for <c>savefig</c>, e.g. ".png" in the desktop app.
+	/// SVG is always available. The saver is called on the interpreter's thread.
+	/// </summary>
+	public void RegisterFigureFormat(string extension, FigureSaver saver)
+	{
+		if (!extension.StartsWith('.'))
+			extension = "." + extension;
+		figureFormats[extension] = saver;
+	}
+
+	internal bool TryGetFigureFormat(string extension, out FigureSaver saver) => figureFormats.TryGetValue(extension, out saver!);
+
+	internal IEnumerable<string> FigureFormats => figureFormats.Keys.Prepend(".svg").Distinct(StringComparer.OrdinalIgnoreCase);
+
 	public bool TryGetVariable(string name, out ComplexMatrix value) => variables.TryGetValue(name, out value!);
 
 	public void SetVariable(string name, ComplexMatrix value) => variables[name] = value;

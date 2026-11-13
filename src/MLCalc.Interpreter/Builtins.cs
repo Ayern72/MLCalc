@@ -355,19 +355,27 @@ internal sealed class Builtins
 			return null;
 		}, "print");
 
-		// savefig("plot.svg") or savefig("plot.svg", width, height)
+		// savefig("plot.svg") or savefig("plot.png", width, height); formats beyond SVG come from the front-end.
 		Add(call =>
 		{
 			call.RequireCount(1, 3);
 			string path = call.String(0);
-			if (!path.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
-				throw call.Error("only SVG files (.svg) are supported.", 0);
+			string extension = Path.GetExtension(path);
+			MLCalcInterpreter.FigureSaver? saver = null;
+			if (!extension.Equals(".svg", StringComparison.OrdinalIgnoreCase) && !call.Interpreter.TryGetFigureFormat(extension, out saver))
+				throw call.Error($"unsupported file type '{extension}'; use {string.Join(" or ", call.Interpreter.FigureFormats)}.", 0);
 			double width = call.Count > 1 ? call.Real(1) : 800;
 			double height = call.Count > 2 ? call.Real(2) : 600;
+			if (width < 50 || height < 50 || width > 16000 || height > 16000)
+				throw call.Error("the size must be between 50 and 16000.", 1);
 			string fullPath = call.Interpreter.ResolvePath(path);
 			try
 			{
-				SvgWriter.Save(call.Figure.Snapshot(), fullPath, width, height);
+				var snapshot = call.Figure.Snapshot();
+				if (saver is null)
+					SvgWriter.Save(snapshot, fullPath, width, height);
+				else
+					saver(snapshot, fullPath, width, height);
 			}
 			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 			{

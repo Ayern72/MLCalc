@@ -52,6 +52,9 @@ public sealed class PlotView : FrameworkElement
 		set => SetValue(FigureProperty, value);
 	}
 
+	/// <summary>When set, this snapshot is drawn instead of the live <see cref="Figure"/> (used for exporting).</summary>
+	public FigureSnapshot? FixedSnapshot { get; init; }
+
 	/// <summary>Raised with the data coordinates under the mouse, or an empty string when outside a plot.</summary>
 	public event EventHandler<string>? CoordinatesChanged;
 
@@ -101,10 +104,11 @@ public sealed class PlotView : FrameworkElement
 	protected override void OnRender(DrawingContext dc)
 	{
 		dc.DrawRectangle(Background, null, new Rect(0, 0, ActualWidth, ActualHeight));
-		if (Figure is null || ActualWidth < 10 || ActualHeight < 10)
+		var snapshot = FixedSnapshot ?? Figure?.Snapshot();
+		if (snapshot is null || ActualWidth < 10 || ActualHeight < 10)
 			return;
 
-		var snapshot = lastSnapshot = Figure.Snapshot();
+		lastSnapshot = snapshot;
 		bool showCurrent = snapshot.Rows * snapshot.Columns > 1;
 		for (int r = 0; r < snapshot.Rows; r++)
 			for (int c = 0; c < snapshot.Columns; c++)

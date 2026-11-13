@@ -42,7 +42,9 @@ Names are case-insensitive. **Help › List Functions** shows every function and
   dropping a `.m` file on the window, or from the command line: `MLCalc --run script.m`.
 - The original sample scripts are copied next to the executable, in `samples/`.
 - `initdisplay(rows, columns)` splits the plot area; `currentwin(r, c)` selects a window.
-- `savefig("plot.svg")` saves the plots as an SVG image.
+- **File › Export Plot** (Ctrl+E) saves the plots as PNG (at twice the screen resolution) or SVG;
+  **Edit › Copy Plot** (Ctrl+Shift+C) copies them as an image. In scripts, `savefig("plot.png")` or
+  `savefig("plot.svg", width, height)` does the same (the command-line tool supports SVG only).
 
 ## Command line
 

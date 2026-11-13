@@ -41,6 +41,9 @@ public sealed partial class MainViewModel : ObservableObject, IConsoleOutput
 	{
 		this.dispatcher = dispatcher;
 		interpreter = new MLCalcInterpreter(Figure, this);
+		// savefig("plot.png") renders with the same code as the plot view; WPF rendering needs the UI thread.
+		interpreter.RegisterFigureFormat(".png", (snapshot, path, width, height) =>
+			dispatcher.Invoke(() => PlotExporter.SavePng(PlotExporter.Render(snapshot, width, height), path)));
 		string samples = Path.Combine(AppContext.BaseDirectory, "samples");
 		interpreter.WorkingDirectory = Directory.Exists(samples) ? samples : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
@@ -200,6 +203,9 @@ public sealed partial class MainViewModel : ObservableObject, IConsoleOutput
 	void IConsoleOutput.Clear() => dispatcher.BeginInvoke(Entries.Clear);
 
 	void Post(ConsoleEntryKind kind, string text) => dispatcher.BeginInvoke(() => Add(kind, text));
+
+	/// <summary>Writes a message from the UI (e.g. "Saved plot.png") to the console.</summary>
+	public void Report(ConsoleEntryKind kind, string text) => Add(kind, text);
 
 	void Add(ConsoleEntryKind kind, string text)
 	{
