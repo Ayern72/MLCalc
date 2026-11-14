@@ -12,7 +12,21 @@ public class Figure3DTests
 		figure.AddSeries3D(Line, PlotStyle.Line);
 		Assert.Equal(AxesKind.Space, figure.Current.Kind);
 		Assert.IsType<PointSeries3D>(Assert.Single(figure.Current.Items));
-		Assert.Equal(2, figure.Current.Pen);
+		// The pen is kept: plot used pen 1, plot3d pen 2.
+		Assert.Equal(2, ((PointSeries3D)figure.Current.Items[0]).Pen);
+		Assert.Equal(3, figure.Current.Pen);
+	}
+
+	[Fact]
+	public void APenChosenBeforeTheFirst3DCommandIsUsed()
+	{
+		var figure = new Figure();
+		figure.SetPen(5);
+		figure.AddDot3D(1, 2, 3);
+		Assert.Equal(5, figure.Current.Items[0].Pen);
+		figure.SetPen(7);
+		figure.AddComplexSeries([new(1, 1)], PlotStyle.Cross);
+		Assert.Equal(7, figure.Current.Items[0].Pen);
 	}
 
 	[Fact]

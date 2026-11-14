@@ -933,7 +933,8 @@ around (pen 16 is pen 1).
 - `plot`, `cplot`, `fplot`, `polyplot`, `plot3d` and `fplot3d` draw with the current pen and then
   move to the next one, so consecutive curves get different colours.
 - `dot` and `dot3d` draw with the current pen without changing it.
-- `clear`, `xrange` and `yrange` reset the pen to 1; call `pen` after them.
+- `clear`, `xrange`, `yrange` and `zrange` reset the pen to 1; call `pen` after them. Switching a
+  window between ordinary, complex-plane (`cplot`) and 3D plots clears it but keeps the pen.
 
 | Pen | Colour | Pen | Colour | Pen | Colour |
 |---|---|---|---|---|---|
@@ -1153,7 +1154,7 @@ error, none of it is run.
 
 The original MLCalc sample scripts are included in the `samples` folder, for example
 `FEIGENBA.m` (a Feigenbaum diagram), `FYSIK.m` (measurement data), `TEST5.m` (polynomial fitting)
-and `COS.m` (several plot windows). `SURFACE.m` shows the 3D plots that are new in this version.
+and `COS.m` (several plot windows). `SURFACE.m` and `DEMO3D.m` show the 3D plots that are new in this version.
 
 ---
 

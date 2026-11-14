@@ -275,7 +275,7 @@ public sealed class Figure
 	/// <summary>Adds a single 3D dot in the current pen without advancing it (<c>dot3d</c>).</summary>
 	public void AddDot3D(double x, double y, double z) => ModifyCurrent(a =>
 	{
-		var target = a.Kind == AxesKind.Space ? a : Clear(a) with { Kind = AxesKind.Space };
+		var target = a.Kind == AxesKind.Space ? a : SwitchKind(a, AxesKind.Space);
 		RequireRoom(target, 1);
 		var point = new Point3(x, y, z);
 		if (!target.Items.IsEmpty && target.Items[^1] is DotCloud3D cloud && cloud.Pen == target.Pen)
@@ -288,7 +288,7 @@ public sealed class Figure
 	{
 		// A 3D window becomes a 2D one; real and complex windows both take dots.
 		if (a.Kind == AxesKind.Space)
-			a = Clear(a) with { Kind = AxesKind.Cartesian };
+			a = SwitchKind(a, AxesKind.Cartesian);
 		RequireRoom(a, 1);
 		var point = new PlotPoint(x, y);
 		if (!a.Items.IsEmpty && a.Items[^1] is DotCloud cloud && cloud.Pen == a.Pen)
@@ -300,7 +300,7 @@ public sealed class Figure
 	{
 		// Switching between real and complex axes clears the window, as in the original; so does
 		// switching between 2D and 3D.
-		var target = a.Kind == kind ? a : Clear(a) with { Kind = kind };
+		var target = a.Kind == kind ? a : SwitchKind(a, kind);
 		var item = create(target.Pen);
 		int points = item switch
 		{
@@ -324,6 +324,12 @@ public sealed class Figure
 	}
 
 	static Axes Clear(Axes a) => a with { Items = [], Pen = 1, PointCount = 0 };
+
+	/// <summary>
+	/// Empties the axes for another kind of plot (2D, complex or 3D). Unlike <see cref="Clear"/>, the pen
+	/// is kept, so that <c>pen(3)</c> before the first <c>plot3d</c> in a window takes effect.
+	/// </summary>
+	static Axes SwitchKind(Axes a, AxesKind kind) => a with { Kind = kind, Items = [], PointCount = 0 };
 
 	static void RequireRange(double min, double max)
 	{
