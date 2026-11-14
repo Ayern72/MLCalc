@@ -140,4 +140,54 @@ public sealed class CliTests : IDisposable
 		Assert.Contains("Usage: mlcalc", Run("", "--help").Output);
 		Assert.StartsWith("mlcalc ", Run("", "--version").Output);
 	}
+
+	/// <summary>
+	/// Ctrl+C stops a running program and keeps the process (CancelRunning returns true). A second
+	/// Ctrl+C before the program has stopped must let the process exit (false); before this, every
+	/// Ctrl+C was swallowed while a statement that ignored cancellation was running, and the process
+	/// could only be killed. Whether the program has already stopped at the second call or not, the
+	/// answer is false, so the test does not depend on timing.
+	/// </summary>
+	[Fact]
+	public async Task SecondCtrlCLetsTheProcessExit()
+	{
+		var output = new SignallingWriter();
+		var app = new CliApp(new StringReader(""), output, new StringWriter(), isConsole: false);
+		Assert.False(app.CancelRunning());
+
+		var run = Task.Run(() => app.Run(["-e", "k = 1\nwhile 1 do k = k + 1;"], inputRedirected: false));
+		// "k = 1" is printed by the running program, so from here on it is running.
+		await output.FirstWrite.WaitAsync(TimeSpan.FromSeconds(30));
+		Assert.True(app.CancelRunning());
+		Assert.False(app.CancelRunning());
+
+		Assert.Equal(CliApp.Failure, await run.WaitAsync(TimeSpan.FromSeconds(30)));
+		Assert.False(app.CancelRunning());
+	}
+
+	/// <summary>A writer that reports when something is first written to it.</summary>
+	sealed class SignallingWriter : StringWriter
+	{
+		readonly TaskCompletionSource written = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+		public Task FirstWrite => written.Task;
+
+		public override void Write(char value)
+		{
+			base.Write(value);
+			written.TrySetResult();
+		}
+
+		public override void Write(string? value)
+		{
+			base.Write(value);
+			written.TrySetResult();
+		}
+
+		public override void Write(char[] buffer, int index, int count)
+		{
+			base.Write(buffer, index, count);
+			written.TrySetResult();
+		}
+	}
 }

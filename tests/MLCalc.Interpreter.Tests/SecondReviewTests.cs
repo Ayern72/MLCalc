@@ -85,4 +85,34 @@ public class SecondReviewTests
 		host.Run("savefig(\"a.png\", 8000, 8000)");
 		Assert.Equal((8000, 8000), Assert.Single(saved));
 	}
+
+	/// <summary>
+	/// The search widens as it goes, so roots closer together than the current step are passed over
+	/// (the manual describes this): by the time it reaches ±1.4 from 10⁶ the steps are far larger.
+	/// </summary>
+	[Fact]
+	public void SolvePassesOverRootsCloserTogetherThanItsStep()
+	{
+		Assert.Contains("No root found near 1000000", host.Fail("solve(\"x\", \"x^2 - 2\", 1e6)").Message);
+		AssertClose(System.Math.Sqrt(2), host.Eval("solve(\"x\", \"x^2 - 2\", 1)"), 1e-12);
+	}
+
+	/// <summary>Nearly singular matrices and matrices containing Inf are refused rather than solved with noise.</summary>
+	[Theory]
+	[InlineData("[inf 0; 0 1] \\ [1; 1]")]
+	[InlineData("[1 2; 3 4] / [inf 0; 0 1]")]
+	[InlineData("inv([inf 0; 0 1])")]
+	[InlineData("inv([1 1; 1 1+1e-14])")]
+	[InlineData("gauss([1 1; 1 1+1e-14], [1; 2])")]
+	public void NearlySingularMatricesAreRefused(string expression)
+	{
+		Assert.Contains("the matrix is singular", host.Fail($"x = {expression};").Message);
+	}
+
+	[Fact]
+	public void MatricesJustAboveTheThresholdAreSolved()
+	{
+		// The pivot 1e-12 is above 1e-13 times the largest element, so this is solved.
+		AssertMatrix(new double[,] { { 1e12 + 1, -1e12 }, { -1e12, 1e12 } }, host.Eval("inv([1 1; 1 1+1e-12])"), 1e-3 * 1e12);
+	}
 }
