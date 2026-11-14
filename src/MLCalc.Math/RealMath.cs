@@ -16,9 +16,19 @@ public static class RealMath
 		return result;
 	}
 
-	/// <summary>The gamma function (Lanczos approximation, g = 7).</summary>
+	/// <summary>
+	/// The gamma function (Lanczos approximation, g = 7). NaN at the poles 0, −1, −2, …, and +∞ above
+	/// 171.7, where Γ(x) exceeds the largest double.
+	/// </summary>
 	public static double Gamma(double x)
 	{
+		// sin(πx) is not exactly 0 at negative integers, so the reflection formula would give a huge
+		// finite number instead of a pole.
+		if (x <= 0 && x == System.Math.Floor(x))
+			return double.NaN;
+		// Above about 738, e^(−t) underflows to 0 while the power overflows, and ∞·0 would be NaN.
+		if (x > 171.7)
+			return double.PositiveInfinity;
 		if (x < 0.5)
 			return System.Math.PI / (System.Math.Sin(System.Math.PI * x) * Gamma(1 - x));
 		x -= 1;

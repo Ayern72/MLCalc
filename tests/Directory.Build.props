@@ -1,0 +1,9 @@
+<Project>
+	<!-- MSBuild uses only the nearest Directory.Build.props, so bring in the repository's own first. -->
+	<Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+	<!-- Every test project runs under a culture with a decimal comma; see TestCulture.cs. -->
+	<ItemGroup>
+		<Compile Include="$(MSBuildThisFileDirectory)TestCulture.cs" Link="TestCulture.cs" />
+	</ItemGroup>
+</Project>

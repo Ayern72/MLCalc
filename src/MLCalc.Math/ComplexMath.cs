@@ -100,12 +100,22 @@ public static class ComplexMath
 	public static Complex Sin(Complex z) => IsReal(z) ? System.Math.Sin(z.Real) : Complex.Sin(z);
 	public static Complex Cos(Complex z) => IsReal(z) ? System.Math.Cos(z.Real) : Complex.Cos(z);
 	public static Complex Tan(Complex z) => IsReal(z) ? System.Math.Tan(z.Real) : Complex.Tan(z);
-	public static Complex Cot(Complex z) => Divide(Cos(z), Sin(z));
+
+	/// <summary>
+	/// Cotangent as 1/tan(z): cos(z)/sin(z) would divide two overflowing values for |Im z| &gt; 710
+	/// and give NaN, while tan(z) tends to ±i there.
+	/// </summary>
+	public static Complex Cot(Complex z) => Divide(1, Tan(z));
 
 	public static Complex Sinh(Complex z) => IsReal(z) ? System.Math.Sinh(z.Real) : Complex.Sinh(z);
 	public static Complex Cosh(Complex z) => IsReal(z) ? System.Math.Cosh(z.Real) : Complex.Cosh(z);
 	public static Complex Tanh(Complex z) => IsReal(z) ? System.Math.Tanh(z.Real) : Complex.Tanh(z);
-	public static Complex Coth(Complex z) => Divide(Cosh(z), Sinh(z));
+
+	/// <summary>
+	/// Hyperbolic cotangent as 1/tanh(z): cosh(z)/sinh(z) would divide two overflowing values for
+	/// |Re z| &gt; 710 and give NaN, while tanh(z) tends to ±1 there.
+	/// </summary>
+	public static Complex Coth(Complex z) => Divide(1, Tanh(z));
 
 	/// <summary>
 	/// Inverse sine. For real |x| &gt; 1 the result is sign(x)·(π/2 − i·acosh|x|), as in MATLAB;
@@ -132,8 +142,10 @@ public static class ComplexMath
 	}
 
 	/// <summary>
-	/// Inverse tangent. Complex arguments use <see cref="Complex.Atan"/>, which gives the principal
-	/// value on the branch cut (atan(2i) = π/2 + 0.549i, and atan(−z) = −atan(z)) and for large |z|.
+	/// Inverse tangent, −i·atanh(i·z) for complex z, so it has the accuracy of <see cref="Atanh"/>
+	/// (<see cref="Complex.Atan"/> loses half the digits when the result is small, e.g. atan(1e10·i)).
+	/// It is odd, atan(−z) = −atan(z), also on the branch cut: atan(2i) = π/2 + 0.549i and
+	/// atan(−2i) = −π/2 − 0.549i.
 	/// </summary>
 	public static Complex Atan(Complex z)
 	{
@@ -141,7 +153,11 @@ public static class ComplexMath
 			return System.Math.Atan(z.Real);
 		if (z == I || z == -I)
 			throw new MathException(MathError.Domain, "atan is undefined at ±i.");
-		return Complex.Atan(z);
+		if (z.Real < 0 || (z.Real == 0 && z.Imaginary < 0))
+			return -Atan(-z);
+		// i·z and −i·w written out, so that infinite parts do not meet 0·∞.
+		var w = Atanh(new Complex(-z.Imaginary, z.Real));
+		return new Complex(w.Imaginary, -w.Real);
 	}
 
 	/// <summary>Inverse cotangent, atan(1/z); acot(0) = π/2.</summary>
@@ -153,13 +169,48 @@ public static class ComplexMath
 	public static Complex Acosh(Complex z) =>
 		IsReal(z) && z.Real >= 1 ? System.Math.Acosh(z.Real) : Ln(z + Sqrt(z + 1) * Sqrt(z - 1));
 
+	/// <summary>
+	/// Inverse hyperbolic tangent. Complex arguments use Kahan's formulas
+	/// Re = ¼·log1p(4x/((1−x)² + y²)) and Im = ½·atan2(2y, (1−x)(1+x) − y²), which stay accurate when
+	/// the result is small; ½·ln((1+z)/(1−z)) cancels there and loses half the digits. On the real
+	/// axis beyond ±1 the imaginary part is +π/2, as in MATLAB: atanh(2) = 0.549 + 1.571i.
+	/// </summary>
 	public static Complex Atanh(Complex z)
 	{
 		if (IsReal(z) && System.Math.Abs(z.Real) < 1)
 			return System.Math.Atanh(z.Real);
 		if (z == 1 || z == -1)
 			throw new MathException(MathError.Domain, "atanh is undefined at ±1.");
-		return Ln((1 + z) / (1 - z)) / 2;
+
+		double x = z.Real, y = z.Imaginary == 0 ? 0.0 : z.Imaginary;
+		if (double.IsNaN(x) || double.IsNaN(y))
+			return new Complex(double.NaN, double.NaN);
+		double halfPi = y < 0 ? -System.Math.PI / 2 : System.Math.PI / 2;
+
+		// For huge |z| the squares overflow; there atanh(z) = 1/z ± iπ/2 to full precision.
+		double scale = System.Math.Max(System.Math.Abs(x), System.Math.Abs(y));
+		if (scale > 1e150)
+		{
+			if (double.IsInfinity(scale))
+				return new Complex(0, halfPi);
+			double xs = x / scale, ys = y / scale;
+			return new Complex(xs / (xs * xs + ys * ys) / scale, halfPi);
+		}
+
+		double oneMinusX = 1 - x;
+		double re = Log1P(4 * x / (oneMinusX * oneMinusX + y * y)) / 4;
+		double im = System.Math.Atan2(2 * y, oneMinusX * (1 + x) - y * y) / 2;
+		return new Complex(re, im);
+	}
+
+	/// <summary>
+	/// ln(1 + x), accurate also for tiny x (Goldberg's method: the rounding error of 1 + x cancels
+	/// in the ratio). <c>double.LogP1</c> computes ln(1 + x) directly and loses the digits of small x.
+	/// </summary>
+	static double Log1P(double x)
+	{
+		double u = 1 + x;
+		return u == 1 ? x : System.Math.Log(u) * x / (u - 1);
 	}
 
 	/// <summary>Inverse hyperbolic cotangent, atanh(1/z); acoth(0) = iπ/2.</summary>
