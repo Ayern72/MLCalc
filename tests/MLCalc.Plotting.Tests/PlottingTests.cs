@@ -3,6 +3,37 @@ namespace MLCalc.Plotting.Tests;
 public class FigureTests
 {
 	[Fact]
+	public async Task SelectingAWindowWhileTheGridShrinksNeverLeavesAnInvalidWindow()
+	{
+		// currentwin(3, 3) on the interpreter's thread racing Reset Plots (Initialize(1, 1)) on the UI
+		// thread could pass the size check before the grid shrank and select a window outside it.
+		var figure = new Figure();
+		using var stop = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+		var resetting = Task.Run(() =>
+		{
+			while (!stop.IsCancellationRequested)
+			{
+				figure.Initialize(1, 1);
+				figure.Initialize(3, 3);
+			}
+		});
+		while (!stop.IsCancellationRequested)
+		{
+			try
+			{
+				figure.SelectAxes(3, 3);
+			}
+			catch (ArgumentOutOfRangeException)
+			{
+				// The grid was 1×1 at the time: a proper error.
+			}
+			// Throws IndexOutOfRangeException if the selected window is outside the grid.
+			figure.SetTitle("t");
+		}
+		await resetting;
+	}
+
+	[Fact]
 	public void DefaultsToOneWindowFromMinusTenToTen()
 	{
 		var snapshot = new Figure().Snapshot();

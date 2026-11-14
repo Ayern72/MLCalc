@@ -38,7 +38,8 @@ internal sealed class FunctionCompiler(MLCalcInterpreter interpreter, Builtins b
 			{
 				var operand = Compile(unary.Operand);
 				var op = unary.Operator;
-				return x => Operators.Unary(op, operand(x));
+				var span = unary.Span;
+				return x => Operators.Unary(op, operand(x), span);
 			}
 			case BinaryExpression binary:
 			{

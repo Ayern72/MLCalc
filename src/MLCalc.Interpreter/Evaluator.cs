@@ -110,7 +110,7 @@ public sealed partial class MLCalcInterpreter
 			case StyleLiteral s:
 				throw new RuntimeError($"'{s.Symbol}' can only be used as a plot style argument.", s.Span);
 			case UnaryExpression u:
-				return Operators.Unary(u.Operator, Evaluate(u.Operand));
+				return Operators.Unary(u.Operator, Evaluate(u.Operand), u.Span);
 			case BinaryExpression b:
 			{
 				var left = Evaluate(b.Left);
@@ -236,12 +236,33 @@ internal readonly record struct IndexArgument(ComplexMatrix? Values, SourceSpan 
 /// </summary>
 internal static class Operators
 {
-	public static ComplexMatrix Unary(UnaryOperator op, ComplexMatrix operand) => op switch
+	/// <summary>A unary operation; math errors are reported at <paramref name="span"/>.</summary>
+	public static ComplexMatrix Unary(UnaryOperator op, ComplexMatrix operand, SourceSpan span)
 	{
-		UnaryOperator.Negate => -operand,
-		UnaryOperator.Not => operand.Map(x => x == Complex.Zero ? 1 : 0),
-		_ => operand,
-	};
+		try
+		{
+			return op switch
+			{
+				UnaryOperator.Negate => -operand,
+				UnaryOperator.Not => operand.Map(x => IsTrue(x) ? 0 : 1),
+				_ => operand,
+			};
+		}
+		catch (Exception ex) when (MLCalcInterpreter.ToRuntimeError(ex, span) is { } error)
+		{
+			throw error;
+		}
+	}
+
+	/// <summary>
+	/// The truth value of one element: non-zero is true. NaN is neither, so it is an error, as in
+	/// MATLAB; treating it as true made <c>while nan</c> loop forever and sent comparisons with an
+	/// undefined result down the wrong branch without a word.
+	/// </summary>
+	public static bool IsTrue(Complex x) =>
+		Complex.IsNaN(x)
+			? throw new MathException(MathError.Domain, "NaN cannot be used as a truth value (true or false).")
+			: x != Complex.Zero;
 
 	/// <summary>
 	/// A binary operation; math errors are reported at <paramref name="span"/>. Matrix products,
@@ -300,9 +321,9 @@ internal static class Operators
 		BinaryOperator.LessOrEqual => Compare(a, b, (x, y) => x.Real <= y.Real),
 		BinaryOperator.Greater => Compare(a, b, (x, y) => x.Real > y.Real),
 		BinaryOperator.GreaterOrEqual => Compare(a, b, (x, y) => x.Real >= y.Real),
-		BinaryOperator.And => Compare(a, b, (x, y) => x != Complex.Zero && y != Complex.Zero),
-		BinaryOperator.Or => Compare(a, b, (x, y) => x != Complex.Zero || y != Complex.Zero),
-		BinaryOperator.Xor => Compare(a, b, (x, y) => (x != Complex.Zero) != (y != Complex.Zero)),
+		BinaryOperator.And => Compare(a, b, (x, y) => IsTrue(x) & IsTrue(y)),
+		BinaryOperator.Or => Compare(a, b, (x, y) => IsTrue(x) | IsTrue(y)),
+		BinaryOperator.Xor => Compare(a, b, (x, y) => IsTrue(x) != IsTrue(y)),
 		_ => throw new NotSupportedException(op.ToString()),
 	};
 

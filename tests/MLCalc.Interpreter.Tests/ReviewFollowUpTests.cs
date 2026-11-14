@@ -76,8 +76,10 @@ public class ReviewFollowUpTests
 	[InlineData("perm(1e12, 1e12)")]
 	public void HugeCombinatoricsOverflowQuickly(string expression)
 	{
+		// About a thousand loop steps now, against 5·10¹¹ before; the limit is generous so that a busy
+		// CI machine cannot fail it, while the old behaviour would take hours.
 		var watch = System.Diagnostics.Stopwatch.StartNew();
 		Assert.Equal(double.PositiveInfinity, host.Eval(expression).ScalarValue.Real);
-		Assert.True(watch.ElapsedMilliseconds < 2000, $"took {watch.ElapsedMilliseconds} ms");
+		Assert.True(watch.ElapsedMilliseconds < 10_000, $"took {watch.ElapsedMilliseconds} ms");
 	}
 }

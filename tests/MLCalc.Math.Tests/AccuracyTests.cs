@@ -115,6 +115,50 @@ public class AccuracyTests
 		_ => throw new ArgumentException(function),
 	};
 
+	[Fact]
+	public void PowerEdgeCases()
+	{
+		Assert.True(double.IsNaN(ComplexMath.Pow(0, double.NaN).Real));
+		Assert.Equal(Complex.One, ComplexMath.Pow(double.NaN, 0));
+		// |z|^w·e^(iπw) with exact sin and cos at half-integers.
+		Assert.Equal(new Complex(0, double.PositiveInfinity), ComplexMath.Pow(double.NegativeInfinity, 0.5));
+		Assert.Equal(new Complex(0, 2), ComplexMath.Pow(-4, 0.5));
+		AssertParts(new Complex(1, System.Math.Sqrt(3)), ComplexMath.Pow(-8, 1.0 / 3), 1e-15);
+		// (1e200·i)² overflows to -∞; the imaginary part is 0, not NaN.
+		var square = ComplexMath.Pow(new Complex(0, 1e200), 2);
+		Assert.Equal(double.NegativeInfinity, square.Real);
+		Assert.Equal(0, square.Imaginary);
+	}
+
+	[Fact]
+	public void DivisionOfHugeComplexNumbers()
+	{
+		var huge = new Complex(1e308, 1e308);
+		Assert.Equal(Complex.One, ComplexMath.Divide(huge, huge));
+		AssertParts(new Complex(0.5, -0.5), ComplexMath.Divide(1e308, huge), 1e-15);
+		AssertParts(new Complex(1e308, 0), ComplexMath.Divide(huge, new Complex(1, 1)), 1e-15);
+	}
+
+	public static TheoryData<string, Complex, Complex> HugeArguments() => new()
+	{
+		// acosh(z) = ln(2z) and asinh(z) = ln(2z) to double precision when |z| is huge.
+		{ "acosh", new Complex(1e308, 1e308), new(System.Math.Log(2) + System.Math.Log(System.Math.Sqrt(2)) + System.Math.Log(1e308), System.Math.PI / 4) },
+		{ "acosh", -1e308, new(System.Math.Log(2) + System.Math.Log(1e308), System.Math.PI) },
+		{ "acosh", new Complex(-1e200, -1), new(System.Math.Log(2) + System.Math.Log(1e200), -System.Math.PI) },
+		{ "asinh", new Complex(1e308, 1e308), new(System.Math.Log(2) + System.Math.Log(System.Math.Sqrt(2)) + System.Math.Log(1e308), System.Math.PI / 4) },
+		{ "asinh", new Complex(0, -1e200), new(-(System.Math.Log(2) + System.Math.Log(1e200)), -HalfPi) },
+		{ "asinh", new Complex(double.PositiveInfinity, 1), new(double.PositiveInfinity, 0) },
+		{ "asinh", new Complex(double.NegativeInfinity, 1), new(double.NegativeInfinity, 0) },
+	};
+
+	[Theory]
+	[MemberData(nameof(HugeArguments))]
+	public void InverseHyperbolicFunctionsOfHugeArguments(string function, Complex z, Complex expected)
+	{
+		var actual = function == "acosh" ? ComplexMath.Acosh(z) : ComplexMath.Asinh(z);
+		AssertParts(expected, actual, 1e-15);
+	}
+
 	[Theory]
 	[InlineData(0)]
 	[InlineData(-1)]

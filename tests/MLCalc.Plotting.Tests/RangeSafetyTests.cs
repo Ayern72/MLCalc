@@ -38,7 +38,11 @@ public class RangeSafetyTests
 	[InlineData(1e15, 1e15 + 0.25)]
 	public void TicksForTinySpansAreBounded(double min, double max)
 	{
-		Assert.InRange(AxisTicks.Compute(min, max).Count, 0, 1001);
+		// Few ticks, each different from the one before (not 1001 copies of the same label).
+		var ticks = AxisTicks.Compute(min, max);
+		Assert.InRange(ticks.Count, 0, 20);
+		for (int i = 1; i < ticks.Count; i++)
+			Assert.True(ticks[i] > ticks[i - 1], $"tick {i} = {ticks[i]} is not above {ticks[i - 1]}");
 	}
 
 	[Theory]

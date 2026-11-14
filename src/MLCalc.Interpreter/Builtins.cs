@@ -10,6 +10,9 @@ namespace MLCalc.Interpreter;
 /// <summary>The built-in functions and commands, looked up case-insensitively.</summary>
 internal sealed class Builtins
 {
+	/// <summary>The most pixels in an image saved by <c>savefig</c> in a bitmap format such as PNG.</summary>
+	const double MaxImagePixels = 64_000_000;
+
 	readonly Dictionary<string, Builtin> table = new(StringComparer.OrdinalIgnoreCase);
 	readonly HashSet<string> pure = new(StringComparer.OrdinalIgnoreCase);
 	readonly HashSet<string> commands = new(StringComparer.OrdinalIgnoreCase);
@@ -208,12 +211,15 @@ internal sealed class Builtins
 		return measure(call.Matrix(0));
 	}
 
-	/// <summary>Reduces a vector to a scalar, or each column of a matrix to a row (MATLAB sum/prod).</summary>
+	/// <summary>
+	/// Reduces a vector to a scalar, or each column of a matrix to a row (MATLAB sum/prod). The empty
+	/// matrix [] reduces to the seed, as in MATLAB: sum([]) = 0 and prod([]) = 1.
+	/// </summary>
 	static ComplexMatrix Reduce(CallContext call, Func<Complex, Complex, Complex> combine, Complex seed)
 	{
 		call.RequireCount(1);
 		var m = call.Matrix(0);
-		if (m.IsVector)
+		if (m.IsVector || (m.Rows == 0 && m.Columns == 0))
 		{
 			var total = seed;
 			foreach (var value in m.AsSpan())
@@ -407,6 +413,9 @@ internal sealed class Builtins
 			// Written so that NaN is rejected too (every comparison with NaN is false).
 			if (!(width >= 50 && height >= 50 && width <= 16000 && height <= 16000))
 				throw call.Error("the size must be between 50 and 16000.", 1);
+			// A bitmap of 16000×16000 takes 1 GB, rendered in one piece; SVG has no such cost.
+			if (saver is not null && width * height > MaxImagePixels)
+				throw call.Error($"an image can have at most {MaxImagePixels / 1_000_000} million pixels (for example 8000×8000).", 1);
 			string fullPath = call.Interpreter.ResolvePath(path);
 			try
 			{

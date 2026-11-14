@@ -334,12 +334,15 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		return builder.ToString();
 	}
 
-	/// <summary>Formats a complex number as "a", "bi" or "a+bi" using invariant culture.</summary>
+	/// <summary>
+	/// Formats a complex number as "a", "bi" or "a+bi" using invariant culture. Negative zero, from
+	/// e.g. round(-0.4) or 0 * -1, is shown as 0, as in MATLAB.
+	/// </summary>
 	public static string Format(Complex value, string numberFormat = "G10")
 	{
 		string Number(double x) => double.IsPositiveInfinity(x) ? "Inf"
 			: double.IsNegativeInfinity(x) ? "-Inf"
-			: x.ToString(numberFormat, CultureInfo.InvariantCulture);
+			: (x == 0 ? 0.0 : x).ToString(numberFormat, CultureInfo.InvariantCulture);
 
 		string re = Number(value.Real);
 		if (value.Imaginary == 0)

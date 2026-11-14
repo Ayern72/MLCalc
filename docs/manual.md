@@ -405,7 +405,9 @@ ans =
 | `not`, `~` | true if zero |
 
 Any non-zero number counts as true. The results are 1 or 0, element by element. Both sides are
-always evaluated (`&&` and `||` do not skip the right-hand side).
+always evaluated (`&&` and `||` do not skip the right-hand side). `NaN` is neither true nor false,
+so `not nan` or `nan and 1` is an error, as in MATLAB; to test for `NaN`, use `x ~= x`, which is
+1 only for `NaN`.
 
 ### Postfix operators
 
@@ -489,7 +491,9 @@ y = max(total,          % inside parentheses, no ... needed
 ### Conditions
 
 `if` and `while` test a condition. A condition is **true** if it is non-empty and all its elements
-are non-zero. So `[1 1 0]` is false and `[]` is false.
+are non-zero. So `[1 1 0]` is false and `[]` is false. A condition containing `NaN` is an error
+(*The condition is NaN, which is neither true nor false*): treating it as true or false would
+quietly take a branch, or loop forever, on an undefined result.
 
 ### Two styles
 
@@ -747,6 +751,10 @@ ans =
 The operators `A \ B` and `A / B` also solve linear systems (see [Arithmetic](#arithmetic)).
 Systems are solved by Gaussian elimination with pivoting; `B` may have several columns, each one a
 right-hand side. A singular matrix gives the error *The equation system has no unique solution*.
+So does a matrix that is so close to singular that most digits of the result would be rounding
+noise: a pivot smaller than 10⁻¹³ times the largest element counts as zero. For example,
+`inv([1 1; 1 1+1e-14])` is refused, and so is a matrix containing `Inf`.
+(MATLAB computes such results with a warning instead.)
 
 ```
 >> det([1 2; 3 4])
@@ -761,8 +769,8 @@ ans =
 
 | Function | Result |
 |---|---|
-| `sum(A)` | sum of the elements of a vector; for a matrix, the sum of each column (a row) |
-| `prod(A)` | product, in the same way |
+| `sum(A)` | sum of the elements of a vector; for a matrix, the sum of each column (a row); `sum([])` is 0 |
+| `prod(A)` | product, in the same way; `prod([])` is 1 |
 | `max(A)`, `min(A)` | largest/smallest element of a vector; for a matrix, of each column |
 | `max(A, B)`, `min(A, B)` | element by element, the larger/smaller of `A` and `B` |
 
@@ -852,19 +860,26 @@ ans = 1.5
 
 **How they work:**
 
-- `integral` uses Simpson's rule, halving the step until two successive estimates agree to about
-  12 significant digits. A function that is undefined somewhere in the interval gives an error,
-  and so does an integral that does not settle (for example of `sin(1/x)` close to 0).
+- `integral` uses adaptive Gauss–Kronrod quadrature: it splits the interval where the error is
+  largest until the estimated error is below about 10⁻¹² times the result (or 10⁻¹², whichever is
+  larger). Jumps and kinks, such as `x > 0.5` or `abs(x - 0.3)`, are handled to full accuracy, and
+  so are functions that are infinite only at an end of the interval, such as `1/sqrt(x)` from 0.
+  The limits must be finite. A function that is undefined somewhere in the interval gives an
+  error, and so does an integral that does not settle (for example of `1/x` from 0, or `sin(1/x)`
+  close to 0).
 - `derivata` uses central differences with repeated extrapolation (Ridders' method), starting from
   several step sizes, accurate to about 10 digits for smooth functions, also ones that vary quickly
   such as `sin(1000*x)`. Where no reliable value can be found, for example at a jump such as
-  `sign(x)` at 0, the result is an error.
+  `sign(x)` at 0 or a kink such as `abs(x)` at 0, the result is an error.
 - `solve` starts at `x0` and searches outward in both directions, first in steps of 0.01 and then
   with slowly growing steps, until the function changes sign. The root is then refined with
-  Brent's method to full precision. It therefore finds the root closest to `x0`. Sign changes
-  caused by poles (such as tan at π/2) are skipped. Roots where the function touches zero
-  without changing sign (such as x² at 0) cannot be found. If nothing is found the error is
-  *No root found near x0*.
+  Brent's method to full precision. It finds the first sign change it reaches, which is normally
+  the root closest to `x0`. Because the steps grow, two roots closer together than the current
+  step cancel out and are passed over: `solve("x", "x^2 - 2", 1e6)` finds nothing, since by the
+  time the search reaches ±1.4 the steps are far larger than the distance between the roots. Start
+  near the root you want. Sign changes caused by poles (such as tan at π/2) are skipped. Roots
+  where the function touches zero without changing sign (such as x² at 0) cannot be found. If
+  nothing is found the error is *No root found near x0*.
 - `isect` solves `f − g = 0` in the same way.
 - `extreme` solves `derivative = 0` in the same way; it does not tell whether it found a maximum or
   a minimum.
@@ -1003,7 +1018,7 @@ end
 |---|---|
 | `savefig("file.svg")` | saves the plot area as an SVG image, 800×600 |
 | `savefig("file.svg", w, h)` | the same with width `w` and height `h` (50 to 16000) |
-| `savefig("file.png")`, `savefig("file.png", w, h)` | saves a PNG image (**desktop application only**) |
+| `savefig("file.png")`, `savefig("file.png", w, h)` | saves a PNG image (**desktop application only**), at most 64 million pixels (for example 8000×8000) |
 
 A relative file name is relative to the folder of the running script, or else to the working
 folder (see [Scripts](#scripts)). All windows of the grid are saved in one image.
@@ -1192,7 +1207,9 @@ Common messages:
 | *Index 3 exceeds the size 2* | reading outside a matrix |
 | *Index must be a positive integer, got 0* | indices start at 1 |
 | *Cannot assign a 1×2 matrix to 1×3 elements* | the value assigned does not fit the selected elements |
-| *The equation system has no unique solution (the matrix is singular)* | `inv`, `\`, `/` or `gauss` on a singular matrix |
+| *The equation system has no unique solution (the matrix is singular)* | `inv`, `\`, `/` or `gauss` on a singular or nearly singular matrix |
+| *The condition is NaN, which is neither true nor false* | an `if` or `while` condition containing `NaN` |
+| *NaN cannot be used as a truth value (true or false)* | `and`, `or`, `xor` or `not` applied to `NaN` |
 | *A matrix can only be raised to an integer power* | `A^0.5` for a matrix; perhaps `.^` was meant |
 | *sin: expected 1 argument, got 2* | wrong number of arguments |
 | *fplot: argument 1 must be a string in double quotes* | the variable and the expression must be strings |
@@ -1264,7 +1281,7 @@ message; nothing is changed.
 | Elements shown in the console | 10 000; larger results are summarised as, for example, `A = [200×200 matrix, too large to show; …]` |
 | Points in one plot window | 2 000 000 (dots, plotted points and curves together); `clear`, `xrange` or `yrange` empties the window |
 | Lines kept in the desktop console | the latest 10 000, and at most about 16 million characters |
-| `savefig` image size | 50 to 16000 |
+| `savefig` image size | 50 to 16000; a PNG image at most 64 million pixels (8000×8000) |
 
 ---
 

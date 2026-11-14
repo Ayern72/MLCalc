@@ -284,16 +284,22 @@ public sealed partial class MLCalcInterpreter
 		}
 	}
 
-	/// <summary>A condition is true when it is non-empty and all its elements are non-zero (MATLAB rule).</summary>
+	/// <summary>
+	/// A condition is true when it is non-empty and all its elements are non-zero (MATLAB rule). A NaN
+	/// element is an error, wherever it is.
+	/// </summary>
 	bool IsTrue(Expression condition)
 	{
 		var value = Evaluate(condition);
-		if (value.IsEmpty)
-			return false;
+		bool result = !value.IsEmpty;
 		foreach (var element in value.AsSpan())
+		{
+			if (Complex.IsNaN(element))
+				throw new RuntimeError("The condition is NaN, which is neither true nor false.", condition.Span);
 			if (element == Complex.Zero)
-				return false;
-		return true;
+				result = false;
+		}
+		return result;
 	}
 
 	internal static double RealScalar(ComplexMatrix value, SourceSpan span, string what)

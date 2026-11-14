@@ -155,6 +155,10 @@ public class ComplexMatrixTests
 	[InlineData(1, double.NegativeInfinity, "1-Infi")]
 	[InlineData(1, double.NaN, "1+NaNi")]
 	[InlineData(double.NaN, double.NaN, "NaN+NaNi")]
+	[InlineData(-0.0, 0, "0")]
+	[InlineData(-0.0, 1, "1i")]
+	[InlineData(-0.0, -0.0, "0")]
+	[InlineData(1, -0.0, "1")]
 	public void FormatsComplexNumbers(double re, double im, string expected)
 	{
 		Assert.Equal(expected, ComplexMatrix.Format(new Complex(re, im)));
@@ -164,5 +168,11 @@ public class ComplexMatrixTests
 	public void ToStringSeparatesColumnsWithTabsAndRowsWithLines()
 	{
 		Assert.Equal("1\t2" + Environment.NewLine + "3\t4", A.ToString());
+	}
+
+	[Fact]
+	public void NegativeZeroInAMatrixIsShownAsZero()
+	{
+		Assert.Equal("0\t0", ComplexMatrix.RowVector(-0.0, 0).ToString());
 	}
 }

@@ -106,19 +106,15 @@ public sealed class Figure
 	}
 
 	/// <summary>Selects the current axes by one-based row and column (<c>currentwin</c>).</summary>
-	public void SelectAxes(int row, int column)
+	public void SelectAxes(int row, int column) => Update(() =>
 	{
-		lock (gate)
-		{
-			if (row < 1 || column < 1 || row > rows || column > columns)
-				throw new ArgumentOutOfRangeException(nameof(row), $"There is no plot window ({row},{column}); the grid is {rows}×{columns}.");
-		}
-		Update(() =>
-		{
-			currentRow = row - 1;
-			currentColumn = column - 1;
-		});
-	}
+		// Checked under the same lock as the change: a separate check could pass for a 3×3 grid
+		// that Initialize (Reset Plots in the desktop app) shrinks before the change is made.
+		if (row < 1 || column < 1 || row > rows || column > columns)
+			throw new ArgumentOutOfRangeException(nameof(row), $"There is no plot window ({row},{column}); the grid is {rows}×{columns}.");
+		currentRow = row - 1;
+		currentColumn = column - 1;
+	});
 
 	/// <summary>Sets the x range and clears the current axes, as the original <c>xrange</c>.</summary>
 	public void SetXRange(double min, double max)

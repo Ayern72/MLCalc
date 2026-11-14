@@ -82,8 +82,8 @@ public class CalculusTests
 	[Fact]
 	public void IntegralThatDoesNotConvergeIsAnError()
 	{
-		// sin(1/x) oscillates infinitely often near 0; few halvings are allowed here to keep the test fast.
-		var ex = Assert.Throws<MathException>(() => Calculus.Integrate(x => System.Math.Sin(1 / x), 1e-6, 1, maxHalvings: 12));
+		// sin(1/x) oscillates infinitely often near 0; few subintervals are allowed here to keep the test fast.
+		var ex = Assert.Throws<MathException>(() => Calculus.Integrate(x => System.Math.Sin(1 / x), 1e-6, 1, maxIntervals: 500));
 		Assert.Equal(MathError.NoSolution, ex.Error);
 	}
 }

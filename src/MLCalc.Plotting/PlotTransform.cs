@@ -51,6 +51,10 @@ public static class AxisTicks
 			if (value > max + step * 1e-9)
 				break;
 			value = Math.Round(value, decimals);
+			// When the step is below the resolution of the values (1e15 … 1e15 + 0.25), several
+			// steps round to the same number; one tick each is enough.
+			if (ticks.Count > 0 && value <= ticks[^1])
+				continue;
 			ticks.Add(value == 0 ? 0 : value);
 		}
 		return ticks;

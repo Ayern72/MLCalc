@@ -5,6 +5,9 @@ namespace MLCalc.Numerics;
 /// <summary>Root finding for real functions (the original <c>solve</c>, <c>isect</c> and <c>Secant</c>).</summary>
 public static class RootFinding
 {
+	/// <summary>The distance from 1 to the next larger double.</summary>
+	const double MachineEpsilon = 2.220446049250313e-16;
+
 	/// <summary>
 	/// Finds a root of <paramref name="f"/> inside [a, b], where f(a) and f(b) have opposite signs,
 	/// using Brent's method (secant and inverse quadratic interpolation safeguarded by bisection).
@@ -36,7 +39,8 @@ public static class RootFinding
 			else
 				s = b - fb * (b - a) / (fb - fa);
 
-			double delta = 2 * double.Epsilon + tolerance * System.Math.Abs(b);
+			// Brent's 2·ε·|b| uses machine epsilon; double.Epsilon is the smallest denormal instead.
+			double delta = 2 * MachineEpsilon * System.Math.Abs(b) + tolerance * System.Math.Abs(b);
 			double mid = (3 * a + b) / 4;
 			bool outside = !(s > System.Math.Min(mid, b) && s < System.Math.Max(mid, b));
 			if (outside
