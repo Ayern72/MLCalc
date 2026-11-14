@@ -176,4 +176,57 @@ public class SolverAndPolynomialTests
 	{
 		Assert.Throws<MathException>(() => Polynomial.Fit(ComplexMatrix.RowVector(1, 2), ComplexMatrix.RowVector(1, 2), 2));
 	}
+
+	[Fact]
+	public void FitRefusesMoreIntermediateValuesThanTheElementLimit()
+	{
+		// 1,000,000 points × 31 terms = 31 million values; before the check this allocated about 500 MB.
+		var x = ComplexMatrix.Create(1, 1_000_000, (_, k) => k);
+		var error = Assert.Throws<MathException>(() => Polynomial.Fit(x, x, 30));
+		Assert.Equal(MathError.TooLarge, error.Error);
+	}
+}
+
+/// <summary>
+/// The n³ operations can run for minutes on large matrices, so each must stop when its token is
+/// cancelled. A token that is already cancelled shows that the check is made inside the operation.
+/// </summary>
+public class CancellationTests
+{
+	static readonly ComplexMatrix A = ComplexMatrix.FromRows(new double[,] { { 4, 1 }, { 2, 3 } });
+
+	static CancellationToken Cancelled => new(canceled: true);
+
+	[Fact]
+	public void Multiply() => Assert.Throws<OperationCanceledException>(() => ComplexMatrix.Multiply(A, A, Cancelled));
+
+	[Fact]
+	public void Power() => Assert.Throws<OperationCanceledException>(() => ComplexMatrix.Power(A, 5, Cancelled));
+
+	[Fact]
+	public void NegativePower() => Assert.Throws<OperationCanceledException>(() => ComplexMatrix.Power(A, -5, Cancelled));
+
+	[Fact]
+	public void LeftDivide() => Assert.Throws<OperationCanceledException>(() => ComplexMatrix.LeftDivide(A, A, Cancelled));
+
+	[Fact]
+	public void RightDivide() => Assert.Throws<OperationCanceledException>(() => ComplexMatrix.RightDivide(A, A, Cancelled));
+
+	[Fact]
+	public void Determinant() => Assert.Throws<OperationCanceledException>(() => A.Determinant(Cancelled));
+
+	[Fact]
+	public void Inverse() => Assert.Throws<OperationCanceledException>(() => A.Inverse(Cancelled));
+
+	[Fact]
+	public void Fit() => Assert.Throws<OperationCanceledException>(() =>
+		Polynomial.Fit(ComplexMatrix.RowVector(1, 2, 3), ComplexMatrix.RowVector(1, 4, 9), 2, Cancelled));
+
+	[Fact]
+	public void WithoutCancellationTheResultIsUnchanged()
+	{
+		var expected = ComplexMatrix.FromRows(new double[,] { { 18, 7 }, { 14, 11 } });
+		Assert.Equal(expected, ComplexMatrix.Multiply(A, A, CancellationToken.None));
+		Assert.Equal(expected, A * A);
+	}
 }

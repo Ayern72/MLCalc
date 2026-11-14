@@ -550,7 +550,8 @@ Original style: `while k < 3 do k = k + 1;` or with a `begin … end` block. On 
 style: `while k < 3, k = k + 1; end`.
 
 The loop runs as long as the condition is true. In the desktop application and the command-line
-tool a running loop can be stopped with **Esc** or **Ctrl+C**.
+tool a running loop can be stopped with **Esc** or **Ctrl+C**. The same keys stop a single long
+calculation, such as multiplying or inverting a large matrix.
 
 ### for
 
@@ -1084,9 +1085,10 @@ The console shows your input in blue, results in black, errors in red and notes 
 lines with the mouse (Shift and Ctrl select several) and press **Ctrl+C** to copy them; with
 nothing selected, **Edit › Copy Output** copies the whole console.
 
-The console keeps the latest 10 000 lines. A program can print far faster than a window can show
-text, so when output arrives too fast, some lines are skipped and a grey note says how many; the
-program itself is not affected. End statements in loops with `;` to avoid printing them.
+The console keeps the latest 10 000 lines, and fewer when they are long (about 16 million
+characters in all, which is around a hundred printed 100×100 matrices). A program can print far
+faster than a window can show text, so when output arrives too fast, some lines are skipped and a
+grey note says how many; the program itself is not affected. End statements in loops with `;` to avoid printing them.
 
 ### Menus and shortcuts
 
@@ -1144,7 +1146,8 @@ Execution stops at the first error. Errors are written to the error stream as
 **Exit codes:** 0 on success, 1 when a program failed, 2 for invalid options.
 
 **At the prompt:** `help` shows a summary, `exit` or `quit` leaves, and **Ctrl+C** stops a running
-program (or leaves when nothing is running). The first time a plot command is used, a note reminds
+program (or leaves when nothing is running; pressing it a second time before the program has
+stopped also leaves). The first time a plot command is used, a note reminds
 you that plots can be saved with `savefig`. Unfinished input continues with the `...` prompt, as in
 the desktop application.
 
@@ -1255,12 +1258,12 @@ message; nothing is changed.
 
 | Limit | Value |
 |---|---|
-| Elements in one matrix or range | 25 000 000 (for example 5000×5000); each element takes 16 bytes |
+| Elements in one matrix or range | 25 000 000 (for example 5000×5000); each element takes 16 bytes. `polyfit` keeps (degree + 1) values per point and has the same limit for them |
 | Nesting of parentheses, brackets, blocks and operator chains | 256 levels (a sum of up to about 250 terms) |
 | Scripts running other scripts | 32 levels |
 | Elements shown in the console | 10 000; larger results are summarised as, for example, `A = [200×200 matrix, too large to show; …]` |
 | Points in one plot window | 2 000 000 (dots, plotted points and curves together); `clear`, `xrange` or `yrange` empties the window |
-| Lines kept in the desktop console | the latest 10 000 |
+| Lines kept in the desktop console | the latest 10 000, and at most about 16 million characters |
 | `savefig` image size | 50 to 16000 |
 
 ---

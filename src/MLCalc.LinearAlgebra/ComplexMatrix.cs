@@ -212,7 +212,13 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 	public ComplexMatrix ElementPower(ComplexMatrix other) => ElementWise(this, other, ComplexMath.Pow);
 
 	/// <summary>Matrix product. A scalar operand multiplies every element.</summary>
-	public static ComplexMatrix operator *(ComplexMatrix a, ComplexMatrix b)
+	public static ComplexMatrix operator *(ComplexMatrix a, ComplexMatrix b) => Multiply(a, b);
+
+	/// <summary>
+	/// Matrix product. A scalar operand multiplies every element. The work grows as n³, so a long
+	/// product checks <paramref name="cancellationToken"/> and stops when it is cancelled.
+	/// </summary>
+	public static ComplexMatrix Multiply(ComplexMatrix a, ComplexMatrix b, CancellationToken cancellationToken = default)
 	{
 		if (a.IsScalar || b.IsScalar)
 			return a.ElementMultiply(b);
@@ -222,6 +228,7 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		for (int r = 0; r < a.Rows; r++)
 			for (int c = 0; c < b.Columns; c++)
 			{
+				cancellationToken.ThrowIfCancellationRequested();
 				Complex sum = Complex.Zero;
 				for (int k = 0; k < a.Columns; k++)
 					sum += ComplexMath.Multiply(a.data[r * a.Columns + k], b.data[k * b.Columns + c]);
@@ -232,9 +239,10 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 
 	/// <summary>
 	/// Matrix power (MATLAB <c>A^p</c>): the scalar power for 1×1 operands; for a square matrix an
-	/// integer power by repeated squaring, where a negative power uses the inverse.
+	/// integer power by repeated squaring, where a negative power uses the inverse. Stops when
+	/// <paramref name="cancellationToken"/> is cancelled.
 	/// </summary>
-	public static ComplexMatrix Power(ComplexMatrix a, ComplexMatrix p)
+	public static ComplexMatrix Power(ComplexMatrix a, ComplexMatrix p, CancellationToken cancellationToken = default)
 	{
 		if (a.IsScalar && p.IsScalar)
 			return ComplexMath.Pow(a.ScalarValue, p.ScalarValue);
@@ -247,16 +255,16 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 			throw new MathException(MathError.Domain, "A matrix can only be raised to an integer power.");
 
 		long n = (long)exponent.Real;
-		var factor = n < 0 ? a.Inverse() : a;
+		var factor = n < 0 ? a.Inverse(cancellationToken) : a;
 		n = System.Math.Abs(n);
 		var result = Identity(a.Rows);
 		while (n > 0)
 		{
 			if ((n & 1) == 1)
-				result *= factor;
+				result = Multiply(result, factor, cancellationToken);
 			n >>= 1;
 			if (n > 0)
-				factor *= factor;
+				factor = Multiply(factor, factor, cancellationToken);
 		}
 		return result;
 	}
@@ -267,16 +275,16 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 	public ComplexMatrix ConjugateTranspose() => Transpose().Map(Complex.Conjugate);
 
 	/// <summary>Solves A·X = B for X (MATLAB <c>A\B</c>).</summary>
-	public static ComplexMatrix LeftDivide(ComplexMatrix a, ComplexMatrix b) =>
-		a.IsScalar ? b.ElementDivide(a) : LinearSolver.Solve(a, b);
+	public static ComplexMatrix LeftDivide(ComplexMatrix a, ComplexMatrix b, CancellationToken cancellationToken = default) =>
+		a.IsScalar ? b.ElementDivide(a) : LinearSolver.Solve(a, b, cancellationToken);
 
 	/// <summary>Solves X·B = A for X (MATLAB <c>A/B</c>).</summary>
-	public static ComplexMatrix RightDivide(ComplexMatrix a, ComplexMatrix b) =>
-		b.IsScalar ? a.ElementDivide(b) : LinearSolver.Solve(b.Transpose(), a.Transpose()).Transpose();
+	public static ComplexMatrix RightDivide(ComplexMatrix a, ComplexMatrix b, CancellationToken cancellationToken = default) =>
+		b.IsScalar ? a.ElementDivide(b) : LinearSolver.Solve(b.Transpose(), a.Transpose(), cancellationToken).Transpose();
 
-	public Complex Determinant() => LinearSolver.Determinant(this);
+	public Complex Determinant(CancellationToken cancellationToken = default) => LinearSolver.Determinant(this, cancellationToken);
 
-	public ComplexMatrix Inverse() => LinearSolver.Solve(this, Identity(Rows));
+	public ComplexMatrix Inverse(CancellationToken cancellationToken = default) => LinearSolver.Solve(this, Identity(Rows), cancellationToken);
 
 	static MathException DimensionMismatch(ComplexMatrix a, ComplexMatrix b) =>
 		new(MathError.Dimension, $"Matrix dimensions do not agree: {a.Rows}×{a.Columns} and {b.Rows}×{b.Columns}.");

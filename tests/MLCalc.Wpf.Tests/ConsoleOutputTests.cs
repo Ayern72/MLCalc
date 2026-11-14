@@ -36,6 +36,37 @@ public class ConsoleOutputBufferTests
 	}
 
 	[Fact]
+	public void KeepsAtMostMaxCharactersAndCountsTheRest()
+	{
+		// A 100×100 matrix prints as about 140,000 characters, so a line limit alone is not enough.
+		var buffer = new ConsoleOutputBuffer(capacity: 100, maxCharacters: 3500);
+		for (int k = 0; k < 10; k++)
+			buffer.Add(new ConsoleEntry(ConsoleEntryKind.Text, new string('m', 1000)));
+		var (_, entries, dropped) = buffer.Drain();
+		Assert.Equal(3, entries.Count);
+		Assert.Equal(7, dropped);
+	}
+
+	[Fact]
+	public void DrainingAndClearingReleaseTheirCharacters()
+	{
+		var buffer = new ConsoleOutputBuffer(capacity: 100, maxCharacters: 2500);
+		var line = new ConsoleEntry(ConsoleEntryKind.Text, new string('m', 1000));
+		buffer.Add(line);
+		buffer.Add(line);
+		buffer.Drain();
+		buffer.Add(line);
+		buffer.Add(line);
+		buffer.Clear();
+		buffer.Add(line);
+		buffer.Add(line);
+		var (cleared, entries, dropped) = buffer.Drain();
+		Assert.True(cleared);
+		Assert.Equal(2, entries.Count);
+		Assert.Equal(0, dropped);
+	}
+
+	[Fact]
 	public void ClearDiscardsWhatIsQueuedBeforeIt()
 	{
 		var buffer = new ConsoleOutputBuffer(capacity: 10);
@@ -135,5 +166,48 @@ public class ConsoleEntriesTests
 		for (int k = 0; k < 8; k++)
 			entries.AddRange(Lines(k, 1));
 		Assert.Equal(["3", "4", "5", "6", "7"], entries.Select(e => e.Text));
+	}
+
+	static ConsoleEntry Long(char c, int length) => new(ConsoleEntryKind.Text, new string(c, length));
+
+	[Fact]
+	public void LongLinesAreTrimmedByCharacters()
+	{
+		// Each line is a printed matrix of 1000 characters; the limit allows 3 of them.
+		var entries = new ConsoleEntries(maxCount: 1000, maxCharacters: 3500);
+		foreach (var c in "abcde")
+			entries.AddRange([Long(c, 1000)]);
+		Assert.Equal("cde", string.Concat(entries.Select(e => e.Text[0])));
+		Assert.Equal(3000, entries.Characters);
+	}
+
+	[Fact]
+	public void ALargeBatchKeepsOnlyTheNewestLinesThatFit()
+	{
+		var entries = new ConsoleEntries(maxCount: 1000, maxCharacters: 3500);
+		entries.AddRange([.. "abcdefghij".Select(c => Long(c, 1000))]);
+		Assert.Equal("hij", string.Concat(entries.Select(e => e.Text[0])));
+		Assert.Equal(3000, entries.Characters);
+	}
+
+	[Fact]
+	public void ALineLongerThanTheLimitIsStillShownAlone()
+	{
+		var entries = new ConsoleEntries(maxCount: 1000, maxCharacters: 500);
+		entries.AddRange(Lines(0, 3));
+		entries.AddRange([Long('x', 2000)]);
+		Assert.Equal('x', Assert.Single(entries).Text[0]);
+		Assert.Equal(2000, entries.Characters);
+	}
+
+	[Fact]
+	public void ClearingResetsTheCharacterCount()
+	{
+		var entries = new ConsoleEntries(maxCount: 1000, maxCharacters: 3500);
+		entries.AddRange([Long('a', 1000)]);
+		entries.Clear();
+		Assert.Equal(0, entries.Characters);
+		entries.AddRange([Long('b', 1000), Long('c', 1000), Long('d', 1000)]);
+		Assert.Equal(3000, entries.Characters);
 	}
 }

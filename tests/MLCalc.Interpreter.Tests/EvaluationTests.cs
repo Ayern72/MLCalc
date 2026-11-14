@@ -285,6 +285,28 @@ public class ControlFlowTests
 		Assert.True(result.Cancelled);
 		Assert.False(result.Success);
 	}
+
+	/// <summary>
+	/// A single statement on large matrices used to run to the end however long it took. Each of
+	/// these takes 10 s or more without cancellation, so stopping within 3 s of a 100 ms cancellation
+	/// shows that the operator or function received the program's token.
+	/// </summary>
+	[Theory]
+	[InlineData("A = rand(1500); B = A * A")]
+	[InlineData("A = rand(1500); B = A \\ A")]
+	[InlineData("A = rand(1500); B = A / A")]
+	[InlineData("A = rand(600); B = A ^ 1000000")]
+	[InlineData("x = det(rand(2500))")]
+	[InlineData("B = inv(rand(1500))")]
+	[InlineData("A = rand(1500); B = gauss(A, A)")]
+	public void CancellationStopsLongMatrixOperations(string program)
+	{
+		using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+		var watch = System.Diagnostics.Stopwatch.StartNew();
+		var result = host.Interpreter.Execute(program, cts.Token);
+		Assert.True(result.Cancelled);
+		Assert.InRange(watch.ElapsedMilliseconds, 0, 3000);
+	}
 }
 
 public class FunctionTests

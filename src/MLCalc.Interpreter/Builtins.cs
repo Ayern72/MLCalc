@@ -150,12 +150,12 @@ internal sealed class Builtins
 		Add(call =>
 		{
 			call.RequireCount(1);
-			return call.Matrix(0).Determinant();
+			return call.Matrix(0).Determinant(call.Cancellation);
 		}, "det");
 		Add(call =>
 		{
 			call.RequireCount(1);
-			return call.Matrix(0).Inverse();
+			return call.Matrix(0).Inverse(call.Cancellation);
 		}, "inv");
 		Add(call =>
 		{
@@ -165,12 +165,12 @@ internal sealed class Builtins
 		Add(call =>
 		{
 			call.RequireCount(2);
-			return LinearSolver.Solve(call.Matrix(0), call.Matrix(1));
+			return LinearSolver.Solve(call.Matrix(0), call.Matrix(1), call.Cancellation);
 		}, "gauss");
 		Add(call =>
 		{
 			call.RequireCount(3);
-			return Polynomial.Fit(call.Matrix(0), call.Matrix(1), call.Integer(2, min: 0));
+			return Polynomial.Fit(call.Matrix(0), call.Matrix(1), call.Integer(2, min: 0), call.Cancellation);
 		}, "polyfit");
 		Add(call =>
 		{

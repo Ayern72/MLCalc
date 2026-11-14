@@ -56,12 +56,15 @@ internal sealed class CliApp : IConsoleOutput
 	public static string Version =>
 		typeof(CliApp).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "?";
 
-	/// <summary>Stops the running program (Ctrl+C). Returns false when nothing is running.</summary>
+	/// <summary>
+	/// Stops the running program (Ctrl+C). Returns false when nothing is running, or when a stop was
+	/// already requested and the program has not stopped yet, so that a second Ctrl+C can end the process.
+	/// </summary>
 	public bool CancelRunning()
 	{
 		lock (gate)
 		{
-			if (running is null)
+			if (running is null || running.IsCancellationRequested)
 				return false;
 			running.Cancel();
 			return true;

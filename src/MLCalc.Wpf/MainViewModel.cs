@@ -32,11 +32,18 @@ public sealed partial class MainViewModel : ObservableObject, IConsoleOutput
 	/// <summary>Output lines that may wait for the console; more are dropped and counted.</summary>
 	const int MaxPendingOutput = 20_000;
 
+	/// <summary>
+	/// Characters the console keeps, and characters that may wait for it (16 million each, about
+	/// 32 MB). One line can be a 100×100 matrix of 140,000 characters, so a limit on lines alone
+	/// would let a loop that prints matrices hold gigabytes.
+	/// </summary>
+	const long MaxCharacters = 16_000_000;
+
 	readonly Dispatcher dispatcher;
 	readonly MLCalcInterpreter interpreter;
 	readonly List<string> history = [];
 	readonly List<string> pendingLines = [];
-	readonly ConsoleOutputBuffer output = new(MaxPendingOutput);
+	readonly ConsoleOutputBuffer output = new(MaxPendingOutput, MaxCharacters);
 	int historyIndex;
 	CancellationTokenSource? cancellation;
 
@@ -59,7 +66,7 @@ public sealed partial class MainViewModel : ObservableObject, IConsoleOutput
 
 	public Figure Figure { get; } = new();
 
-	public ConsoleEntries Entries { get; } = new(MaxEntries);
+	public ConsoleEntries Entries { get; } = new(MaxEntries, MaxCharacters);
 
 	public string WorkingDirectory => interpreter.WorkingDirectory;
 

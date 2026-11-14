@@ -23,6 +23,7 @@ internal sealed class CallContext(MLCalcInterpreter interpreter, string name, IR
 
 	public Figure Figure => Interpreter.Figure;
 	public IConsoleOutput Output => Interpreter.Output;
+	public CancellationToken Cancellation => Interpreter.Cancellation;
 
 	public RuntimeError Error(string message, int? argument = null) =>
 		new($"{Name}: {message}", argument is { } i && i < Count ? Arguments[i].Span : Span);

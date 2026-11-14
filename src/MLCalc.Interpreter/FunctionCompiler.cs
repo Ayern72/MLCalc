@@ -50,7 +50,7 @@ internal sealed class FunctionCompiler(MLCalcInterpreter interpreter, Builtins b
 				{
 					var a = left(x);
 					var b = right(x);
-					return Operators.Binary(op, a, b, span);
+					return Operators.Binary(op, a, b, span, interpreter.Cancellation);
 				};
 			}
 			case PostfixExpression postfix:

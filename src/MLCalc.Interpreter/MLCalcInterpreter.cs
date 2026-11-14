@@ -20,6 +20,9 @@ public sealed partial class MLCalcInterpreter
 	CancellationToken cancellation;
 	int scriptDepth;
 
+	/// <summary>The token of the running program, for operations that can run for a long time.</summary>
+	internal CancellationToken Cancellation => cancellation;
+
 	public MLCalcInterpreter(Figure figure, IConsoleOutput output, int? randomSeed = null)
 	{
 		Figure = figure;

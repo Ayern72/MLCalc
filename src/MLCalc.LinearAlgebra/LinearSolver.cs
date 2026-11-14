@@ -3,14 +3,17 @@ using MLCalc.Math;
 
 namespace MLCalc.LinearAlgebra;
 
-/// <summary>Gaussian elimination with partial pivoting (the original <c>Gauss</c>, extended to complex values).</summary>
+/// <summary>
+/// Gaussian elimination with partial pivoting (the original <c>Gauss</c>, extended to complex values).
+/// The work grows as n³, so the methods check their cancellation token once per row.
+/// </summary>
 public static class LinearSolver
 {
 	/// <summary>Relative pivot size below which a matrix is treated as singular.</summary>
 	const double SingularityTolerance = 1e-13;
 
 	/// <summary>Solves A·X = B, where A is square and B has as many rows as A.</summary>
-	public static ComplexMatrix Solve(ComplexMatrix a, ComplexMatrix b)
+	public static ComplexMatrix Solve(ComplexMatrix a, ComplexMatrix b, CancellationToken cancellationToken = default)
 	{
 		if (!a.IsSquare)
 			throw new MathException(MathError.Dimension, $"The coefficient matrix must be square, got {a.Rows}×{a.Columns}.");
@@ -32,6 +35,7 @@ public static class LinearSolver
 
 			for (int row = col + 1; row < n; row++)
 			{
+				cancellationToken.ThrowIfCancellationRequested();
 				var factor = lu[row, col] / lu[col, col];
 				if (factor == Complex.Zero)
 					continue;
@@ -45,6 +49,7 @@ public static class LinearSolver
 		for (int row = n - 1; row >= 0; row--)
 			for (int k = 0; k < m; k++)
 			{
+				cancellationToken.ThrowIfCancellationRequested();
 				var sum = x[row, k];
 				for (int j = row + 1; j < n; j++)
 					sum -= lu[row, j] * x[j, k];
@@ -54,7 +59,7 @@ public static class LinearSolver
 		return ComplexMatrix.FromRows(x);
 	}
 
-	public static Complex Determinant(ComplexMatrix a)
+	public static Complex Determinant(ComplexMatrix a, CancellationToken cancellationToken = default)
 	{
 		if (!a.IsSquare)
 			throw new MathException(MathError.Dimension, $"The determinant needs a square matrix, got {a.Rows}×{a.Columns}.");
@@ -74,6 +79,7 @@ public static class LinearSolver
 			det *= lu[col, col];
 			for (int row = col + 1; row < n; row++)
 			{
+				cancellationToken.ThrowIfCancellationRequested();
 				var factor = lu[row, col] / lu[col, col];
 				for (int k = col; k < n; k++)
 					lu[row, k] -= factor * lu[col, k];

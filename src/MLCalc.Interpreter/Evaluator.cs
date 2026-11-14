@@ -115,7 +115,7 @@ public sealed partial class MLCalcInterpreter
 			{
 				var left = Evaluate(b.Left);
 				var right = Evaluate(b.Right);
-				return Operators.Binary(b.Operator, left, right, b.Span);
+				return Operators.Binary(b.Operator, left, right, b.Span, cancellation);
 			}
 			case PostfixExpression p:
 				return Operators.Postfix(p.Operator, Evaluate(p.Operand), p.Span);
@@ -243,12 +243,16 @@ internal static class Operators
 		_ => operand,
 	};
 
-	/// <summary>A binary operation; math errors are reported at <paramref name="span"/>.</summary>
-	public static ComplexMatrix Binary(BinaryOperator op, ComplexMatrix a, ComplexMatrix b, SourceSpan span)
+	/// <summary>
+	/// A binary operation; math errors are reported at <paramref name="span"/>. Matrix products,
+	/// powers and divisions can run for minutes, so they stop when <paramref name="cancellationToken"/>
+	/// is cancelled.
+	/// </summary>
+	public static ComplexMatrix Binary(BinaryOperator op, ComplexMatrix a, ComplexMatrix b, SourceSpan span, CancellationToken cancellationToken)
 	{
 		try
 		{
-			return Binary(op, a, b);
+			return Binary(op, a, b, cancellationToken);
 		}
 		catch (Exception ex) when (MLCalcInterpreter.ToRuntimeError(ex, span) is { } error)
 		{
@@ -276,14 +280,14 @@ internal static class Operators
 		}
 	}
 
-	public static ComplexMatrix Binary(BinaryOperator op, ComplexMatrix a, ComplexMatrix b) => op switch
+	public static ComplexMatrix Binary(BinaryOperator op, ComplexMatrix a, ComplexMatrix b, CancellationToken cancellationToken) => op switch
 	{
 		BinaryOperator.Add => a + b,
 		BinaryOperator.Subtract => a - b,
-		BinaryOperator.Multiply => a * b,
-		BinaryOperator.Divide => ComplexMatrix.RightDivide(a, b),
-		BinaryOperator.LeftDivide => ComplexMatrix.LeftDivide(a, b),
-		BinaryOperator.Power => ComplexMatrix.Power(a, b),
+		BinaryOperator.Multiply => ComplexMatrix.Multiply(a, b, cancellationToken),
+		BinaryOperator.Divide => ComplexMatrix.RightDivide(a, b, cancellationToken),
+		BinaryOperator.LeftDivide => ComplexMatrix.LeftDivide(a, b, cancellationToken),
+		BinaryOperator.Power => ComplexMatrix.Power(a, b, cancellationToken),
 		BinaryOperator.ElementMultiply => a.ElementMultiply(b),
 		BinaryOperator.ElementDivide => a.ElementDivide(b),
 		BinaryOperator.ElementLeftDivide => b.ElementDivide(a),

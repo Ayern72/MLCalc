@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Numerics;
 using MLCalc.Math;
 
@@ -36,8 +37,11 @@ public static class Polynomial
 	/// first centred and scaled to u = (x − m)/s, which lies in [−1, 1]; the least-squares problem in
 	/// u is solved with a QR factorisation (modified Gram–Schmidt); and the result is converted back
 	/// to coefficients of powers of x.
+	///
+	/// The Vandermonde matrix has (degree + 1)·n elements, so it is held to the same element limit as
+	/// any other matrix, and the fit checks <paramref name="cancellationToken"/> as it goes.
 	/// </remarks>
-	public static ComplexMatrix Fit(ComplexMatrix x, ComplexMatrix y, int degree)
+	public static ComplexMatrix Fit(ComplexMatrix x, ComplexMatrix y, int degree, CancellationToken cancellationToken = default)
 	{
 		RequireVector(x, "x");
 		RequireVector(y, "y");
@@ -49,6 +53,9 @@ public static class Polynomial
 			throw new MathException(MathError.Domain, $"A degree {degree} fit needs more than {degree} points, got {x.Count}.");
 
 		int n = x.Count, terms = degree + 1;
+		if ((long)n * terms > ComplexMatrix.MaxElements)
+			throw new MathException(MathError.TooLarge, string.Create(CultureInfo.InvariantCulture,
+				$"A degree {degree} fit to {n} points needs {(long)n * terms} intermediate values; the limit is {ComplexMatrix.MaxElements}."));
 		var xs = x.AsSpan().ToArray();
 
 		// Centre and scale: u = (x − m)/s with |u| ≤ 1.
@@ -64,12 +71,13 @@ public static class Polynomial
 		var columns = new Complex[terms][];
 		for (int j = 0; j < terms; j++)
 		{
+			cancellationToken.ThrowIfCancellationRequested();
 			columns[j] = new Complex[n];
 			for (int i = 0; i < n; i++)
 				columns[j][i] = j == 0 ? Complex.One : columns[j - 1][i] * ((xs[i] - m) / s);
 		}
 		var rhs = y.AsSpan().ToArray();
-		var q = SolveLeastSquares(columns, rhs, degree);
+		var q = SolveLeastSquares(columns, rhs, degree, cancellationToken);
 
 		// Back to powers of x: p(x) = Σ q_k·((x − m)/s)^k, expanded with Horner's scheme.
 		var p = new Complex[terms];
@@ -88,7 +96,7 @@ public static class Polynomial
 	/// Least-squares solution of V·c ≈ rhs by modified Gram–Schmidt QR on the columns of V (which are
 	/// overwritten), applied to the right-hand side at the same time, then back substitution.
 	/// </summary>
-	static Complex[] SolveLeastSquares(Complex[][] columns, Complex[] rhs, int degree)
+	static Complex[] SolveLeastSquares(Complex[][] columns, Complex[] rhs, int degree, CancellationToken cancellationToken)
 	{
 		int terms = columns.Length, n = rhs.Length;
 		var r = new Complex[terms, terms];
@@ -106,6 +114,7 @@ public static class Polynomial
 				columns[j][i] /= norm;
 			for (int k = j + 1; k < terms; k++)
 			{
+				cancellationToken.ThrowIfCancellationRequested();
 				r[j, k] = Dot(columns[j], columns[k]);
 				for (int i = 0; i < n; i++)
 					columns[k][i] -= r[j, k] * columns[j][i];
