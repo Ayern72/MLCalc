@@ -2,11 +2,12 @@ using System.Collections.Immutable;
 
 namespace MLCalc.Plotting;
 
-/// <summary>Whether the axes show real data (x, y) or the complex plane (Re, Im).</summary>
+/// <summary>Whether the axes show real data (x, y), the complex plane (Re, Im) or 3D data (x, y, z).</summary>
 public enum AxesKind
 {
 	Cartesian,
 	Complex,
+	Space,
 }
 
 /// <summary>
@@ -28,6 +29,19 @@ public sealed record Axes(
 	int PointCount = 0)
 {
 	public static Axes Default { get; } = new(AxesKind.Cartesian, -10, 10, -10, 10, "", "", "", false, 1, []);
+
+	/// <summary>The z range; used by 3D windows.</summary>
+	public double ZMin { get; init; } = -10;
+
+	/// <summary>The z range; used by 3D windows.</summary>
+	public double ZMax { get; init; } = 10;
+
+	public string ZTitle { get; init; } = "";
+
+	/// <summary>The camera of a 3D window. Kept when the window is cleared or changes kind.</summary>
+	public Camera Camera { get; init; } = Camera.Default;
+
+	public Projection Projection { get; init; } = Projection.Perspective;
 }
 
 /// <summary>An immutable picture of the whole figure, for rendering.</summary>
@@ -130,6 +144,59 @@ public sealed class Figure
 		ModifyCurrent(a => Clear(a) with { YMin = min, YMax = max });
 	}
 
+	/// <summary>Sets the z range (used by 3D windows) and clears the current axes (<c>zrange</c>).</summary>
+	public void SetZRange(double min, double max)
+	{
+		RequireRange(min, max);
+		ModifyCurrent(a => Clear(a) with { ZMin = min, ZMax = max });
+	}
+
+	/// <summary>
+	/// Points the camera from azimuth <paramref name="azimuth"/> and elevation <paramref name="elevation"/>
+	/// (degrees) at its target (<c>view(az, el)</c>). The camera is then placed relative to the box; a
+	/// camera set with <see cref="SetCameraPosition"/> keeps its distance to the target.
+	/// </summary>
+	public void SetView(double azimuth, double elevation)
+	{
+		if (!double.IsFinite(azimuth) || !(elevation >= -90 && elevation <= 90))
+			throw new ArgumentException("The azimuth must be a number and the elevation between -90 and 90 degrees.");
+		ModifyCurrent(a =>
+		{
+			double? distance = a.Camera.Position is null ? a.Camera.Distance : Projection3D.CameraDistance(a);
+			return a with { Camera = a.Camera with { Azimuth = azimuth, Elevation = elevation, Distance = distance, Position = null } };
+		});
+	}
+
+	/// <summary>Restores the default camera (<c>view(3)</c>).</summary>
+	public void ResetView() => ModifyCurrent(a => a with { Camera = Camera.Default });
+
+	/// <summary>Puts the camera at a fixed point, in data coordinates, outside the box (<c>camposition</c>).</summary>
+	public void SetCameraPosition(Point3 position)
+	{
+		if (!position.IsFinite)
+			throw new ArgumentException("The camera position must be finite numbers.");
+		ModifyCurrent(a =>
+		{
+			var cube = Projection3D.ToCube(a, position);
+			if (System.Math.Abs(cube.X) <= 1 && System.Math.Abs(cube.Y) <= 1 && System.Math.Abs(cube.Z) <= 1)
+				throw new ArgumentException("The camera must be outside the box set by xrange, yrange and zrange.");
+			return a with { Camera = a.Camera with { Position = position } };
+		});
+	}
+
+	/// <summary>Sets the point the camera looks at, in data coordinates (<c>camtarget</c>).</summary>
+	public void SetCameraTarget(Point3 target)
+	{
+		if (!target.IsFinite)
+			throw new ArgumentException("The camera target must be finite numbers.");
+		ModifyCurrent(a =>
+		{
+			if (a.Camera.Position == target)
+				throw new ArgumentException("The camera target must not be where the camera is.");
+			return a with { Camera = a.Camera with { Target = target } };
+		});
+	}
+
 	/// <summary>Removes all items from the current axes and resets its pen (<c>clear</c>).</summary>
 	public void ClearCurrent() => ModifyCurrent(Clear);
 
@@ -145,6 +212,7 @@ public sealed class Figure
 	public void SetTitle(string title) => ModifyCurrent(a => a with { Title = title });
 	public void SetXTitle(string title) => ModifyCurrent(a => a with { XTitle = title });
 	public void SetYTitle(string title) => ModifyCurrent(a => a with { YTitle = title });
+	public void SetZTitle(string title) => ModifyCurrent(a => a with { ZTitle = title });
 	public void ShowGrid(bool show = true) => ModifyCurrent(a => a with { ShowGrid = show });
 
 	/// <summary>Adds a series of points in the current pen, then advances the pen (<c>plot</c>).</summary>
@@ -174,9 +242,53 @@ public sealed class Figure
 		AddWithNextPen(AxesKind.Cartesian, pen => new FunctionSeries(pen, label, samples));
 	}
 
+	/// <summary>Adds a series of 3D points in the current pen, then advances the pen (<c>plot3d</c>).</summary>
+	public void AddSeries3D(IEnumerable<Point3> points, PlotStyle style) =>
+		AddWithNextPen(AxesKind.Space, pen => new PointSeries3D(pen, style, [.. points]));
+
+	/// <summary>
+	/// Samples z = <paramref name="function"/>(x, y) on an <paramref name="samples"/>×<paramref name="samples"/>
+	/// grid across the current x and y ranges and adds the surface (<c>fplot3d</c>). The function
+	/// should return NaN where it is undefined; such points become holes.
+	/// </summary>
+	public void AddSurface(string label, Func<double, double, double> function, int samples)
+	{
+		ArgumentOutOfRangeException.ThrowIfLessThan(samples, 2);
+		var current = Current;
+		// Checked before sampling, which can take a while.
+		RequireRoom(current.Kind == AxesKind.Space ? current : Clear(current), samples * samples);
+		var points = ImmutableArray.CreateBuilder<Point3>(samples * samples);
+		double xStep = (current.XMax - current.XMin) / (samples - 1), yStep = (current.YMax - current.YMin) / (samples - 1);
+		for (int j = 0; j < samples; j++)
+		{
+			double y = j == samples - 1 ? current.YMax : current.YMin + j * yStep;
+			for (int i = 0; i < samples; i++)
+			{
+				double x = i == samples - 1 ? current.XMax : current.XMin + i * xStep;
+				points.Add(new Point3(x, y, function(x, y)));
+			}
+		}
+		var grid = points.MoveToImmutable();
+		AddWithNextPen(AxesKind.Space, pen => new Surface(pen, label, samples, samples, grid));
+	}
+
+	/// <summary>Adds a single 3D dot in the current pen without advancing it (<c>dot3d</c>).</summary>
+	public void AddDot3D(double x, double y, double z) => ModifyCurrent(a =>
+	{
+		var target = a.Kind == AxesKind.Space ? a : Clear(a) with { Kind = AxesKind.Space };
+		RequireRoom(target, 1);
+		var point = new Point3(x, y, z);
+		if (!target.Items.IsEmpty && target.Items[^1] is DotCloud3D cloud && cloud.Pen == target.Pen)
+			return target with { Items = target.Items.SetItem(target.Items.Length - 1, cloud with { Points = cloud.Points.Add(point) }), PointCount = target.PointCount + 1 };
+		return target with { Items = target.Items.Add(new DotCloud3D(target.Pen, [point])), PointCount = target.PointCount + 1 };
+	});
+
 	/// <summary>Adds a single dot in the current pen without advancing it (<c>dot</c>).</summary>
 	public void AddDot(double x, double y) => ModifyCurrent(a =>
 	{
+		// A 3D window becomes a 2D one; real and complex windows both take dots.
+		if (a.Kind == AxesKind.Space)
+			a = Clear(a) with { Kind = AxesKind.Cartesian };
 		RequireRoom(a, 1);
 		var point = new PlotPoint(x, y);
 		if (!a.Items.IsEmpty && a.Items[^1] is DotCloud cloud && cloud.Pen == a.Pen)
@@ -186,7 +298,8 @@ public sealed class Figure
 
 	void AddWithNextPen(AxesKind kind, Func<int, PlotItem> create) => ModifyCurrent(a =>
 	{
-		// Switching between real and complex axes clears the window, as in the original.
+		// Switching between real and complex axes clears the window, as in the original; so does
+		// switching between 2D and 3D.
 		var target = a.Kind == kind ? a : Clear(a) with { Kind = kind };
 		var item = create(target.Pen);
 		int points = item switch
@@ -194,6 +307,9 @@ public sealed class Figure
 			PointSeries series => series.Points.Length,
 			FunctionSeries function => function.Points.Length,
 			DotCloud cloud => cloud.Points.Count,
+			PointSeries3D series => series.Points.Length,
+			DotCloud3D cloud => cloud.Points.Count,
+			Surface surface => surface.Points.Length,
 			_ => 0,
 		};
 		RequireRoom(target, points);

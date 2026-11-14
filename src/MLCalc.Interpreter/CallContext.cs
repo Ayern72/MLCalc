@@ -116,4 +116,42 @@ internal sealed class CallContext(MLCalcInterpreter interpreter, string name, IR
 			return value.ScalarValue.Real;
 		};
 	}
+
+	/// <summary>
+	/// A real function of two variables given as three strings, e.g. <c>"x", "y", "sin(x*y)"</c>. The
+	/// result must be a scalar; its real part is used.
+	/// </summary>
+	public Func<double, double, double> RealFunction2(int xIndex, int yIndex, int expressionIndex)
+	{
+		string x = String(xIndex), y = String(yIndex);
+		if (string.Equals(x, y, StringComparison.OrdinalIgnoreCase))
+			throw Error($"the two variables must have different names, not both '{x}'.", yIndex);
+		var function = Interpreter.CompileFunction([x, y], String(expressionIndex), Arguments[expressionIndex].Span);
+		var span = Arguments[expressionIndex].Span;
+		return (a, b) =>
+		{
+			var value = function([a, b]);
+			if (!value.IsScalar)
+				throw new RuntimeError($"{Name}: the function must return a scalar, got a {value.Rows}×{value.Columns} matrix.", span);
+			return value.ScalarValue.Real;
+		};
+	}
+
+	/// <summary>
+	/// A 3D point given as three real numbers starting at <paramref name="index"/>, or as one real
+	/// vector of three elements, e.g. <c>camposition(20, -30, 10)</c> or <c>camposition([20 -30 10])</c>.
+	/// </summary>
+	public Point3 Point(int index)
+	{
+		if (Count == index + 3)
+			return new Point3(Real(index), Real(index + 1), Real(index + 2));
+		var value = Matrix(index);
+		if (Count != index + 1 || !value.IsVector || value.Count != 3)
+			throw Error("expected a point: x, y and z, or a vector [x y z].");
+		var span = value.AsSpan();
+		for (int k = 0; k < 3; k++)
+			if (!ComplexMath.IsReal(span[k]))
+				throw Error("the point must be real.", index);
+		return new Point3(span[0].Real, span[1].Real, span[2].Real);
+	}
 }

@@ -378,7 +378,8 @@ internal sealed class Builtins
 			var function = PlotFunction(call.RealFunction(0, 1));
 			call.Figure.AddFunction(call.String(1), function);
 			return null;
-		}, "fplot", "tplot");
+		}, "fplot");
+		RegisterPlot3DCommands();
 		Add(call =>
 		{
 			call.RequireCount(1);
@@ -432,6 +433,123 @@ internal sealed class Builtins
 			call.Output.WriteLine($"Saved {fullPath}");
 			return null;
 		}, "savefig");
+	}
+
+	/// <summary>The default and largest number of grid lines each way in <c>fplot3d</c>.</summary>
+	const int DefaultSurfaceSamples = 40, MaxSurfaceSamples = 200;
+
+	void RegisterPlot3DCommands()
+	{
+		Add(call =>
+		{
+			call.RequireCount(2);
+			call.Figure.SetZRange(call.Real(0), call.Real(1));
+			return null;
+		}, "zrange");
+		Add(call => SetText(call, call.Figure.SetZTitle), "ztitle", "zlabel");
+		Add(call =>
+		{
+			call.RequireCount(3);
+			call.Figure.AddDot3D(call.Real(0), call.Real(1), call.Real(2));
+			return null;
+		}, "dot3d");
+		Add(Plot3D, "plot3d");
+		Add(call =>
+		{
+			call.RequireCount(3, 4);
+			int samples = DefaultSurfaceSamples;
+			if (call.Count == 4)
+			{
+				samples = call.Integer(3, min: 1);
+				if (samples is < 2 or > MaxSurfaceSamples)
+					throw call.Error($"the number of grid lines must be between 2 and {MaxSurfaceSamples}.", 3);
+			}
+			var function = call.RealFunction2(0, 1, 2);
+			call.Figure.AddSurface(call.String(2), (x, y) =>
+			{
+				try
+				{
+					return function(x, y);
+				}
+				catch (RuntimeError error) when (IsUndefinedHere(error))
+				{
+					return double.NaN;
+				}
+			}, samples);
+			return null;
+		}, "fplot3d");
+		Add(call =>
+		{
+			call.RequireCount(0, 2);
+			if (call.Count == 2)
+				call.Figure.SetView(call.Real(0), call.Real(1));
+			else if (call.Count == 0 || call.Real(0) == 3)
+				call.Figure.ResetView();
+			else if (call.Real(0) == 2)
+				call.Figure.SetView(0, 90);
+			else
+				throw call.Error("use view(az, el), view(2) (from above) or view(3) (the default).", 0);
+			return null;
+		}, "view");
+		Add(call =>
+		{
+			call.RequireCount(1, 3);
+			call.Figure.SetCameraPosition(call.Point(0));
+			return null;
+		}, "camposition");
+		Add(call =>
+		{
+			call.RequireCount(1, 3);
+			call.Figure.SetCameraTarget(call.Point(0));
+			return null;
+		}, "camtarget");
+	}
+
+	/// <summary>
+	/// plot3d(x, y, z [, style]) with vectors of the same length, or matrices of the same size whose
+	/// rows are drawn as separate curves; or plot3d(P [, style]) with one point per row of an n×3
+	/// matrix (or per column of a 3×n one).
+	/// </summary>
+	static ComplexMatrix? Plot3D(CallContext call)
+	{
+		call.RequireCount(1, 4);
+		var curves = new List<Point3[]>();
+		PlotStyle style;
+		if (call.Count <= 2)
+		{
+			var p = call.Matrix(0);
+			style = call.Style(1);
+			if (p.Columns == 3)
+				curves.Add([.. Enumerable.Range(0, p.Rows).Select(r => new Point3(p[r, 0].Real, p[r, 1].Real, p[r, 2].Real))]);
+			else if (p.Rows == 3)
+				curves.Add([.. Enumerable.Range(0, p.Columns).Select(c => new Point3(p[0, c].Real, p[1, c].Real, p[2, c].Real))]);
+			else
+				throw call.Error($"the points must be an n×3 matrix (one point per row), not {p.Rows}×{p.Columns}.", 0);
+		}
+		else
+		{
+			var x = call.Matrix(0);
+			var y = call.Matrix(1);
+			var z = call.Matrix(2);
+			style = call.Style(3);
+			if (x.IsVector && y.IsVector && z.IsVector)
+			{
+				if (y.Count != x.Count || z.Count != x.Count)
+					throw call.Error($"x, y and z must have the same number of elements; they have {x.Count}, {y.Count} and {z.Count}.");
+				var (xs, ys, zs) = (x.AsSpan().ToArray(), y.AsSpan().ToArray(), z.AsSpan().ToArray());
+				curves.Add([.. Enumerable.Range(0, xs.Length).Select(k => new Point3(xs[k].Real, ys[k].Real, zs[k].Real))]);
+			}
+			else
+			{
+				if (y.Rows != x.Rows || y.Columns != x.Columns || z.Rows != x.Rows || z.Columns != x.Columns)
+					throw call.Error($"x, y and z must be vectors of the same length or matrices of the same size; they are {x.Rows}×{x.Columns}, {y.Rows}×{y.Columns} and {z.Rows}×{z.Columns}.");
+				for (int r = 0; r < x.Rows; r++)
+					curves.Add([.. Enumerable.Range(0, x.Columns).Select(c => new Point3(x[r, c].Real, y[r, c].Real, z[r, c].Real))]);
+			}
+		}
+		foreach (var curve in curves)
+			call.Figure.AddSeries3D(curve, style);
+		return null;
 	}
 
 	static ComplexMatrix? SetText(CallContext call, Action<string> set)

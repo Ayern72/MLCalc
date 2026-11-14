@@ -42,6 +42,7 @@ xrange(-6.3, 6.3); yrange(-6, 6); grid
 fplot("x", "x*sin(x)")      % functions are given as strings
 plot(t, sin(t), +)          % styles: - (line), + (crosses), * (stars)
 p = polyfit(t, cos(t), 4); polyplot(p)
+fplot3d("x", "y", "sin(x)*cos(y)")   % 3D: plot3d, dot3d, zrange, view, camposition, camtarget
 solve("x", "x^2 - 2", 1)    % also integral, derivata, isect, extreme, feval
 ```
 

@@ -23,7 +23,7 @@ internal sealed record FoldedConstant(SourceSpan Span, ComplexMatrix Value) : Ex
 /// <para>This is the parse-tree reduction (<c>Reduce_Tree</c>) planned in the original MLCalc.
 /// Operands are not reordered, so results are identical to evaluating the original tree.</para>
 /// </remarks>
-internal sealed class ConstantFolder(MLCalcInterpreter interpreter, Builtins builtins, string variable)
+internal sealed class ConstantFolder(MLCalcInterpreter interpreter, Builtins builtins, IReadOnlyList<string> variables)
 {
 	/// <summary>Returns the expression with every constant branch replaced by its value.</summary>
 	public Expression Fold(Expression expression) => Visit(expression).Expression;
@@ -120,7 +120,7 @@ internal sealed class ConstantFolder(MLCalcInterpreter interpreter, Builtins bui
 		return Rebuild(apply with { Arguments = folded }, invariant);
 	}
 
-	bool IsVariable(string name) => string.Equals(name, variable, StringComparison.OrdinalIgnoreCase);
+	bool IsVariable(string name) => variables.Any(v => string.Equals(name, v, StringComparison.OrdinalIgnoreCase));
 
 	/// <summary>Evaluates a rebuilt node whose children are all constant; otherwise keeps it.</summary>
 	Result Rebuild(Expression rebuilt, bool childrenConstant) =>

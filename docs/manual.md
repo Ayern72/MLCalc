@@ -840,7 +840,8 @@ solve("x", "x^2 - 2", 1)
 | `solve(var, expr, x0)` | a root (where the function is 0) near `x0` |
 | `isect(var, f, g, x0)` | where the functions `f` and `g` are equal, near `x0` |
 | `extreme(var, expr, x0)` | a local maximum or minimum near `x0` (where the derivative is 0) |
-| `fplot(var, expr)`, `tplot(…)` | draws the function (see [Plotting](#8-plotting)) |
+| `fplot(var, expr)` | draws the function (see [Plotting](#8-plotting)) |
+| `fplot3d(xvar, yvar, expr)` | draws a function of two variables as a surface (see [3D plots](#86-3d-plots)) |
 
 ```
 >> feval("t", "t^2", [0 1 2])
@@ -929,9 +930,9 @@ Each window has a current **pen**, numbered 1 to 15, each with its own colour. H
 around (pen 16 is pen 1).
 
 - `pen(n)` sets the pen of the current window.
-- `plot`, `cplot`, `fplot`, `tplot` and `polyplot` draw with the current pen and then move to the
-  next one, so consecutive curves get different colours.
-- `dot` draws with the current pen without changing it.
+- `plot`, `cplot`, `fplot`, `polyplot`, `plot3d` and `fplot3d` draw with the current pen and then
+  move to the next one, so consecutive curves get different colours.
+- `dot` and `dot3d` draw with the current pen without changing it.
 - `clear`, `xrange` and `yrange` reset the pen to 1; call `pen` after them.
 
 | Pen | Colour | Pen | Colour | Pen | Colour |
@@ -950,7 +951,7 @@ around (pen 16 is pen 1).
 | `plot(x, y)` | the points (x, y) joined by lines |
 | `plot(x, y, style)` | the points with the given style |
 | `cplot(z)`, `cplot(z, style)` | complex numbers as points in the complex plane |
-| `fplot(var, expr)`, `tplot(var, expr)` | the graph of a function given as text |
+| `fplot(var, expr)` | the graph of a function given as text |
 | `polyplot(p)` | the graph of the polynomial with coefficients `p` |
 | `dot(x, y)` | a single dot at (x, y) |
 
@@ -983,8 +984,8 @@ xrange(-1.5, 1.5); yrange(-1.5, 1.5)
 cplot(exp(i * (0:0.2:6.4)), +)
 ```
 
-**fplot and tplot** (the same command under two names) evaluate the expression at 1000 points
-across the current x range and join them. Points where the function is undefined, such as
+**fplot** evaluates the expression at 1000 points across the current x range and joins them.
+Points where the function is undefined, such as
 `1/x` at 0, are left out, and the curve is broken at poles, such as tan at π/2, rather than
 joined by a vertical line. If the result is complex, the real part is drawn.
 The variable named in the first string does not affect your variables. Errors in the expression
@@ -1030,6 +1031,78 @@ Other ways to save plots:
 - In the command-line tool, the option `--svg file.svg` (see [section 11](#11-the-command-line-tool)).
 
 `print` is kept from the original MLCalc but only shows a message; use `savefig` instead.
+
+### 8.6 3D plots
+
+A plot window can also show three-dimensional data: a box with an x, a y and a z axis, seen in
+perspective by a camera.
+
+| Command | Effect |
+|---|---|
+| `plot3d(x, y, z)`, `plot3d(x, y, z, style)` | the points (x, y, z) joined by lines, or with a style |
+| `plot3d(P)`, `plot3d(P, style)` | the points in the rows of an n×3 matrix `P` (or the columns of a 3×n one) |
+| `dot3d(x, y, z)` | a single dot at (x, y, z) |
+| `fplot3d(xvar, yvar, expr)` | the surface z = f(x, y) of a function given as text, over the x and y ranges |
+| `fplot3d(xvar, yvar, expr, n)` | the same on an n×n grid (2 to 200; the default is 40) |
+| `zrange(a, b)` | sets the z axis to run from `a` to `b` and **clears the window**, like `xrange` and `yrange` |
+| `ztitle("text")`, `zlabel("text")` | label of the z axis |
+| `view(az, el)` | looks at the box from azimuth `az` and elevation `el`, in degrees |
+| `view(2)` | looks from straight above, with x to the right and y up |
+| `view(3)`, `view` | back to the default camera |
+| `camposition(x, y, z)` | puts the camera at a point |
+| `camtarget(x, y, z)` | the point the camera looks at (the default is the middle of the box) |
+
+`camposition` and `camtarget` also take the point as a vector: `camposition([30 -40 20])`.
+
+**Windows.** The 3D commands draw in the current window like the other plot commands. The first
+3D drawing command in a window clears it and makes it a 3D window; a 2D command such as `plot`,
+`fplot` or `dot` in a 3D window clears it and makes it a 2D window again, as switching to and from
+`cplot` does. `xrange` and `yrange` set the x and y sides of the box, and `zrange` the z side; all
+three default to −10 to 10 and clear the window. `pen`, `clear`, `title`, `xlabel`, `ylabel`,
+`grid`, `initdisplay`, `currentwin` and `savefig` work as for 2D plots. With `grid`, grid lines are
+drawn on the three sides of the box farthest from the camera.
+
+**Styles and gaps.** `plot3d` takes the same styles as `plot`, and like `plot` it draws each row of
+matrices `x`, `y` and `z` (of the same size) as a separate curve with the next pen. A non-finite
+value (`NaN`, `Inf`) breaks the line. Lines are cut where they leave the box, and points outside it
+are not drawn.
+
+**Surfaces.** `fplot3d` evaluates the expression on a grid across the current x and y ranges and
+draws it as a mesh in the current pen. Nearer parts of a surface hide the parts behind them. As
+with `fplot`, the two variables do not affect your variables (they must have different names),
+points where the function is undefined leave holes, the real part of a complex result is used,
+and errors in the expression itself are reported. Parts of the surface above or below the z
+range are cut off.
+
+```
+xrange(-4, 4); yrange(-4, 4); zrange(-1.5, 1.5)
+fplot3d("x", "y", "sin(x) * cos(y)")
+```
+
+**The camera.** The box is scaled so that its three sides are equally long on the screen, and
+then seen in perspective. By default the camera looks at the middle of the box from azimuth −37.5°
+and elevation 30° (as in MATLAB), just far enough away for the whole box to fit. The azimuth is
+measured around the z axis: 0 looks from −y towards +y, 90 from +x towards −x. The elevation is the
+angle above the x-y plane, from −90 (from below) to 90 (from above).
+
+- `view(az, el)` keeps the camera's distance and moves it around the target. Such a camera is
+  placed relative to the box, so it follows when the ranges change.
+- `camposition` puts the camera at a point given in the same units as the data. It stays there
+  when the ranges change. It must be outside the box when it is set; if the box later grows
+  around it, the plot is still drawn, cut where it is behind the camera. A camera farther away
+  shows a smaller box.
+- `camtarget` sets the point the camera looks at, for both kinds of camera.
+- `view(az, el)` after `camposition` keeps the distance to the target and swings the camera
+  around it.
+
+The camera, like the ranges, belongs to the window and is kept by `clear`.
+
+```
+t = 0:0.1:12.6;
+xrange(-1.5, 1.5); yrange(-1.5, 1.5); zrange(0, 13)
+plot3d(cos(t), sin(t), t)
+view(30, 20)
+```
 
 ---
 
@@ -1080,7 +1153,7 @@ error, none of it is run.
 
 The original MLCalc sample scripts are included in the `samples` folder, for example
 `FEIGENBA.m` (a Feigenbaum diagram), `FYSIK.m` (measurement data), `TEST5.m` (polynomial fitting)
-and `COS.m` (several plot windows).
+and `COS.m` (several plot windows). `SURFACE.m` shows the 3D plots that are new in this version.
 
 ---
 
@@ -1238,6 +1311,8 @@ MLCalc's operators and indexing follow MATLAB, but it is a much smaller language
 - There are no user-defined functions, `break`, `continue` or `return`; scripts are the unit of
   reuse.
 - Functions of a variable are given as text: `fplot("x", "sin(x)")` rather than `@(x) sin(x)`.
+- The 3D commands are named `plot3d`, `dot3d`, `fplot3d`, `camposition` and `camtarget`.
+  `fplot3d` draws a surface z = f(x, y), like MATLAB's `fmesh`; MATLAB's `fplot3` draws a curve.
 - `mod` keeps the sign of the dividend (like MATLAB's `rem`).
 - `&&` and `||` evaluate both sides.
 - `clear` clears the current plot, not the variables (use `del(all)`).
@@ -1253,11 +1328,12 @@ MLCalc's operators and indexing follow MATLAB, but it is a much smaller language
   sample scripts are affected.
 - `-2^2` is −4 (the original computed (−2)² = 4).
 - `row(A)` gives the number of rows (the original returned the number of columns).
-- New: MATLAB-style blocks, `for` loops, ranges `a:b`, `elseif`, growing matrices by assignment,
+- New: 3D plots ([8.6](#86-3d-plots)), MATLAB-style blocks, `for` loops, ranges `a:b`, `elseif`, growing matrices by assignment,
   `size`, `length`, `sum`, `prod`, `max`, `min`, `inv`, `disp`, `extreme`, `run`, `savefig` and more.
 - More accurate numerical methods (Brent's method for `solve`, Ridders' method for `derivata`),
   and several corrections to the complex inverse functions.
 - `print` no longer prints; use `savefig`.
+- `tplot` is gone; it was another name for `fplot`, which works the same way.
 - The logarithmic and polar plot window types of the original are not available.
 
 ---
@@ -1268,6 +1344,9 @@ MLCalc's operators and indexing follow MATLAB, but it is a much smaller language
 - At most two indices; `end` is not allowed in indices.
 - No user-defined functions, `break`, `continue` or string variables.
 - Up to 3×3 plot windows; no logarithmic or polar axes and no legends.
+- 3D plots: the camera is set with commands only (not with the mouse), and the projection is
+  always perspective. A surface hides what is behind it, but curves and points are drawn in front
+  of every surface.
 - `savefig` to PNG only in the desktop application; the command-line tool saves SVG.
 
 To protect the computer running MLCalc, a few sizes are limited. Exceeding a limit gives an error
@@ -1279,7 +1358,7 @@ message; nothing is changed.
 | Nesting of parentheses, brackets, blocks and operator chains | 256 levels (a sum of up to about 250 terms) |
 | Scripts running other scripts | 32 levels |
 | Elements shown in the console | 10 000; larger results are summarised as, for example, `A = [200×200 matrix, too large to show; …]` |
-| Points in one plot window | 2 000 000 (dots, plotted points and curves together); `clear`, `xrange` or `yrange` empties the window |
+| Points in one plot window | 2 000 000 (dots, plotted points and curves together; a surface from `fplot3d` counts n×n points); `clear`, `xrange`, `yrange` or `zrange` empties the window |
 | Lines kept in the desktop console | the latest 10 000, and at most about 16 million characters |
 | `savefig` image size | 50 to 16000; a PNG image at most 64 million pixels (8000×8000) |
 
@@ -1302,6 +1381,7 @@ message; nothing is changed.
 | `comb` | combinations | [7.7](#77-combinatorics) |
 | `conj` | complex conjugate | [7.5](#75-complex-numbers) |
 | `cos`, `cot` | cosine, cotangent | [7.1](#71-trigonometric-functions) |
+| `camposition`, `camtarget` | 3D camera position and target | [8.6](#86-3d-plots) |
 | `cosh`, `coth` | hyperbolic cosine, cotangent | [7.2](#72-hyperbolic-functions) |
 | `cplot` | plot in the complex plane | [8.4](#84-drawing) |
 | `currentwin` | select the current plot window | [8.1](#81-plot-windows) |
@@ -1311,6 +1391,7 @@ message; nothing is changed.
 | `disp` | show a value or text | [9](#console-commands) |
 | `div` | whole-number division | [7.6](#76-rounding-and-remainders) |
 | `dot` | draw a dot | [8.4](#84-drawing) |
+| `dot3d` | draw a dot in 3D | [8.6](#86-3d-plots) |
 | `exp` | exponential | [7.3](#73-exponentials-and-logarithms) |
 | `extreme` | local maximum or minimum | [7.13](#713-functions-given-as-text) |
 | `eye`, `id` | identity matrix | [7.8](#78-creating-matrices) |
@@ -1318,7 +1399,8 @@ message; nothing is changed.
 | `feval` | evaluate a function given as text | [7.13](#713-functions-given-as-text) |
 | `fix` | round toward zero | [7.6](#76-rounding-and-remainders) |
 | `floor` | round down | [7.6](#76-rounding-and-remainders) |
-| `fplot`, `tplot` | plot a function given as text | [8.4](#84-drawing) |
+| `fplot` | plot a function given as text | [8.4](#84-drawing) |
+| `fplot3d` | plot a function of two variables as a surface | [8.6](#86-3d-plots) |
 | `gauss` | solve a linear system | [7.10](#710-linear-algebra) |
 | `grid` | show or hide grid lines | [8.2](#82-axes-titles-and-grid) |
 | `im`, `imag` | imaginary part | [7.5](#75-complex-numbers) |
@@ -1337,6 +1419,7 @@ message; nothing is changed.
 | `pen` | set the pen | [8.3](#83-pens-and-colours) |
 | `perm` | permutations | [7.7](#77-combinatorics) |
 | `plot` | plot points and lines | [8.4](#84-drawing) |
+| `plot3d` | plot points and lines in 3D | [8.6](#86-3d-plots) |
 | `polyfit` | least-squares polynomial | [7.12](#712-polynomials) |
 | `polyplot` | plot a polynomial | [8.4](#84-drawing) |
 | `polyval` | evaluate a polynomial | [7.12](#712-polynomials) |
@@ -1359,9 +1442,12 @@ message; nothing is changed.
 | `tan` | tangent | [7.1](#71-trigonometric-functions) |
 | `title` | window title | [8.2](#82-axes-titles-and-grid) |
 | `transpose` | transpose | [7.10](#710-linear-algebra) |
+| `view` | 3D camera direction | [8.6](#86-3d-plots) |
 | `xrange`, `yrange` | axis ranges | [8.2](#82-axes-titles-and-grid) |
 | `xroot` | n-th root | [7.4](#74-powers-and-roots) |
 | `xtitle`, `xlabel`, `ytitle`, `ylabel` | axis labels | [8.2](#82-axes-titles-and-grid) |
+| `zrange` | z axis range | [8.6](#86-3d-plots) |
+| `ztitle`, `zlabel` | z axis label | [8.6](#86-3d-plots) |
 | `zeros`, `zeroes` | matrix of zeros | [7.8](#78-creating-matrices) |
 
 ## Appendix B: Keywords, operators and constants

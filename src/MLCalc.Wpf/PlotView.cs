@@ -29,6 +29,7 @@ public sealed class PlotView : FrameworkElement
 	static readonly Pen TickPen = FramePen;
 
 	readonly Dictionary<int, (Brush Brush, Pen Pen)> pens = [];
+	readonly Dictionary<int, Pen> thinPens = [];
 	readonly DispatcherTimer timer;
 	int dirty;
 	FigureSnapshot? lastSnapshot;
@@ -118,8 +119,93 @@ public sealed class PlotView : FrameworkElement
 			}
 	}
 
+	/// <summary>A 3D window: the primitives from <see cref="Scene3D"/>, in order.</summary>
+	void RenderSpace(DrawingContext dc, Axes axes, Rect cell, bool isCurrent)
+	{
+		double dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+		dc.PushClip(new RectangleGeometry(cell));
+		foreach (var primitive in Scene3D.Build(axes, new ScreenRect(cell.Left, cell.Top, cell.Width, cell.Height)))
+			switch (primitive)
+			{
+				case ScenePolyline line:
+				{
+					var pen = line.Stroke switch
+					{
+						SceneStroke.Grid => GridPen,
+						SceneStroke.Frame => FramePen,
+						SceneStroke.Tick => TickPen,
+						_ => PenFor(line.Pen).Pen,
+					};
+					dc.DrawGeometry(null, pen, Polygon(line.Points, close: false));
+					break;
+				}
+				case ScenePolygon polygon:
+					dc.DrawGeometry(Background, ThinPenFor(polygon.Pen), Polygon(polygon.Points, close: true));
+					break;
+				case SceneMarkers markers:
+				{
+					var (brush, pen) = PenFor(markers.Pen);
+					var points = markers.Points.Select(p => new Point(p.X, p.Y));
+					if (markers.Style == PlotStyle.Dot)
+						dc.DrawGeometry(brush, null, Dots(points));
+					else
+						dc.DrawGeometry(null, pen, Markers(points, markers.Style == PlotStyle.Star));
+					break;
+				}
+				case SceneText text:
+				{
+					var formatted = Label(text.Text, text.Size, dpi, text.Bold ? FontWeights.SemiBold : null);
+					double x = text.Align switch
+					{
+						TextAlign.Start => text.At.X,
+						TextAlign.End => text.At.X - formatted.Width,
+						_ => text.At.X - formatted.Width / 2,
+					};
+					dc.DrawText(formatted, new Point(x, text.At.Y - formatted.Height / 2));
+					break;
+				}
+			}
+		dc.Pop();
+		if (isCurrent)
+		{
+			var outline = cell;
+			outline.Inflate(-3, -3);
+			if (outline.Width > 0 && outline.Height > 0)
+				dc.DrawRectangle(null, CurrentFramePen, outline);
+		}
+	}
+
+	static StreamGeometry Polygon(IReadOnlyList<ScreenPoint> points, bool close)
+	{
+		var geometry = new StreamGeometry();
+		using (var ctx = geometry.Open())
+		{
+			ctx.BeginFigure(new Point(points[0].X, points[0].Y), close, close);
+			ctx.PolyLineTo([.. points.Skip(1).Select(p => new Point(p.X, p.Y))], true, true);
+		}
+		geometry.Freeze();
+		return geometry;
+	}
+
+	/// <summary>The pen's colour, 1 pixel wide: the lines of a surface's mesh.</summary>
+	Pen ThinPenFor(int pen)
+	{
+		pen = Pens.Normalize(pen);
+		if (!thinPens.TryGetValue(pen, out var value))
+		{
+			value = Frozen(new Pen(PenFor(pen).Brush, 1) { LineJoin = PenLineJoin.Round });
+			thinPens[pen] = value;
+		}
+		return value;
+	}
+
 	void RenderAxes(DrawingContext dc, Axes axes, Rect cell, bool isCurrent)
 	{
+		if (axes.Kind == AxesKind.Space)
+		{
+			RenderSpace(dc, axes, cell, isCurrent);
+			return;
+		}
 		var plot = PlotRect(cell);
 		if (plot.Width < 20 || plot.Height < 20)
 			return;
@@ -231,12 +317,15 @@ public sealed class PlotView : FrameworkElement
 		return geometry;
 	}
 
-	static StreamGeometry Markers(IEnumerable<PlotPoint> points, PlotTransform t, Rect plot, bool star)
+	static StreamGeometry Markers(IEnumerable<PlotPoint> points, PlotTransform t, Rect plot, bool star) =>
+		Markers(Visible(points, t, plot), star);
+
+	static StreamGeometry Markers(IEnumerable<Point> points, bool star)
 	{
 		var geometry = new StreamGeometry();
 		using (var ctx = geometry.Open())
 		{
-			foreach (var p in Visible(points, t, plot))
+			foreach (var p in points)
 			{
 				Segment(ctx, p.X - MarkerSize, p.Y, p.X + MarkerSize, p.Y);
 				Segment(ctx, p.X, p.Y - MarkerSize, p.X, p.Y + MarkerSize);
@@ -258,7 +347,9 @@ public sealed class PlotView : FrameworkElement
 		ctx.LineTo(new Point(x2, y2), true, false);
 	}
 
-	static StreamGeometry Dots(IEnumerable<PlotPoint> points, PlotTransform t, Rect plot)
+	static StreamGeometry Dots(IEnumerable<PlotPoint> points, PlotTransform t, Rect plot) => Dots(Visible(points, t, plot));
+
+	static StreamGeometry Dots(IEnumerable<Point> points)
 	{
 		const double Size = 2.2;
 		// Nonzero, not the default even-odd rule: otherwise an even number of dots at the same
@@ -266,7 +357,7 @@ public sealed class PlotView : FrameworkElement
 		var geometry = new StreamGeometry { FillRule = FillRule.Nonzero };
 		using (var ctx = geometry.Open())
 		{
-			foreach (var p in Visible(points, t, plot))
+			foreach (var p in points)
 			{
 				ctx.BeginFigure(new Point(p.X - Size / 2, p.Y - Size / 2), true, true);
 				ctx.PolyLineTo([new Point(p.X + Size / 2, p.Y - Size / 2), new Point(p.X + Size / 2, p.Y + Size / 2), new Point(p.X - Size / 2, p.Y + Size / 2)], false, false);
@@ -312,6 +403,12 @@ public sealed class PlotView : FrameworkElement
 				if (!plot.Contains(position))
 					continue;
 				var axes = snapshot[r, c];
+				if (axes.Kind == AxesKind.Space)
+				{
+					// A point on the screen is a whole line of points in 3D.
+					CoordinatesChanged?.Invoke(this, snapshot.Rows * snapshot.Columns > 1 ? $"window ({r + 1},{c + 1})" : "");
+					return;
+				}
 				var t = TransformFor(axes, plot);
 				string x = t.ToWorldX(position.X).ToString("G5", CultureInfo.InvariantCulture);
 				string y = t.ToWorldY(position.Y).ToString("G5", CultureInfo.InvariantCulture);

@@ -49,7 +49,7 @@ public sealed partial class MLCalcInterpreter
 			case FoldedConstant constant:
 				return constant.Value;
 			case CompiledExpression compiled:
-				return compiled.Code(compiledArgument!);
+				return compiled.Code(compiledArguments!);
 			case Identifier id:
 				if (TryLookup(id.Name, out var value))
 					return value;
@@ -154,14 +154,21 @@ public sealed partial class MLCalcInterpreter
 	IndexArgument EvaluateIndex(Expression expression) =>
 		expression is ColonAll ? IndexArgument.All : new IndexArgument(Evaluate(expression), expression.Span);
 
-	/// <summary>
-	/// Compiles a function given as text, such as <c>fplot("x", "sin(x)")</c>, into a delegate.
-	/// Calling it evaluates the expression with <paramref name="variable"/> bound to the argument,
-	/// leaving the global variables untouched. Branches that do not depend on
-	/// <paramref name="variable"/> are evaluated once (see <see cref="ConstantFolder"/>), and the
-	/// rest is turned into delegates (see <see cref="FunctionCompiler"/>).
-	/// </summary>
+	/// <summary>A function of one variable given as text, such as <c>fplot("x", "sin(x)")</c>; see the overload for several variables.</summary>
 	internal Func<ComplexMatrix, ComplexMatrix> CompileFunction(string variable, string text, SourceSpan span)
+	{
+		var function = CompileFunction([variable], text, span);
+		return x => function([x]);
+	}
+
+	/// <summary>
+	/// Compiles a function given as text, such as <c>fplot("x", "sin(x)")</c> or
+	/// <c>fplot3d("x", "y", "x*y")</c>, into a delegate. Calling it evaluates the expression with
+	/// <paramref name="variables"/> bound to the arguments, in order, leaving the global variables
+	/// untouched. Branches that do not depend on the variables are evaluated once (see
+	/// <see cref="ConstantFolder"/>), and the rest is turned into delegates (see <see cref="FunctionCompiler"/>).
+	/// </summary>
+	internal Func<ComplexMatrix[], ComplexMatrix> CompileFunction(IReadOnlyList<string> variables, string text, SourceSpan span)
 	{
 		var parse = Parser.Parse(text);
 		if (parse.HasErrors)
@@ -169,26 +176,26 @@ public sealed partial class MLCalcInterpreter
 		if (parse.Root.Statements is not [ExpressionStatement { Expression: var parsed }])
 			throw new RuntimeError($"\"{text}\" must be a single expression.", span);
 
-		Func<ComplexMatrix, ComplexMatrix> code;
+		Func<ComplexMatrix[], ComplexMatrix> code;
 		try
 		{
-			code = new FunctionCompiler(this, builtins, variable).Compile(FoldConstants(parsed, variable));
+			code = new FunctionCompiler(this, builtins, variables).Compile(FoldConstants(parsed, variables));
 		}
 		catch (RuntimeError error)
 		{
 			throw new RuntimeError($"In \"{text}\": {error.Message}", span, error);
 		}
 
-		return argument =>
+		return arguments =>
 		{
 			// Built-in functions called from the compiled code read their arguments back through
-			// CompiledExpression nodes, which need the current value of the variable.
-			var previous = compiledArgument;
-			compiledArgument = argument;
+			// CompiledExpression nodes, which need the current values of the variables.
+			var previous = compiledArguments;
+			compiledArguments = arguments;
 			try
 			{
 				cancellation.ThrowIfCancellationRequested();
-				return code(argument);
+				return code(arguments);
 			}
 			catch (RuntimeError error)
 			{
@@ -196,25 +203,25 @@ public sealed partial class MLCalcInterpreter
 			}
 			finally
 			{
-				compiledArgument = previous;
+				compiledArguments = previous;
 			}
 		};
 	}
 
-	/// <summary>The argument of the compiled function currently being evaluated.</summary>
-	ComplexMatrix? compiledArgument;
+	/// <summary>The arguments of the compiled function currently being evaluated.</summary>
+	ComplexMatrix[]? compiledArguments;
 
 	/// <summary>
 	/// Folds constant branches of a function's expression. It runs with no local variables bound,
 	/// so constants are computed from the same variables the function sees when it is evaluated.
 	/// </summary>
-	internal Expression FoldConstants(Expression expression, string variable)
+	internal Expression FoldConstants(Expression expression, params IReadOnlyList<string> variables)
 	{
 		var previous = locals;
 		locals = new Dictionary<string, ComplexMatrix>(StringComparer.OrdinalIgnoreCase);
 		try
 		{
-			return new ConstantFolder(this, builtins, variable).Fold(expression);
+			return new ConstantFolder(this, builtins, variables).Fold(expression);
 		}
 		finally
 		{

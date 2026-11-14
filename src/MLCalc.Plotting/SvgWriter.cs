@@ -32,8 +32,66 @@ public static class SvgWriter
 	public static void Save(FigureSnapshot figure, string path, double width = 800, double height = 600) =>
 		File.WriteAllText(path, Render(figure, width, height));
 
+	static string ColorOf(int pen) => "#" + Pens.ColorOf(pen).ToString("x6", CultureInfo.InvariantCulture);
+
+	/// <summary>A 3D window: the primitives from <see cref="Scene3D"/>, in order.</summary>
+	static void RenderSpace(StringBuilder svg, Axes axes, ScreenRect cell, bool isCurrent, int index)
+	{
+		var bounds = cell;
+		string clip = $"clip{index}";
+		svg.Append(F($"<clipPath id=\"{clip}\"><rect x=\"{bounds.Left}\" y=\"{bounds.Top}\" width=\"{bounds.Width}\" height=\"{bounds.Height}\"/></clipPath>\n"));
+		svg.Append(F($"<g clip-path=\"url(#{clip})\">\n"));
+		foreach (var primitive in Scene3D.Build(axes, cell))
+			switch (primitive)
+			{
+				case ScenePolyline line:
+				{
+					var (color, width, extra) = line.Stroke switch
+					{
+						SceneStroke.Grid => ("#e2e2e2", 1.0, " stroke-dasharray=\"4 3\""),
+						SceneStroke.Frame or SceneStroke.Tick => ("#999", 1.0, ""),
+						_ => (ColorOf(line.Pen), 1.5, " stroke-linejoin=\"round\""),
+					};
+					svg.Append(F($"<path d=\"{PathData(line.Points, close: false)}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{width}\"{extra}/>\n"));
+					break;
+				}
+				case ScenePolygon polygon:
+					svg.Append(F($"<path d=\"{PathData(polygon.Points, close: true)}\" fill=\"white\" stroke=\"{ColorOf(polygon.Pen)}\" stroke-width=\"1\" stroke-linejoin=\"round\"/>\n"));
+					break;
+				case SceneMarkers markers:
+					if (markers.Style == PlotStyle.Dot)
+						DotPath(svg, markers.Points.Select(p => (System.Math.Round(p.X, 2), System.Math.Round(p.Y, 2))), ColorOf(markers.Pen));
+					else
+						MarkerPath(svg, markers.Points.Select(p => (p.X, p.Y)), ColorOf(markers.Pen), markers.Style == PlotStyle.Star);
+					break;
+				case SceneText text:
+					Text(svg, text.Text, text.At.X, text.At.Y + text.Size * 0.35, text.Size,
+						text.Align switch { TextAlign.Start => "start", TextAlign.End => "end", _ => "middle" },
+						text.Bold ? " font-weight=\"600\"" : "");
+					break;
+			}
+		svg.Append("</g>\n");
+		if (isCurrent)
+			svg.Append(F($"<rect x=\"{cell.Left + 3}\" y=\"{cell.Top + 3}\" width=\"{cell.Width - 6}\" height=\"{cell.Height - 6}\" fill=\"none\" stroke=\"#1f77b4\" stroke-width=\"2\"/>\n"));
+	}
+
+	static string PathData(IReadOnlyList<ScreenPoint> points, bool close)
+	{
+		var path = new StringBuilder();
+		for (int i = 0; i < points.Count; i++)
+			path.Append(F($"{(i == 0 ? "M" : "L")}{points[i].X:0.##} {points[i].Y:0.##}"));
+		if (close)
+			path.Append('Z');
+		return path.ToString();
+	}
+
 	static void RenderAxes(StringBuilder svg, Axes axes, ScreenRect cell, bool isCurrent, int index)
 	{
+		if (axes.Kind == AxesKind.Space)
+		{
+			RenderSpace(svg, axes, cell, isCurrent, index);
+			return;
+		}
 		var plot = PlotLayout.PlotArea(cell);
 		if (plot.Width < 20 || plot.Height < 20)
 			return;
@@ -123,10 +181,13 @@ public static class SvgWriter
 			svg.Append(F($"<path d=\"{path.ToString().TrimEnd()}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/>\n"));
 	}
 
-	static void Markers(StringBuilder svg, IEnumerable<PlotPoint> points, PlotTransform t, string color, bool star)
+	static void Markers(StringBuilder svg, IEnumerable<PlotPoint> points, PlotTransform t, string color, bool star) =>
+		MarkerPath(svg, Visible(points, t), color, star);
+
+	static void MarkerPath(StringBuilder svg, IEnumerable<(double X, double Y)> points, string color, bool star)
 	{
 		var path = new StringBuilder();
-		foreach (var (x, y) in Visible(points, t))
+		foreach (var (x, y) in points)
 		{
 			path.Append(F($"M{x - MarkerSize:0.##} {y:0.##}h{2 * MarkerSize}M{x:0.##} {y - MarkerSize:0.##}v{2 * MarkerSize}"));
 			if (star)
@@ -139,10 +200,13 @@ public static class SvgWriter
 			svg.Append(F($"<path d=\"{path}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"1.5\"/>\n"));
 	}
 
-	static void Dots(StringBuilder svg, IEnumerable<PlotPoint> points, PlotTransform t, string color)
+	static void Dots(StringBuilder svg, IEnumerable<PlotPoint> points, PlotTransform t, string color) =>
+		DotPath(svg, Visible(points, t), color);
+
+	static void DotPath(StringBuilder svg, IEnumerable<(double X, double Y)> points, string color)
 	{
 		var path = new StringBuilder();
-		foreach (var (x, y) in Visible(points, t).Distinct())
+		foreach (var (x, y) in points.Distinct())
 			path.Append(F($"M{x - DotSize / 2:0.##} {y - DotSize / 2:0.##}h{DotSize}v{DotSize}h{-DotSize}z"));
 		if (path.Length > 0)
 			svg.Append(F($"<path d=\"{path}\" fill=\"{color}\"/>\n"));

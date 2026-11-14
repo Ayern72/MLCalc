@@ -5,9 +5,9 @@ namespace MLCalc.Interpreter;
 
 /// <summary>
 /// An argument of a built-in call inside a compiled function. The built-in evaluates it like any
-/// other argument; evaluating it runs <see cref="Code"/> with the function's current argument.
+/// other argument; evaluating it runs <see cref="Code"/> with the function's current arguments (one per variable).
 /// </summary>
-internal sealed record CompiledExpression(SourceSpan Span, Func<ComplexMatrix, ComplexMatrix> Code) : Expression(Span);
+internal sealed record CompiledExpression(SourceSpan Span, Func<ComplexMatrix[], ComplexMatrix> Code) : Expression(Span);
 
 /// <summary>
 /// Turns the expression of a function given as text (after <see cref="ConstantFolder"/>) into a
@@ -17,12 +17,12 @@ internal sealed record CompiledExpression(SourceSpan Span, Func<ComplexMatrix, C
 /// <remarks>
 /// The closures call the same operator, range and matrix helpers as the tree-walking evaluator, and
 /// built-in functions are called with the same arguments in the same way, so results and error
-/// messages are identical. Parts that do not involve the function's variable (an unknown name,
+/// messages are identical. Parts that do not involve the function's variables (an unknown name,
 /// <c>rand</c>, a command) are left to the interpreter.
 /// </remarks>
-internal sealed class FunctionCompiler(MLCalcInterpreter interpreter, Builtins builtins, string variable)
+internal sealed class FunctionCompiler(MLCalcInterpreter interpreter, Builtins builtins, IReadOnlyList<string> variables)
 {
-	public Func<ComplexMatrix, ComplexMatrix> Compile(Expression expression)
+	public Func<ComplexMatrix[], ComplexMatrix> Compile(Expression expression)
 	{
 		System.Runtime.CompilerServices.RuntimeHelpers.EnsureSufficientExecutionStack();
 		switch (expression)
@@ -32,8 +32,8 @@ internal sealed class FunctionCompiler(MLCalcInterpreter interpreter, Builtins b
 				var value = constant.Value;
 				return _ => value;
 			}
-			case Identifier id when IsVariable(id.Name):
-				return x => x;
+			case Identifier id when VariableIndex(id.Name) is var k and >= 0:
+				return x => x[k];
 			case UnaryExpression unary:
 			{
 				var operand = Compile(unary.Operand);
@@ -84,17 +84,17 @@ internal sealed class FunctionCompiler(MLCalcInterpreter interpreter, Builtins b
 		}
 	}
 
-	Func<ComplexMatrix, ComplexMatrix> CompileApply(ApplyExpression apply)
+	Func<ComplexMatrix[], ComplexMatrix> CompileApply(ApplyExpression apply)
 	{
 		string name = apply.Target.Name;
 		var span = apply.Span;
 
 		// Indexing the function's variable, or a global variable (which cannot change while the
 		// function is being evaluated).
-		if (IsVariable(name))
+		if (VariableIndex(name) is var k and >= 0)
 		{
 			var indices = CompileIndices(apply.Arguments);
-			return x => Index(x, indices, x, span);
+			return x => Index(x[k], indices, x, span);
 		}
 		if (interpreter.TryLookupVariable(name, out var variableValue))
 		{
@@ -119,10 +119,10 @@ internal sealed class FunctionCompiler(MLCalcInterpreter interpreter, Builtins b
 		return _ => interpreter.CallBuiltin(builtin, name, arguments, span) ?? throw MLCalcInterpreter.NotAValue(apply);
 	}
 
-	(Func<ComplexMatrix, ComplexMatrix>? Code, SourceSpan Span)[] CompileIndices(IEnumerable<Expression> arguments) =>
+	(Func<ComplexMatrix[], ComplexMatrix>? Code, SourceSpan Span)[] CompileIndices(IEnumerable<Expression> arguments) =>
 		arguments.Select(argument => argument is ColonAll ? (null, argument.Span) : (Compile(argument), argument.Span)).ToArray();
 
-	static ComplexMatrix Index(ComplexMatrix source, (Func<ComplexMatrix, ComplexMatrix>? Code, SourceSpan Span)[] indices, ComplexMatrix x, SourceSpan span)
+	static ComplexMatrix Index(ComplexMatrix source, (Func<ComplexMatrix[], ComplexMatrix>? Code, SourceSpan Span)[] indices, ComplexMatrix[] x, SourceSpan span)
 	{
 		var evaluated = new IndexArgument[indices.Length];
 		for (int i = 0; i < indices.Length; i++)
@@ -137,7 +137,16 @@ internal sealed class FunctionCompiler(MLCalcInterpreter interpreter, Builtins b
 		}
 	}
 
-	bool IsVariable(string name) => string.Equals(name, variable, StringComparison.OrdinalIgnoreCase);
+	bool IsVariable(string name) => VariableIndex(name) >= 0;
+
+	/// <summary>The position of <paramref name="name"/> among the function's variables, or -1.</summary>
+	int VariableIndex(string name)
+	{
+		for (int k = 0; k < variables.Count; k++)
+			if (string.Equals(name, variables[k], StringComparison.OrdinalIgnoreCase))
+				return k;
+		return -1;
+	}
 
 	/// <summary>
 	/// Commands change state (variables, plots, files, the console). A function given as text is

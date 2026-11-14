@@ -16,5 +16,5 @@ r3=p3(1,3);
 r4=p3(1,4);
 r5=p3(1,5);
 pen(3)
-tplot("x","r1+r2*x+r3*x*x+r4*x*x*x+r5*x*x*x*x")
+fplot("x","r1+r2*x+r3*x*x+r4*x*x*x+r5*x*x*x*x")
 fplot("x","r1+r2*x+r3*x*x+r4*x*x*x+r5*x*x*x*x")

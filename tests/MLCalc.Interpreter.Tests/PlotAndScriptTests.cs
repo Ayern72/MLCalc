@@ -188,7 +188,7 @@ public class ScriptTests
 		Assert.Equal(4, items.Length);
 		Assert.IsType<PointSeries>(items[0]);
 		Assert.All(items.Skip(1), item => Assert.IsType<FunctionSeries>(item));
-		// The tplot/fplot formula built from r1..r5 equals the polyplot curve.
+		// The fplot formula built from r1..r5 equals the polyplot curve.
 		var poly = (FunctionSeries)items[1];
 		var formula = (FunctionSeries)items[3];
 		for (int k = 0; k < poly.Points.Length; k += 100)
