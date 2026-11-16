@@ -40,6 +40,39 @@ sealed class TestHost
 		return Assert.IsType<RuntimeError>(result.Error);
 	}
 
+	/// <summary>
+	/// Runs <paramref name="source"/>, cancels it after <paramref name="delayMilliseconds"/>, and asserts
+	/// that it stopped as cancelled within <paramref name="limitMilliseconds"/> of the cancellation.
+	/// </summary>
+	/// <remarks>
+	/// The cancellation comes from a thread of its own and the time is measured from it. A
+	/// <c>CancellationTokenSource</c> timeout fires on the thread pool, which other tests running in
+	/// parallel can keep busy for seconds on a small CI machine; that delay says nothing about how
+	/// quickly the interpreter stops.
+	/// </remarks>
+	public ExecutionResult AssertCancelsPromptly(string source, int delayMilliseconds = 100, int limitMilliseconds = 3000)
+	{
+		using var cts = new CancellationTokenSource();
+		var cancelledAt = new System.Diagnostics.Stopwatch();
+		using var done = new ManualResetEventSlim();
+		var canceller = new Thread(() =>
+		{
+			if (!done.Wait(delayMilliseconds))
+			{
+				cancelledAt.Start();
+				cts.Cancel();
+			}
+		}) { IsBackground = true };
+		canceller.Start();
+		var result = Interpreter.Execute(source, cts.Token);
+		long elapsed = cancelledAt.ElapsedMilliseconds;
+		done.Set();
+		canceller.Join();
+		Assert.True(result.Cancelled, $"The program finished before it was cancelled: {string.Join("\n", result.Messages())}");
+		Assert.True(elapsed <= limitMilliseconds, $"It stopped {elapsed} ms after the cancellation.");
+		return result;
+	}
+
 	public ComplexMatrix this[string name] =>
 		Interpreter.TryGetVariable(name, out var value) ? value : throw new KeyNotFoundException(name);
 

@@ -80,11 +80,7 @@ public class Plot3DTests
 	[Fact]
 	public void Fplot3dCanBeCancelled()
 	{
-		using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
-		var watch = System.Diagnostics.Stopwatch.StartNew();
-		var result = host.Interpreter.Execute("fplot3d(\"x\", \"y\", \"sum((1:20000) * x) * y\", 200)", cts.Token);
-		Assert.True(result.Cancelled);
-		Assert.InRange(watch.ElapsedMilliseconds, 0, 3000);
+		host.AssertCancelsPromptly("fplot3d(\"x\", \"y\", \"sum((1:20000) * x) * y\", 200)");
 	}
 
 	[Fact]
@@ -137,11 +133,7 @@ public class Plot3DTests
 	[Fact]
 	public void Fplot3dCurveCanBeCancelled()
 	{
-		using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
-		var watch = System.Diagnostics.Stopwatch.StartNew();
-		var result = host.Interpreter.Execute("fplot3d(\"t\", \"t\", \"t\", \"sum((1:20000) * t)\", 0, 1, 100000)", cts.Token);
-		Assert.True(result.Cancelled);
-		Assert.InRange(watch.ElapsedMilliseconds, 0, 3000);
+		host.AssertCancelsPromptly("fplot3d(\"t\", \"t\", \"t\", \"sum((1:20000) * t)\", 0, 1, 100000)");
 	}
 
 	[Fact]
