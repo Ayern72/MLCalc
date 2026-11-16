@@ -35,7 +35,9 @@ public class Plot3DTests
 	[InlineData("fplot3d(\"x\", \"y\", \"x\", 201)", "between 2 and 200")]
 	[InlineData("fplot3d(\"x\", \"y\", \"x\", 2.5)", "integer")]
 	[InlineData("fplot3d(\"x\", \"X\", \"x\")", "different names")]
-	[InlineData("fplot3d(\"x\", \"y\")", "3 to 4 arguments")]
+	[InlineData("fplot3d(\"x\", \"y\")", "for a surface")]
+	[InlineData("fplot3d(\"x\", \"y\", \"x\", 5, 6)", "for a curve")]
+	[InlineData("fplot3d(\"t\", \"t\", \"t\", \"t\", 0, 1, 10, 4)", "for a curve")]
 	[InlineData("fplot3d(x, \"y\", \"x\")", "string")]
 	[InlineData("fplot3d(\"x\", \"y\", \"[x y]\")", "must return a scalar")]
 	[InlineData("fplot3d(\"x\", \"y\", \"x(3)\")", "x(3)")]
@@ -81,6 +83,63 @@ public class Plot3DTests
 		using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
 		var watch = System.Diagnostics.Stopwatch.StartNew();
 		var result = host.Interpreter.Execute("fplot3d(\"x\", \"y\", \"sum((1:20000) * x) * y\", 200)", cts.Token);
+		Assert.True(result.Cancelled);
+		Assert.InRange(watch.ElapsedMilliseconds, 0, 3000);
+	}
+
+	[Fact]
+	public void Fplot3dDrawsACurveForARangeOfTheParameter()
+	{
+		host.Run("x = 7; fplot3d(\"t\", \"cos(t)\", \"sin(t)\", \"x + t\", 0, 2*pi)");
+		var curve = Assert.IsType<PointSeries3D>(Assert.Single(Current.Items));
+		Assert.Equal((AxesKind.Space, PlotStyle.Line, 2), (Current.Kind, curve.Style, Current.Pen));
+		Assert.Equal(Figure.FunctionSamples, curve.Points.Length);
+		Assert.Equal(new Point3(1, 0, 7), curve.Points[0]);
+		var end = curve.Points[^1];
+		Assert.Equal((1, 7 + 2 * System.Math.PI), (end.X, end.Z));
+		Assert.Equal(0, end.Y, 12);
+		AssertClose(7, host["x"]);
+	}
+
+	[Fact]
+	public void Fplot3dCurveTakesTheNumberOfPointsAndARangeBackwards()
+	{
+		host.Run("fplot3d(\"s\", \"s\", \"2*s\", \"0\", 4, 0, 5)");
+		var curve = (PointSeries3D)Assert.Single(Current.Items);
+		Assert.Equal([4, 3, 2, 1, 0], curve.Points.Select(p => p.X));
+		Assert.Equal(new Point3(1, 2, 0), curve.Points[3]);
+	}
+
+	[Fact]
+	public void UndefinedPointsBreakAnFplot3dCurve()
+	{
+		host.Run("fplot3d(\"t\", \"t\", \"1/t\", \"t\", -2, 2, 5)");
+		var curve = (PointSeries3D)Assert.Single(Current.Items);
+		Assert.True(double.IsNaN(curve.Points[2].Y));
+		Assert.Equal(0.5, curve.Points[4].Y);
+	}
+
+	[Theory]
+	[InlineData("fplot3d(\"t\", \"t\", \"t\", \"t\", 0, 1, 1)", "between 2 and 100000")]
+	[InlineData("fplot3d(\"t\", \"t\", \"t\", \"t\", 0, 1, 100001)", "between 2 and 100000")]
+	[InlineData("fplot3d(\"t\", \"t\", \"t\", \"t\", 1, 1)", "must not be empty")]
+	[InlineData("fplot3d(\"t\", \"t\", \"t\", \"t\", -inf, 1)", "finite")]
+	[InlineData("fplot3d(\"t\", \"t\", \"t\", \"t\", 0, nan)", "finite")]
+	[InlineData("fplot3d(\"t\", \"t\", \"t\", \"t\", 0, 1i)", "must be real")]
+	[InlineData("fplot3d(\"t\", \"t\", \"t\", t, 0, 1)", "argument 4 must be a string")]
+	[InlineData("fplot3d(\"t\", \"t\", \"[t t]\", \"t\", 0, 1)", "must return a scalar")]
+	[InlineData("fplot3d(\"t\", \"t\", \"t\", \"t + \", 0, 1)", "In \"t + \"")]
+	public void Fplot3dCurveErrors(string program, string message)
+	{
+		Assert.Contains(message, host.Fail(program).Message);
+	}
+
+	[Fact]
+	public void Fplot3dCurveCanBeCancelled()
+	{
+		using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+		var watch = System.Diagnostics.Stopwatch.StartNew();
+		var result = host.Interpreter.Execute("fplot3d(\"t\", \"t\", \"t\", \"sum((1:20000) * t)\", 0, 1, 100000)", cts.Token);
 		Assert.True(result.Cancelled);
 		Assert.InRange(watch.ElapsedMilliseconds, 0, 3000);
 	}

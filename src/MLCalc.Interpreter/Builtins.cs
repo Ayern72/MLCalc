@@ -454,30 +454,7 @@ internal sealed class Builtins
 			return null;
 		}, "dot3d");
 		Add(Plot3D, "plot3d");
-		Add(call =>
-		{
-			call.RequireCount(3, 4);
-			int samples = DefaultSurfaceSamples;
-			if (call.Count == 4)
-			{
-				samples = call.Integer(3, min: 1);
-				if (samples is < 2 or > MaxSurfaceSamples)
-					throw call.Error($"the number of grid lines must be between 2 and {MaxSurfaceSamples}.", 3);
-			}
-			var function = call.RealFunction2(0, 1, 2);
-			call.Figure.AddSurface(call.String(2), (x, y) =>
-			{
-				try
-				{
-					return function(x, y);
-				}
-				catch (RuntimeError error) when (IsUndefinedHere(error))
-				{
-					return double.NaN;
-				}
-			}, samples);
-			return null;
-		}, "fplot3d");
+		Add(call => call.Count >= 5 ? FPlot3DCurve(call) : FPlot3DSurface(call), "fplot3d");
 		Add(call =>
 		{
 			call.RequireCount(0, 2);
@@ -504,6 +481,75 @@ internal sealed class Builtins
 			return null;
 		}, "camtarget");
 	}
+
+	/// <summary>fplot3d("x", "y", "f(x, y)" [, n]): a surface over the x and y ranges on an n×n grid.</summary>
+	static ComplexMatrix? FPlot3DSurface(CallContext call)
+	{
+		if (call.Count is not (3 or 4))
+			throw call.Error(FPlot3DUsage);
+		int samples = DefaultSurfaceSamples;
+		if (call.Count == 4)
+		{
+			samples = call.Integer(3, min: 1);
+			if (samples is < 2 or > MaxSurfaceSamples)
+				throw call.Error($"the number of grid lines must be between 2 and {MaxSurfaceSamples}.", 3);
+		}
+		var function = call.RealFunction2(0, 1, 2);
+		call.Figure.AddSurface(call.String(2), (x, y) =>
+		{
+			try
+			{
+				return function(x, y);
+			}
+			catch (RuntimeError error) when (IsUndefinedHere(error))
+			{
+				return double.NaN;
+			}
+		}, samples);
+		return null;
+	}
+
+	/// <summary>
+	/// fplot3d("t", "x(t)", "y(t)", "z(t)", t0, t1 [, n]): a curve through the points (x(t), y(t), z(t))
+	/// for n values of t from t0 to t1. Points where an expression is undefined become gaps.
+	/// </summary>
+	static ComplexMatrix? FPlot3DCurve(CallContext call)
+	{
+		if (call.Count is not (6 or 7))
+			throw call.Error(FPlot3DUsage);
+		double t0 = call.Real(4), t1 = call.Real(5);
+		if (!double.IsFinite(t0))
+			throw call.Error("the start of the range must be a finite number.", 4);
+		if (!double.IsFinite(t1))
+			throw call.Error("the end of the range must be a finite number.", 5);
+		if (t0 == t1)
+			throw call.Error("the range must not be empty: t0 and t1 are equal.", 5);
+		int samples = Figure.FunctionSamples;
+		if (call.Count == 7)
+		{
+			samples = call.Integer(6, min: 1);
+			if (samples is < 2 or > MaxCurveSamples)
+				throw call.Error($"the number of points must be between 2 and {MaxCurveSamples}.", 6);
+		}
+		var x = PlotFunction(call.RealFunction(0, 1));
+		var y = PlotFunction(call.RealFunction(0, 2));
+		var z = PlotFunction(call.RealFunction(0, 3));
+		var points = new Point3[samples];
+		double step = (t1 - t0) / (samples - 1);
+		for (int k = 0; k < samples; k++)
+		{
+			double t = k == samples - 1 ? t1 : t0 + k * step;
+			points[k] = new Point3(x(t), y(t), z(t));
+		}
+		call.Figure.AddSeries3D(points, PlotStyle.Line);
+		return null;
+	}
+
+	/// <summary>The largest number of points in an <c>fplot3d</c> curve.</summary>
+	const int MaxCurveSamples = 100_000;
+
+	const string FPlot3DUsage = "use fplot3d(\"x\", \"y\", \"f(x, y)\") or fplot3d(\"x\", \"y\", \"f(x, y)\", n) for a surface, "
+		+ "or fplot3d(\"t\", \"x(t)\", \"y(t)\", \"z(t)\", t0, t1) or fplot3d(…, t0, t1, n) for a curve.";
 
 	/// <summary>
 	/// plot3d(x, y, z [, style]) with vectors of the same length, or matrices of the same size whose

@@ -288,7 +288,8 @@ internal sealed class CliApp : IConsoleOutput
 		  while k < 3 do begin … end         original style: if … then …, while … do, for … do
 		  solve("x", "x^2-2", 1)  numerics: integral, derivata, solve, isect, extreme, feval
 		  fplot("x", "sin(x)")    plots: plot, fplot, polyplot, dot, xrange, yrange, initdisplay
-		  fplot3d("x","y","x*y")  3D plots: plot3d, dot3d, zrange, view, camposition, camtarget
+		  fplot3d("x","y","x*y")  3D plots: plot3d, dot3d, zrange, view, camposition, camtarget;
+		                          fplot3d("t","cos(t)","sin(t)","t",0,9) draws a curve
 		  savefig("plot.svg")     save the plots
 		  run("script.m")         run a script (or just type script.m)
 		  list, del(x), cls       variables and console

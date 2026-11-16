@@ -9,12 +9,11 @@ grid
 zlabel("height")
 fplot3d("x", "y", "sin(sqrt(x^2 + y^2) + 0.01) / (sqrt(x^2 + y^2) + 0.01)", 50)
 
-% 2. Curves and markers from vectors and from an n×3 matrix, seen from another angle.
+% 2. A curve given by three functions of t, and markers from an n×3 matrix, seen from another angle.
 currentwin(1, 2)
-title("plot3d: helix and points")
+title("fplot3d and plot3d: helix and points")
 xrange(-1.5, 1.5); yrange(-1.5, 1.5); zrange(0, 13)
-t = 0:0.05:12.6;
-plot3d(cos(t), sin(t), t)
+fplot3d("t", "cos(t)", "sin(t)", "t", 0, 4*pi)
 s = 0:pi/2:4*pi;
 P = [cos(s); sin(s); s]';          % one point per row
 plot3d(P, *)

@@ -842,6 +842,7 @@ solve("x", "x^2 - 2", 1)
 | `extreme(var, expr, x0)` | a local maximum or minimum near `x0` (where the derivative is 0) |
 | `fplot(var, expr)` | draws the function (see [Plotting](#8-plotting)) |
 | `fplot3d(xvar, yvar, expr)` | draws a function of two variables as a surface (see [3D plots](#86-3d-plots)) |
+| `fplot3d(tvar, xexpr, yexpr, zexpr, t0, t1)` | draws a curve in space whose x, y and z are functions of one variable |
 
 ```
 >> feval("t", "t^2", [0 1 2])
@@ -1045,6 +1046,8 @@ perspective by a camera.
 | `dot3d(x, y, z)` | a single dot at (x, y, z) |
 | `fplot3d(xvar, yvar, expr)` | the surface z = f(x, y) of a function given as text, over the x and y ranges |
 | `fplot3d(xvar, yvar, expr, n)` | the same on an n×n grid (2 to 200; the default is 40) |
+| `fplot3d(tvar, xexpr, yexpr, zexpr, t0, t1)` | the curve through the points (x(t), y(t), z(t)) for t from `t0` to `t1` |
+| `fplot3d(tvar, xexpr, yexpr, zexpr, t0, t1, n)` | the same with n points (2 to 100 000; the default is 1000) |
 | `zrange(a, b)` | sets the z axis to run from `a` to `b` and **clears the window**, like `xrange` and `yrange` |
 | `ztitle("text")`, `zlabel("text")` | label of the z axis |
 | `view(az, el)` | looks at the box from azimuth `az` and elevation `el`, in degrees |
@@ -1078,6 +1081,17 @@ range are cut off.
 ```
 xrange(-4, 4); yrange(-4, 4); zrange(-1.5, 1.5)
 fplot3d("x", "y", "sin(x) * cos(y)")
+```
+
+**Curves.** With a variable, three expressions and a range, `fplot3d` draws a curve instead: x, y
+and z are each a function of the variable, which takes 1000 equally spaced values from `t0` to
+`t1` (or `n` values). The number of arguments tells the two forms apart. The curve is drawn with
+the current pen and then the pen moves on, as for `plot3d`; points where an expression is
+undefined break the line, and the curve is cut where it leaves the box.
+
+```
+xrange(-1, 1); yrange(-1, 1); zrange(-1, 1)
+fplot3d("t", "sin(3*t)", "sin(4*t)", "sin(5*t)", 0, 2*pi)
 ```
 
 **The camera.** The box is scaled so that its three sides are equally long on the screen, and
@@ -1313,7 +1327,9 @@ MLCalc's operators and indexing follow MATLAB, but it is a much smaller language
   reuse.
 - Functions of a variable are given as text: `fplot("x", "sin(x)")` rather than `@(x) sin(x)`.
 - The 3D commands are named `plot3d`, `dot3d`, `fplot3d`, `camposition` and `camtarget`.
-  `fplot3d` draws a surface z = f(x, y), like MATLAB's `fmesh`; MATLAB's `fplot3` draws a curve.
+  `fplot3d` with three expressions draws a curve like MATLAB's `fplot3`, but the range of t is
+  given as two numbers and is required: `fplot3d("t", "cos(t)", "sin(t)", "t", 0, 10)`. With one
+  expression it draws a surface z = f(x, y), like MATLAB's `fmesh`.
 - `mod` keeps the sign of the dividend (like MATLAB's `rem`).
 - `&&` and `||` evaluate both sides.
 - `clear` clears the current plot, not the variables (use `del(all)`).
@@ -1401,7 +1417,7 @@ message; nothing is changed.
 | `fix` | round toward zero | [7.6](#76-rounding-and-remainders) |
 | `floor` | round down | [7.6](#76-rounding-and-remainders) |
 | `fplot` | plot a function given as text | [8.4](#84-drawing) |
-| `fplot3d` | plot a function of two variables as a surface | [8.6](#86-3d-plots) |
+| `fplot3d` | plot a function of two variables as a surface, or a curve in space | [8.6](#86-3d-plots) |
 | `gauss` | solve a linear system | [7.10](#710-linear-algebra) |
 | `grid` | show or hide grid lines | [8.2](#82-axes-titles-and-grid) |
 | `im`, `imag` | imaginary part | [7.5](#75-complex-numbers) |
