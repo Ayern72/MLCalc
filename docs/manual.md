@@ -1119,6 +1119,22 @@ plot3d(cos(t), sin(t), t)
 view(30, 20)
 ```
 
+**Turning with the mouse.** In the desktop application a 3D window can also be turned with the
+mouse; the window does not have to be the current one.
+
+- **Drag** with the left button to turn the box: dragging sideways changes the azimuth, up and
+  down the elevation (half a degree per pixel). The box follows the mouse, as if you held it.
+- The **mouse wheel** moves the camera closer to the target or farther away. A camera set with
+  `camposition` moves along the line to its target.
+- **Double-click** to go back to the default camera, as `view(3)`.
+
+With the mouse over a 3D window, the status bar shows the command that gives the same picture:
+`view(az, el)`, or `camposition(x, y, z)` once the camera has been moved closer or farther or was
+set with `camposition`. While the camera moves, large surfaces, curves and clouds are drawn from
+part of their points so that the picture keeps up with the mouse; the whole plot is drawn again
+when you let go. The mouse changes the window's camera just as the commands do, so `savefig` and
+**File › Export Plot** save what you see.
+
 ---
 
 ## 9. Console commands and scripts
@@ -1210,7 +1226,8 @@ grey note says how many; the program itself is not affected. End statements in l
 ### Other features
 
 - The **status bar** shows "Running…" while a program runs, and the coordinates under the mouse
-  pointer in the plot area (with the window number when there are several windows).
+  pointer in the plot area (with the window number when there are several windows); over a 3D
+  window it shows the camera instead (see [3D plots](#86-3d-plots)).
 - **Drag a `.m` file** onto the window to run it.
 - The divider between the plot area and the console can be dragged.
 - The plot is redrawn when the window is resized; long-running scripts update the plot as they run.
@@ -1361,8 +1378,8 @@ MLCalc's operators and indexing follow MATLAB, but it is a much smaller language
 - At most two indices; `end` is not allowed in indices.
 - No user-defined functions, `break`, `continue` or string variables.
 - Up to 3×3 plot windows; no logarithmic or polar axes and no legends.
-- 3D plots: the camera is set with commands only (not with the mouse), and the projection is
-  always perspective. A surface hides what is behind it, but curves and points are drawn in front
+- 3D plots: the projection is always perspective, and the mouse cannot move the camera's target
+  (only commands can). A surface hides what is behind it, but curves and points are drawn in front
   of every surface.
 - `savefig` to PNG only in the desktop application; the command-line tool saves SVG.
 

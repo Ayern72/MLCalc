@@ -158,17 +158,68 @@ public sealed class Figure
 	/// </summary>
 	public void SetView(double azimuth, double elevation)
 	{
-		if (!double.IsFinite(azimuth) || !(elevation >= -90 && elevation <= 90))
-			throw new ArgumentException("The azimuth must be a number and the elevation between -90 and 90 degrees.");
-		ModifyCurrent(a =>
-		{
-			double? distance = a.Camera.Position is null ? a.Camera.Distance : Projection3D.CameraDistance(a);
-			return a with { Camera = a.Camera with { Azimuth = azimuth, Elevation = elevation, Distance = distance, Position = null } };
-		});
+		RequireAngles(azimuth, elevation);
+		ModifyCurrent(a => WithView(a, azimuth, elevation));
 	}
 
 	/// <summary>Restores the default camera (<c>view(3)</c>).</summary>
 	public void ResetView() => ModifyCurrent(a => a with { Camera = Camera.Default });
+
+	/// <summary>
+	/// <see cref="SetView(double, double)"/> for the window at a zero-based grid position, current or
+	/// not (turning a window with the mouse). Returns false, changing nothing, when there is no such
+	/// window or it is not a 3D window: the grid or the window may have changed since the drag began.
+	/// </summary>
+	public bool SetView(int row, int column, double azimuth, double elevation)
+	{
+		RequireAngles(azimuth, elevation);
+		return ModifyWindow(row, column, a => WithView(a, azimuth, elevation));
+	}
+
+	/// <summary><see cref="ResetView()"/> for the window at a zero-based grid position; see <see cref="SetView(int, int, double, double)"/>.</summary>
+	public bool ResetView(int row, int column) => ModifyWindow(row, column, a => a with { Camera = Camera.Default });
+
+	/// <summary>
+	/// Moves the camera of the 3D window at a zero-based grid position towards its target
+	/// (<paramref name="factor"/> below 1) or away from it (above 1), keeping its direction (the mouse
+	/// wheel). <paramref name="cell"/> is the window's rectangle on the screen, as given to
+	/// <see cref="Scene3D.Build"/>: the default camera's distance depends on it. A camera set with
+	/// <c>camposition</c> stays a fixed point, moved along the line to the target. Returns false as
+	/// <see cref="SetView(int, int, double, double)"/> does.
+	/// </summary>
+	public bool MoveCamera(int row, int column, double factor, ScreenRect cell)
+	{
+		if (!(factor > 0) || !double.IsFinite(factor))
+			throw new ArgumentOutOfRangeException(nameof(factor), "The factor must be a positive number.");
+		return ModifyWindow(row, column, a =>
+		{
+			var view = new Projection3D(a, Scene3D.ViewArea(cell));
+			double distance = view.DistanceToTarget;
+			double moved = System.Math.Clamp(distance * factor, MinCameraDistance, MaxCameraDistance);
+			if (!view.IsPlaced)
+				return a with { Camera = a.Camera with { Distance = moved } };
+			var position = a.Camera.Position!.Value;
+			var target = view.TargetPosition;
+			double s = moved / distance;
+			return a with { Camera = a.Camera with { Position = new Point3(
+				target.X + (position.X - target.X) * s, target.Y + (position.Y - target.Y) * s, target.Z + (position.Z - target.Z) * s) } };
+		});
+	}
+
+	/// <summary>How close to and far from its target the mouse wheel moves a camera, in units of half the box.</summary>
+	public const double MinCameraDistance = 0.05, MaxCameraDistance = 100;
+
+	static void RequireAngles(double azimuth, double elevation)
+	{
+		if (!double.IsFinite(azimuth) || !(elevation >= -90 && elevation <= 90))
+			throw new ArgumentException("The azimuth must be a number and the elevation between -90 and 90 degrees.");
+	}
+
+	static Axes WithView(Axes a, double azimuth, double elevation)
+	{
+		double? distance = a.Camera.Position is null ? a.Camera.Distance : Projection3D.CameraDistance(a);
+		return a with { Camera = a.Camera with { Azimuth = azimuth, Elevation = elevation, Distance = distance, Position = null } };
+	}
 
 	/// <summary>Puts the camera at a fixed point, in data coordinates, outside the box (<c>camposition</c>).</summary>
 	public void SetCameraPosition(Point3 position)
@@ -346,6 +397,21 @@ public sealed class Figure
 		int index = currentRow * columns + currentColumn;
 		axes[index] = change(axes[index]);
 	});
+
+	/// <summary>Changes the 3D window at a zero-based grid position; false when there is none there.</summary>
+	bool ModifyWindow(int row, int column, Func<Axes, Axes> change)
+	{
+		lock (gate)
+		{
+			if (row < 0 || column < 0 || row >= rows || column >= columns || axes[row * columns + column].Kind != AxesKind.Space)
+				return false;
+			int index = row * columns + column;
+			axes[index] = change(axes[index]);
+			version++;
+		}
+		Changed?.Invoke(this, EventArgs.Empty);
+		return true;
+	}
 
 	void Update(Action change)
 	{

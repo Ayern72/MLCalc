@@ -33,7 +33,7 @@ public sealed class Projection3D
 	const double FitMargin = 1.04;
 
 	readonly Axes axes;
-	readonly Vec3 eye, right, up, forward;
+	readonly Vec3 eye, target, right, up, forward;
 	readonly double scale, centerX, centerY;
 
 	public Projection3D(Axes axes, ScreenRect screen)
@@ -47,7 +47,7 @@ public sealed class Projection3D
 		scale = shorter / 2 / tan;
 
 		var camera = axes.Camera;
-		var target = camera.Target is { } t ? Cube(t) : new Vec3(0, 0, 0);
+		target = camera.Target is { } t ? Cube(t) : new Vec3(0, 0, 0);
 		double az = camera.Azimuth * System.Math.PI / 180, el = camera.Elevation * System.Math.PI / 180;
 		// The horizontal direction the camera faces, used for "up" when it looks straight down or up.
 		var facing = new Vec3(-System.Math.Sin(az), System.Math.Cos(az), 0);
@@ -74,7 +74,10 @@ public sealed class Projection3D
 		up = right.Cross(forward);
 
 		if (camera.Position is { } p && Cube(p) is { IsFinite: true } placed && (placed - target).Length > 0)
+		{
 			eye = placed;
+			IsPlaced = true;
+		}
 		else
 		{
 			double distance = camera.Distance ?? FitDistance(target, tan * screen.Width / shorter / FitMargin, tan * screen.Height / shorter / FitMargin);
@@ -86,6 +89,47 @@ public sealed class Projection3D
 	public ScreenRect Screen { get; }
 
 	internal Vec3 Eye => eye;
+
+	/// <summary>Whether the camera is at a point set with <c>camposition</c>, rather than placed relative to the box.</summary>
+	public bool IsPlaced { get; }
+
+	/// <summary>The distance from the camera to the point it looks at, in units of half the box.</summary>
+	public double DistanceToTarget => (eye - target).Length;
+
+	/// <summary>Where the camera is, in data coordinates.</summary>
+	public Point3 CameraPosition => FromCube(eye);
+
+	/// <summary>The point the camera looks at, in data coordinates.</summary>
+	public Point3 TargetPosition => FromCube(target);
+
+	Point3 FromCube(Vec3 c) => new(
+		axes.XMin + (c.X + 1) / 2 * (axes.XMax - axes.XMin),
+		axes.YMin + (c.Y + 1) / 2 * (axes.YMax - axes.YMin),
+		axes.ZMin + (c.Z + 1) / 2 * (axes.ZMax - axes.ZMin));
+
+	/// <summary>
+	/// The azimuth and elevation, in degrees, that the camera looks from, as <c>view</c> takes them.
+	/// For a camera set with <c>camposition</c> they follow from where it is.
+	/// </summary>
+	public static (double Azimuth, double Elevation) ViewAngles(Axes axes)
+	{
+		var camera = axes.Camera;
+		if (camera.Position is { } p)
+		{
+			var target = camera.Target is { } t ? ToCube(axes, t) : new Point3(0, 0, 0);
+			var position = ToCube(axes, p);
+			var offset = new Vec3(position.X - target.X, position.Y - target.Y, position.Z - target.Z);
+			if (offset.IsFinite && offset.Length > 0)
+			{
+				var d = offset.Normalized;
+				double elevation = System.Math.Asin(System.Math.Clamp(d.Z, -1, 1)) * 180 / System.Math.PI;
+				// Straight above or below, the direction says nothing about the azimuth.
+				double azimuth = System.Math.Abs(d.Z) > 1 - 1e-12 ? camera.Azimuth : System.Math.Atan2(d.X, -d.Y) * 180 / System.Math.PI;
+				return (azimuth, elevation);
+			}
+		}
+		return (camera.Azimuth, camera.Elevation);
+	}
 
 	/// <summary>A data point in cube coordinates: the box from the ranges becomes −1..1 on each axis.</summary>
 	public static Point3 ToCube(Axes axes, Point3 p) => new(

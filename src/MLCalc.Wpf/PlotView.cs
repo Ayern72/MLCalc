@@ -31,8 +31,22 @@ public sealed class PlotView : FrameworkElement
 	readonly Dictionary<int, (Brush Brush, Pen Pen)> pens = [];
 	readonly Dictionary<int, Pen> thinPens = [];
 	readonly DispatcherTimer timer;
+	readonly DispatcherTimer wheelTimer;
 	int dirty;
 	FigureSnapshot? lastSnapshot;
+
+	/// <summary>What each window was last drawn from, so that windows that have not changed are not drawn again.</summary>
+	Dictionary<int, CellDrawing> drawn = [];
+
+	/// <summary>The camera drag in progress, if any.</summary>
+	CameraDrag? drag;
+
+	/// <summary>The 3D window being turned or moved with the mouse; drawn as a quick preview until the mouse stops.</summary>
+	(int Row, int Column)? previewWindow;
+
+	sealed record CellDrawing(Axes Axes, Rect Cell, bool IsCurrent, bool Preview, double Dpi, Drawing Drawing);
+
+	sealed record CameraDrag(int Row, int Column, Point Start, double Azimuth, double Elevation);
 
 	public PlotView()
 	{
@@ -42,8 +56,20 @@ public sealed class PlotView : FrameworkElement
 				InvalidateVisual();
 		}, Dispatcher);
 		timer.Stop();
+		// The full drawing after the mouse wheel has been still for a moment.
+		wheelTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(250), DispatcherPriority.Background, (_, _) =>
+		{
+			wheelTimer!.Stop();
+			if (drag is null)
+				EndPreview();
+		}, Dispatcher);
+		wheelTimer.Stop();
 		Loaded += (_, _) => timer.Start();
-		Unloaded += (_, _) => timer.Stop();
+		Unloaded += (_, _) =>
+		{
+			timer.Stop();
+			wheelTimer.Stop();
+		};
 		ClipToBounds = true;
 	}
 
@@ -98,6 +124,8 @@ public sealed class PlotView : FrameworkElement
 
 	static Rect ToRect(ScreenRect r) => new(r.Left, r.Top, r.Width, r.Height);
 
+	static ScreenRect ToScreenRect(Rect r) => new(r.Left, r.Top, r.Width, r.Height);
+
 	static PlotTransform TransformFor(Axes axes, Rect plot) => new(axes, new ScreenRect(plot.Left, plot.Top, plot.Width, plot.Height));
 
 	// ───────────── Rendering ─────────────
@@ -111,20 +139,39 @@ public sealed class PlotView : FrameworkElement
 
 		lastSnapshot = snapshot;
 		bool showCurrent = snapshot.Rows * snapshot.Columns > 1;
+		double dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+		var cells = new Dictionary<int, CellDrawing>();
 		for (int r = 0; r < snapshot.Rows; r++)
 			for (int c = 0; c < snapshot.Columns; c++)
 			{
+				int index = r * snapshot.Columns + c;
+				var axes = snapshot[r, c];
+				var cell = CellRect(snapshot, r, c);
 				bool current = showCurrent && r == snapshot.CurrentRow && c == snapshot.CurrentColumn;
-				RenderAxes(dc, snapshot[r, c], CellRect(snapshot, r, c), current);
+				bool preview = previewWindow == (r, c);
+				// Axes are immutable and a snapshot shares the ones that have not changed, so the same
+				// object in the same place looks the same.
+				if (!drawn.TryGetValue(index, out var cached) || !ReferenceEquals(cached.Axes, axes) || cached.Cell != cell
+					|| cached.IsCurrent != current || cached.Preview != preview || cached.Dpi != dpi)
+				{
+					var drawing = new DrawingGroup();
+					using (var context = drawing.Open())
+						RenderAxes(context, axes, cell, current, preview);
+					drawing.Freeze();
+					cached = new CellDrawing(axes, cell, current, preview, dpi, drawing);
+				}
+				cells[index] = cached;
+				dc.DrawDrawing(cached.Drawing);
 			}
+		drawn = cells;
 	}
 
 	/// <summary>A 3D window: the primitives from <see cref="Scene3D"/>, in order.</summary>
-	void RenderSpace(DrawingContext dc, Axes axes, Rect cell, bool isCurrent)
+	void RenderSpace(DrawingContext dc, Axes axes, Rect cell, bool isCurrent, bool preview)
 	{
 		double dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
 		dc.PushClip(new RectangleGeometry(cell));
-		foreach (var primitive in Scene3D.Build(axes, new ScreenRect(cell.Left, cell.Top, cell.Width, cell.Height)))
+		foreach (var primitive in Scene3D.Build(axes, ToScreenRect(cell), preview))
 			switch (primitive)
 			{
 				case ScenePolyline line:
@@ -199,11 +246,11 @@ public sealed class PlotView : FrameworkElement
 		return value;
 	}
 
-	void RenderAxes(DrawingContext dc, Axes axes, Rect cell, bool isCurrent)
+	void RenderAxes(DrawingContext dc, Axes axes, Rect cell, bool isCurrent, bool preview)
 	{
 		if (axes.Kind == AxesKind.Space)
 		{
-			RenderSpace(dc, axes, cell, isCurrent);
+			RenderSpace(dc, axes, cell, isCurrent, preview);
 			return;
 		}
 		var plot = PlotRect(cell);
@@ -387,36 +434,149 @@ public sealed class PlotView : FrameworkElement
 			size, TextBrush, pixelsPerDip);
 
 
-	// ───────────── Mouse coordinates ─────────────
+	// ───────────── Mouse: coordinates and the 3D camera ─────────────
+
+	/// <summary>The window under a point: zero-based row and column, its rectangle and axes.</summary>
+	bool TryFindWindow(FigureSnapshot snapshot, Point position, out int row, out int column, out Rect cell)
+	{
+		for (row = 0; row < snapshot.Rows; row++)
+			for (column = 0; column < snapshot.Columns; column++)
+			{
+				cell = CellRect(snapshot, row, column);
+				if (cell.Contains(position))
+					return true;
+			}
+		row = column = -1;
+		cell = Rect.Empty;
+		return false;
+	}
+
+	/// <summary>The 3D window under the mouse, when the view is live (not drawing a fixed snapshot for export).</summary>
+	bool TryFind3DWindow(Point position, out Figure figure, out int row, out int column, out Rect cell)
+	{
+		figure = Figure!;
+		row = column = -1;
+		cell = Rect.Empty;
+		return FixedSnapshot is null && Figure is not null && lastSnapshot is { } snapshot
+			&& TryFindWindow(snapshot, position, out row, out column, out cell) && snapshot[row, column].Kind == AxesKind.Space;
+	}
+
+	/// <summary>Shows the camera of a 3D window in the status bar, as the command that sets it.</summary>
+	void ReportCamera(FigureSnapshot snapshot, int row, int column, Rect cell)
+	{
+		if (row >= snapshot.Rows || column >= snapshot.Columns)
+			return;
+		string grid = snapshot.Rows * snapshot.Columns > 1 ? $"window ({row + 1},{column + 1})   " : "";
+		CoordinatesChanged?.Invoke(this, grid + CameraControl.Describe(snapshot[row, column], ToScreenRect(cell)));
+	}
+
+	protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
+	{
+		base.OnMouseLeftButtonDown(e);
+		var position = e.GetPosition(this);
+		if (!TryFind3DWindow(position, out var figure, out int row, out int column, out var cell))
+			return;
+		e.Handled = true;
+		if (e.ClickCount == 2)
+		{
+			// Double-click: back to the default camera, as view(3).
+			if (IsMouseCaptured)
+				ReleaseMouseCapture();
+			figure.ResetView(row, column);
+			ReportCamera(figure.Snapshot(), row, column, cell);
+			return;
+		}
+		var (azimuth, elevation) = Projection3D.ViewAngles(lastSnapshot![row, column]);
+		drag = new CameraDrag(row, column, position, azimuth, elevation);
+		previewWindow = (row, column);
+		Cursor = Cursors.SizeAll;
+		CaptureMouse();
+	}
+
+	protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
+	{
+		base.OnMouseLeftButtonUp(e);
+		if (drag is not null)
+		{
+			e.Handled = true;
+			ReleaseMouseCapture();
+		}
+	}
+
+	protected override void OnLostMouseCapture(MouseEventArgs e)
+	{
+		base.OnLostMouseCapture(e);
+		if (drag is null)
+			return;
+		drag = null;
+		Cursor = null;
+		EndPreview();
+	}
+
+	/// <summary>Draws the window that was being turned or moved in full again.</summary>
+	void EndPreview()
+	{
+		if (previewWindow is null)
+			return;
+		previewWindow = null;
+		InvalidateVisual();
+	}
+
+	protected override void OnMouseWheel(MouseWheelEventArgs e)
+	{
+		base.OnMouseWheel(e);
+		if (!TryFind3DWindow(e.GetPosition(this), out var figure, out int row, out int column, out var cell))
+			return;
+		e.Handled = true;
+		if (!figure.MoveCamera(row, column, CameraControl.WheelFactor(e.Delta), ToScreenRect(cell)))
+			return;
+		if (drag is null)
+			previewWindow = (row, column);
+		wheelTimer.Stop();
+		wheelTimer.Start();
+		ReportCamera(figure.Snapshot(), row, column, cell);
+	}
 
 	protected override void OnMouseMove(MouseEventArgs e)
 	{
 		base.OnMouseMove(e);
-		var snapshot = lastSnapshot;
-		if (snapshot is null)
-			return;
 		var position = e.GetPosition(this);
-		for (int r = 0; r < snapshot.Rows; r++)
-			for (int c = 0; c < snapshot.Columns; c++)
+		if (drag is { } d && Figure is { } figure)
+		{
+			var (azimuth, elevation) = CameraControl.Drag(d.Azimuth, d.Elevation, position.X - d.Start.X, position.Y - d.Start.Y);
+			// False when the window is gone or no longer 3D (a script changed it): stop turning it.
+			if (!figure.SetView(d.Row, d.Column, azimuth, elevation))
 			{
-				var plot = PlotRect(CellRect(snapshot, r, c));
-				if (!plot.Contains(position))
-					continue;
-				var axes = snapshot[r, c];
-				if (axes.Kind == AxesKind.Space)
-				{
-					// A point on the screen is a whole line of points in 3D.
-					CoordinatesChanged?.Invoke(this, snapshot.Rows * snapshot.Columns > 1 ? $"window ({r + 1},{c + 1})" : "");
-					return;
-				}
-				var t = TransformFor(axes, plot);
-				string x = t.ToWorldX(position.X).ToString("G5", CultureInfo.InvariantCulture);
-				string y = t.ToWorldY(position.Y).ToString("G5", CultureInfo.InvariantCulture);
-				string grid = snapshot.Rows * snapshot.Columns > 1 ? $"window ({r + 1},{c + 1})   " : "";
-				CoordinatesChanged?.Invoke(this, axes.Kind == AxesKind.Complex ? $"{grid}Re = {x}   Im = {y}" : $"{grid}x = {x}   y = {y}");
+				ReleaseMouseCapture();
 				return;
 			}
-		CoordinatesChanged?.Invoke(this, "");
+			var snapshot = figure.Snapshot();
+			ReportCamera(snapshot, d.Row, d.Column, CellRect(snapshot, d.Row, d.Column));
+			return;
+		}
+		if (lastSnapshot is not { } last || !TryFindWindow(last, position, out int r, out int c, out var cell))
+		{
+			CoordinatesChanged?.Invoke(this, "");
+			return;
+		}
+		var axes = last[r, c];
+		if (axes.Kind == AxesKind.Space)
+		{
+			// A point on the screen is a whole line of points in 3D; show the camera instead.
+			ReportCamera(last, r, c, cell);
+			return;
+		}
+		var plot = PlotRect(cell);
+		if (!plot.Contains(position))
+		{
+			CoordinatesChanged?.Invoke(this, "");
+			return;
+		}
+		var t = TransformFor(axes, plot);
+		string x = t.ToWorldX(position.X).ToString("G5", CultureInfo.InvariantCulture);
+		string y = t.ToWorldY(position.Y).ToString("G5", CultureInfo.InvariantCulture);
+		string grid = last.Rows * last.Columns > 1 ? $"window ({r + 1},{c + 1})   " : "";
+		CoordinatesChanged?.Invoke(this, axes.Kind == AxesKind.Complex ? $"{grid}Re = {x}   Im = {y}" : $"{grid}x = {x}   y = {y}");
 	}
 
 	protected override void OnMouseLeave(MouseEventArgs e)

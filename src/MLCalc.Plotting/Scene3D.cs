@@ -58,8 +58,18 @@ public static class Scene3D
 		System.Math.Max(1, cell.Width - 2 * Margin),
 		System.Math.Max(1, cell.Height - TitleRoom - 1.5 * Margin));
 
-	public static ImmutableArray<ScenePrimitive> Build(Axes axes, ScreenRect cell)
+	/// <summary>In a preview, surfaces have at most this many grid lines each way, and curves and clouds at most <see cref="PreviewPoints"/> points.</summary>
+	public const int PreviewGridLines = 40, PreviewPoints = 20_000;
+
+	/// <summary>
+	/// The primitives for a 3D window in the rectangle <paramref name="cell"/>. A
+	/// <paramref name="preview"/> draws large surfaces, curves and clouds from a part of their points
+	/// (see <see cref="Preview(Axes)"/>), quickly enough to follow the mouse while the camera is turned.
+	/// </summary>
+	public static ImmutableArray<ScenePrimitive> Build(Axes axes, ScreenRect cell, bool preview = false)
 	{
+		if (preview)
+			axes = Preview(axes);
 		var scene = ImmutableArray.CreateBuilder<ScenePrimitive>();
 		var area = ViewArea(cell);
 		if (area.Width >= 20 && area.Height >= 20)
@@ -208,25 +218,117 @@ public static class Scene3D
 			scene.Add(new ScenePolyline(stroke, pen, [view.ToScreen(a), view.ToScreen(b)]));
 	}
 
+	/// <summary>
+	/// The window with large items thinned out for a quick preview: a surface keeps at most
+	/// <see cref="PreviewGridLines"/> of its grid lines each way (always the first and the last), a
+	/// curve or cloud at most about <see cref="PreviewPoints"/> of its points. A curve keeps its
+	/// non-finite points, so that its gaps stay gaps.
+	/// </summary>
+	public static Axes Preview(Axes axes) => axes with { Items = [.. axes.Items.Select(PreviewItem)] };
+
+	static PlotItem PreviewItem(PlotItem item)
+	{
+		switch (item)
+		{
+			case Surface s when s.XCount > PreviewGridLines || s.YCount > PreviewGridLines:
+			{
+				var xs = Lines(s.XCount, PreviewGridLines);
+				var ys = Lines(s.YCount, PreviewGridLines);
+				var points = ImmutableArray.CreateBuilder<Point3>(xs.Count * ys.Count);
+				foreach (int j in ys)
+					foreach (int i in xs)
+						points.Add(s[i, j]);
+				return s with { XCount = xs.Count, YCount = ys.Count, Points = points.MoveToImmutable() };
+			}
+			case PointSeries3D s when s.Points.Length > PreviewPoints:
+			{
+				int step = Step(s.Points.Length);
+				var points = s.Points;
+				return s with { Points = [.. points.Where((p, k) => k % step == 0 || k == points.Length - 1 || !p.IsFinite)] };
+			}
+			case DotCloud3D c when c.Points.Count > PreviewPoints:
+			{
+				int step = Step(c.Points.Count);
+				return c with { Points = [.. c.Points.Where((_, k) => k % step == 0)] };
+			}
+			default:
+				return item;
+		}
+	}
+
+	static int Step(int count) => (count + PreviewPoints - 1) / PreviewPoints;
+
+	/// <summary>At most <paramref name="max"/> evenly spread indices from 0 to <paramref name="count"/> − 1, both included.</summary>
+	static List<int> Lines(int count, int max)
+	{
+		if (count <= max)
+			return [.. Enumerable.Range(0, count)];
+		int step = (count - 1 + max - 2) / (max - 1);
+		var lines = new List<int>();
+		for (int k = 0; k < count - 1; k += step)
+			lines.Add(k);
+		lines.Add(count - 1);
+		return lines;
+	}
+
 	/// <summary>Every cell of every surface as a polygon, sorted so that farther ones are drawn first.</summary>
 	static void AddSurfaces(ImmutableArray<ScenePrimitive>.Builder scene, Projection3D view, Axes axes)
 	{
-		var pieces = new List<(double Depth, ScenePolygon Polygon)>();
+		var pieces = new List<(double Depth, int Order, ScenePolygon Polygon)>();
+		Span<int> corners = stackalloc int[4];
 		foreach (var surface in axes.Items.OfType<Surface>())
+		{
+			// Each grid point is shared by up to four cells: convert it once.
+			int n = surface.Points.Length;
+			var cube = new Vec3[n];
+			var depth = new double[n];
+			var visible = new bool[n];
+			var screen = new ScreenPoint[n];
+			for (int k = 0; k < n; k++)
+			{
+				var p = surface.Points[k];
+				if (!p.IsFinite)
+					continue;
+				cube[k] = view.Cube(p);
+				visible[k] = view.IsVisible(cube[k]);
+				if (visible[k])
+				{
+					depth[k] = view.Depth(cube[k]);
+					screen[k] = view.ToScreen(cube[k]);
+				}
+			}
 			for (int j = 0; j + 1 < surface.YCount; j++)
 				for (int i = 0; i + 1 < surface.XCount; i++)
 				{
-					Point3[] corners = [surface[i, j], surface[i + 1, j], surface[i + 1, j + 1], surface[i, j + 1]];
-					if (!corners.All(c => c.IsFinite))
+					corners[0] = j * surface.XCount + i;
+					corners[1] = corners[0] + 1;
+					corners[2] = corners[1] + surface.XCount;
+					corners[3] = corners[0] + surface.XCount;
+					bool finite = true, inside = true;
+					foreach (int k in corners)
+					{
+						finite &= surface.Points[k].IsFinite;
+						inside &= visible[k];
+					}
+					if (!finite)
 						continue;
-					var polygon = view.ClipPolygon([.. corners.Select(view.Cube)]);
+					if (inside)
+					{
+						// The usual case: nothing to cut.
+						double average = (depth[corners[0]] + depth[corners[1]] + depth[corners[2]] + depth[corners[3]]) / 4;
+						pieces.Add((average, pieces.Count, new ScenePolygon(surface.Pen,
+							[screen[corners[0]], screen[corners[1]], screen[corners[2]], screen[corners[3]]])));
+						continue;
+					}
+					var polygon = view.ClipPolygon([cube[corners[0]], cube[corners[1]], cube[corners[2]], cube[corners[3]]]);
 					if (polygon.Count < 3)
 						continue;
-					double depth = polygon.Average(view.Depth);
-					pieces.Add((depth, new ScenePolygon(surface.Pen, [.. polygon.Select(view.ToScreen)])));
+					pieces.Add((polygon.Average(view.Depth), pieces.Count, new ScenePolygon(surface.Pen, [.. polygon.Select(view.ToScreen)])));
 				}
-		// A stable sort, so pieces at the same depth keep their order.
-		foreach (var piece in pieces.OrderByDescending(p => p.Depth))
+		}
+		// Farthest first; pieces at the same depth keep their order.
+		pieces.Sort((a, b) => a.Depth != b.Depth ? b.Depth.CompareTo(a.Depth) : a.Order.CompareTo(b.Order));
+		foreach (var piece in pieces)
 			scene.Add(piece.Polygon);
 	}
 
