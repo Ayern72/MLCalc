@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace MLCalc.Math.Tests;
+namespace MLCalc.Mathematics.Tests;
 
 public class ComplexMathTests
 {
@@ -13,7 +13,7 @@ public class ComplexMathTests
 
 	static void AssertClose(Complex expected, Complex actual, double tolerance = Tolerance)
 	{
-		Assert.True(Complex.Abs(expected - actual) <= tolerance * System.Math.Max(1, Complex.Abs(expected)),
+		Assert.True(Complex.Abs(expected - actual) <= tolerance * Math.Max(1, Complex.Abs(expected)),
 			$"Expected {expected}, got {actual}");
 	}
 
@@ -98,16 +98,16 @@ public class ComplexMathTests
 	[Fact]
 	public void EulerIdentity()
 	{
-		AssertClose(-1, ComplexMath.Exp(ComplexMath.I * System.Math.PI));
+		AssertClose(-1, ComplexMath.Exp(ComplexMath.I * Math.PI));
 	}
 
 	[Fact]
 	public void ArgCoversAllQuadrants()
 	{
-		Assert.Equal(System.Math.PI / 4, ComplexMath.Arg(new Complex(1, 1)), 12);
-		Assert.Equal(3 * System.Math.PI / 4, ComplexMath.Arg(new Complex(-1, 1)), 12);
-		Assert.Equal(-3 * System.Math.PI / 4, ComplexMath.Arg(new Complex(-1, -1)), 12);
-		Assert.Equal(-System.Math.PI / 2, ComplexMath.Arg(new Complex(0, -1)), 12);
+		Assert.Equal(Math.PI / 4, ComplexMath.Arg(new Complex(1, 1)), 12);
+		Assert.Equal(3 * Math.PI / 4, ComplexMath.Arg(new Complex(-1, 1)), 12);
+		Assert.Equal(-3 * Math.PI / 4, ComplexMath.Arg(new Complex(-1, -1)), 12);
+		Assert.Equal(-Math.PI / 2, ComplexMath.Arg(new Complex(0, -1)), 12);
 		Assert.Equal(0, ComplexMath.Arg(Complex.Zero));
 	}
 
@@ -127,7 +127,7 @@ public class ComplexMathTests
 	[Fact]
 	public void LogOfNegativeRealHasImaginaryPi()
 	{
-		AssertClose(new Complex(System.Math.Log(2), System.Math.PI), ComplexMath.Ln(-2));
+		AssertClose(new Complex(Math.Log(2), Math.PI), ComplexMath.Ln(-2));
 	}
 
 	[Fact]
@@ -135,8 +135,8 @@ public class ComplexMathTests
 	{
 		// -(1 + 0i) in complex arithmetic is -1 - 0i; that must still behave as the real number -1.
 		var minusOne = -new Complex(1, 0);
-		Assert.Equal(System.Math.PI, ComplexMath.Arg(minusOne));
-		AssertClose(new Complex(0, System.Math.PI), ComplexMath.Ln(minusOne));
+		Assert.Equal(Math.PI, ComplexMath.Arg(minusOne));
+		AssertClose(new Complex(0, Math.PI), ComplexMath.Ln(minusOne));
 		AssertClose(ComplexMath.I, ComplexMath.Pow(minusOne, 0.5));
 		Assert.False(double.IsNegative(ComplexMath.Negate(1).Imaginary));
 	}

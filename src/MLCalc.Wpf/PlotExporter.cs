@@ -29,7 +29,7 @@ public static class PlotExporter
 		view.UpdateLayout();
 
 		var bitmap = new RenderTargetBitmap(
-			(int)System.Math.Ceiling(width * scale), (int)System.Math.Ceiling(height * scale),
+			(int)Math.Ceiling(width * scale), (int)Math.Ceiling(height * scale),
 			96 * scale, 96 * scale, PixelFormats.Pbgra32);
 		bitmap.Render(view);
 		bitmap.Freeze();

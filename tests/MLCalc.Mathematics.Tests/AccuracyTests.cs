@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace MLCalc.Math.Tests;
+namespace MLCalc.Mathematics.Tests;
 
 /// <summary>
 /// Results that the second review found wrong: cot and coth were NaN for large arguments, complex
@@ -9,13 +9,13 @@ namespace MLCalc.Math.Tests;
 /// </summary>
 public class AccuracyTests
 {
-	const double HalfPi = System.Math.PI / 2;
+	const double HalfPi = Math.PI / 2;
 
 	/// <summary>Each part within <paramref name="relative"/> of the expected part, relative to that part (or absolute when it is 0).</summary>
 	static void AssertParts(Complex expected, Complex actual, double relative = 1e-15)
 	{
 		static bool Close(double e, double a, double tolerance) =>
-			e == a || System.Math.Abs(e - a) <= tolerance * System.Math.Max(System.Math.Abs(e), e == 0 ? 1 : 0);
+			e == a || Math.Abs(e - a) <= tolerance * Math.Max(Math.Abs(e), e == 0 ? 1 : 0);
 		Assert.True(Close(expected.Real, actual.Real, relative) && Close(expected.Imaginary, actual.Imaginary, relative),
 			$"Expected {expected}, got {actual}");
 	}
@@ -82,10 +82,10 @@ public class AccuracyTests
 	public static TheoryData<string, Complex, Complex> ModerateAndHugeArguments() => new()
 	{
 		// atanh(z) = ½·ln((1 + z)/(1 − z)); for z = (1 + i)/2 the quotient is 1 + 2i.
-		{ "atanh", new Complex(0.5, 0.5), new(System.Math.Log(5) / 4, System.Math.Atan(2) / 2) },
-		{ "atanh", new Complex(-0.5, -0.5), new(-System.Math.Log(5) / 4, -System.Math.Atan(2) / 2) },
+		{ "atanh", new Complex(0.5, 0.5), new(Math.Log(5) / 4, Math.Atan(2) / 2) },
+		{ "atanh", new Complex(-0.5, -0.5), new(-Math.Log(5) / 4, -Math.Atan(2) / 2) },
 		// atan(z) = −i·atanh(iz); for z = (1 + i)/2, iz = (−1 + i)/2.
-		{ "atan", new Complex(0.5, 0.5), new(System.Math.Atan(2) / 2, System.Math.Log(5) / 4) },
+		{ "atan", new Complex(0.5, 0.5), new(Math.Atan(2) / 2, Math.Log(5) / 4) },
 		// For huge |z|, atanh(z) = 1/z ± iπ/2: 1/(1e300 + 1e300i) has real part 5e-301.
 		{ "atanh", new Complex(1e300, 1e300), new(5e-301, HalfPi) },
 		{ "atanh", new Complex(1e300, -1e300), new(5e-301, -HalfPi) },
@@ -123,7 +123,7 @@ public class AccuracyTests
 		// |z|^w·e^(iπw) with exact sin and cos at half-integers.
 		Assert.Equal(new Complex(0, double.PositiveInfinity), ComplexMath.Pow(double.NegativeInfinity, 0.5));
 		Assert.Equal(new Complex(0, 2), ComplexMath.Pow(-4, 0.5));
-		AssertParts(new Complex(1, System.Math.Sqrt(3)), ComplexMath.Pow(-8, 1.0 / 3), 1e-15);
+		AssertParts(new Complex(1, Math.Sqrt(3)), ComplexMath.Pow(-8, 1.0 / 3), 1e-15);
 		// (1e200·i)² overflows to -∞; the imaginary part is 0, not NaN.
 		var square = ComplexMath.Pow(new Complex(0, 1e200), 2);
 		Assert.Equal(double.NegativeInfinity, square.Real);
@@ -142,11 +142,11 @@ public class AccuracyTests
 	public static TheoryData<string, Complex, Complex> HugeArguments() => new()
 	{
 		// acosh(z) = ln(2z) and asinh(z) = ln(2z) to double precision when |z| is huge.
-		{ "acosh", new Complex(1e308, 1e308), new(System.Math.Log(2) + System.Math.Log(System.Math.Sqrt(2)) + System.Math.Log(1e308), System.Math.PI / 4) },
-		{ "acosh", -1e308, new(System.Math.Log(2) + System.Math.Log(1e308), System.Math.PI) },
-		{ "acosh", new Complex(-1e200, -1), new(System.Math.Log(2) + System.Math.Log(1e200), -System.Math.PI) },
-		{ "asinh", new Complex(1e308, 1e308), new(System.Math.Log(2) + System.Math.Log(System.Math.Sqrt(2)) + System.Math.Log(1e308), System.Math.PI / 4) },
-		{ "asinh", new Complex(0, -1e200), new(-(System.Math.Log(2) + System.Math.Log(1e200)), -HalfPi) },
+		{ "acosh", new Complex(1e308, 1e308), new(Math.Log(2) + Math.Log(Math.Sqrt(2)) + Math.Log(1e308), Math.PI / 4) },
+		{ "acosh", -1e308, new(Math.Log(2) + Math.Log(1e308), Math.PI) },
+		{ "acosh", new Complex(-1e200, -1), new(Math.Log(2) + Math.Log(1e200), -Math.PI) },
+		{ "asinh", new Complex(1e308, 1e308), new(Math.Log(2) + Math.Log(Math.Sqrt(2)) + Math.Log(1e308), Math.PI / 4) },
+		{ "asinh", new Complex(0, -1e200), new(-(Math.Log(2) + Math.Log(1e200)), -HalfPi) },
 		{ "asinh", new Complex(double.PositiveInfinity, 1), new(double.PositiveInfinity, 0) },
 		{ "asinh", new Complex(double.NegativeInfinity, 1), new(double.NegativeInfinity, 0) },
 	};

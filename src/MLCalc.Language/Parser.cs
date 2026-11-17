@@ -17,13 +17,13 @@ public sealed record ParseResult(SourceText Text, ProgramSyntax Root, ImmutableA
 }
 
 /// <summary>
-/// Recursive-descent parser for the MLCalc language. Operator precedence follows MATLAB, from
-/// lowest to highest: <c>or xor | ||</c>; <c>and &amp; &amp;&amp;</c>; comparisons; ranges <c>a:b</c>;
+/// Recursive-descent parser for the MLCalc language. Operator precedence, from lowest to
+/// highest: <c>or xor | ||</c>; <c>and &amp; &amp;&amp;</c>; comparisons; ranges <c>a:b</c>;
 /// <c>+ -</c>; <c>* / \ .* ./ .\ mod div</c>; unary <c>+ - not ~</c>; <c>^ .^</c>; postfix
 /// <c>' .' !</c>. Control flow comes in two styles, chosen by what follows the header:
 /// the original Pascal-like <c>if … then … else …</c>, <c>while … do …</c>, <c>for v = a to b do …</c>
-/// with a single statement or <c>begin … end</c> as body; and MATLAB-style blocks without
-/// <c>then</c>/<c>do</c> that run to <c>end</c>: <c>if … elseif … else … end</c>, <c>while … end</c>,
+/// with a single statement or <c>begin … end</c> as body; and the block style, without
+/// <c>then</c>/<c>do</c> and running to <c>end</c>: <c>if … elseif … else … end</c>, <c>while … end</c>,
 /// <c>for v = range … end</c>.
 /// </summary>
 public sealed class Parser
@@ -200,7 +200,7 @@ public sealed class Parser
 	}
 
 	/// <summary>
-	/// <c>if c then s [else s]</c> (original style), or the MATLAB style
+	/// <c>if c then s [else s]</c> (original style), or the block style
 	/// <c>if c … elseif c … else … end</c> when the condition is not followed by <c>then</c>.
 	/// </summary>
 	Statement ParseIf()
@@ -208,7 +208,7 @@ public sealed class Parser
 		int start = Expect(TokenKind.If, "'if'").Span.Start;
 		var condition = ParseExpression();
 		if (!At(TokenKind.Then))
-			return ParseMatlabIf(start, condition);
+			return ParseBlockIf(start, condition);
 		Advance();
 		var then = ParseBody();
 
@@ -232,8 +232,8 @@ public sealed class Parser
 		}
 	}
 
-	/// <summary>The rest of a MATLAB-style if after its condition; an elseif chain shares the final <c>end</c>.</summary>
-	Statement ParseMatlabIf(int start, Expression condition)
+	/// <summary>The rest of a block-style if after its condition; an elseif chain shares the final <c>end</c>.</summary>
+	Statement ParseBlockIf(int start, Expression condition)
 	{
 		EndBlockHeader("'then'");
 		var then = ParseStatementsUntil(TokenKind.Else, TokenKind.Elseif, TokenKind.End);
@@ -245,7 +245,7 @@ public sealed class Parser
 			try
 			{
 				var elseifCondition = ParseExpression();
-				@else = ParseMatlabIf(elseifStart, elseifCondition);
+				@else = ParseBlockIf(elseifStart, elseifCondition);
 				return new IfStatement(SpanFrom(start), condition, then, @else);
 			}
 			finally
@@ -262,7 +262,7 @@ public sealed class Parser
 		return new IfStatement(SpanFrom(start), condition, then, @else);
 	}
 
-	/// <summary><c>while c do s</c> (original style), or MATLAB style <c>while c … end</c>.</summary>
+	/// <summary><c>while c do s</c> (original style), or block style <c>while c … end</c>.</summary>
 	Statement ParseWhile()
 	{
 		int start = Expect(TokenKind.While, "'while'").Span.Start;
@@ -274,12 +274,12 @@ public sealed class Parser
 			body = ParseBody();
 		}
 		else
-			body = ParseMatlabBody("'do'", "while");
+			body = ParseBlockBody("'do'", "while");
 		return new WhileStatement(SpanFrom(start), condition, body);
 	}
 
 	/// <summary>
-	/// After the header of a MATLAB-style block, the condition must end with a new line, ',' or ';'.
+	/// After the header of a block-style construct, the condition must end with a new line, ',' or ';'.
 	/// </summary>
 	void EndBlockHeader(string originalKeyword)
 	{
@@ -293,8 +293,8 @@ public sealed class Parser
 			: $"Expected {originalKeyword} or the end of the line, but found {Describe(Current)}.");
 	}
 
-	/// <summary>A MATLAB-style body: statements up to and including <c>end</c>.</summary>
-	Statement ParseMatlabBody(string originalKeyword, string construct)
+	/// <summary>A block-style body: statements up to and including <c>end</c>.</summary>
+	Statement ParseBlockBody(string originalKeyword, string construct)
 	{
 		EndBlockHeader(originalKeyword);
 		var body = ParseStatementsUntil(TokenKind.End);
@@ -317,7 +317,7 @@ public sealed class Parser
 			TryParseStatement(statements);
 		}
 		int end = statements.Count > 0 ? statements[^1].Span.End : start;
-		return new BlockStatement(SourceSpan.FromBounds(start, System.Math.Max(start, end)), statements.ToImmutable());
+		return new BlockStatement(SourceSpan.FromBounds(start, Math.Max(start, end)), statements.ToImmutable());
 	}
 
 	Statement ParseFor()
@@ -340,7 +340,7 @@ public sealed class Parser
 			body = ParseBody();
 		}
 		else
-			body = ParseMatlabBody("'do'", "for");
+			body = ParseBlockBody("'do'", "for");
 		return new ForStatement(SpanFrom(start), variable, first, last, body);
 	}
 
@@ -558,7 +558,7 @@ public sealed class Parser
 		_ => null,
 	};
 
-	/// <summary>Unary operators bind looser than <c>^</c>, so <c>-2^2</c> is <c>-(2^2)</c>, as in MATLAB.</summary>
+	/// <summary>Unary operators bind looser than <c>^</c>, so <c>-2^2</c> is <c>-(2^2)</c>, as in mathematics.</summary>
 	Expression ParseUnary()
 	{
 		if (UnaryOperatorFor(Current.Kind) is { } op)
@@ -675,7 +675,7 @@ public sealed class Parser
 			}
 			case TokenKind.Mod or TokenKind.Div when Peek(1).Kind == TokenKind.OpenParen:
 			{
-				// MATLAB's function form mod(a, b) alongside the original operator a mod b.
+				// The function form mod(a, b) alongside the original operator a mod b.
 				Advance();
 				var function = new Identifier(token.Span, token.Text);
 				var arguments = ParseArguments();

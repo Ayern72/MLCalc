@@ -1,7 +1,7 @@
 using System.Numerics;
 using MLCalc.Language;
 using MLCalc.LinearAlgebra;
-using MLCalc.Math;
+using MLCalc.Mathematics;
 using MLCalc.Plotting;
 
 namespace MLCalc.Interpreter;
@@ -54,7 +54,7 @@ internal sealed class CallContext(MLCalcInterpreter interpreter, string name, IR
 	public int Integer(int index, int min = int.MinValue)
 	{
 		double value = Real(index);
-		if (value != System.Math.Floor(value) || value < min || value > int.MaxValue)
+		if (value != Math.Floor(value) || value < min || value > int.MaxValue)
 			throw Error(min == 0 ? $"argument {index + 1} must be a non-negative integer."
 				: min == 1 ? $"argument {index + 1} must be a positive integer."
 				: $"argument {index + 1} must be an integer.", index);

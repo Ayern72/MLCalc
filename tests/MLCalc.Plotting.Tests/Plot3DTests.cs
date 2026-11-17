@@ -204,7 +204,7 @@ public class ProjectionTests
 		Assert.Equal(200, centre.Y, 9);
 		var target = Space(Camera.Default with { Target = new Point3(5, -5, 2) });
 		var p = Project(target, 5, -5, 2);
-		Assert.Equal((300, 200), (System.Math.Round(p.X, 9), System.Math.Round(p.Y, 9)));
+		Assert.Equal((300, 200), (Math.Round(p.X, 9), Math.Round(p.Y, 9)));
 	}
 
 	[Theory]
@@ -241,7 +241,7 @@ public class ProjectionTests
 	[Fact]
 	public void FromTheSideYIsToTheRight()
 	{
-		// view(90, 0): from +x, as in MATLAB.
+		// view(90, 0): from +x.
 		var axes = Space(Camera.Default with { Azimuth = 90, Elevation = 0 });
 		Assert.True(Project(axes, 0, 5, 0).X > Project(axes, 0, 0, 0).X + 10);
 	}
@@ -249,7 +249,7 @@ public class ProjectionTests
 	[Fact]
 	public void FromAboveYIsUp()
 	{
-		// view(2): from straight above, with x to the right and y up, as in MATLAB.
+		// view(2): from straight above, with x to the right and y up.
 		var axes = Space(Camera.Default with { Azimuth = 0, Elevation = 90 });
 		var centre = Project(axes, 0, 0, 0);
 		Assert.True(Project(axes, 5, 0, 0).X > centre.X + 10);

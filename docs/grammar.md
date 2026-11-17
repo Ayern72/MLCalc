@@ -105,16 +105,16 @@ statement-end      = ";"                                                      (*
 ### Control flow
 
 Each construct comes in two styles. ⚑ The token after the header decides which one is used:
-`then`/`do` selects the original style; anything else selects the MATLAB style.
+`then`/`do` selects the original style; anything else selects the block style.
 
 ```ebnf
 (* ───────── if ───────── *)
-if-statement       = "if" expression ( original-if | matlab-if ) ;
+if-statement       = "if" expression ( original-if | block-if ) ;
 
 original-if        = "then" body
                      [ { NEWLINE | ";" } "else" ( if-statement | body ) ] ;  (* ⚑ else lookahead *)
 
-matlab-if          = header-end statement-list
+block-if           = header-end statement-list
                      { "elseif" expression header-end statement-list }
                      [ "else" statement-list ]
                      "end" ;
@@ -132,7 +132,7 @@ for-statement      = "for" IDENTIFIER "=" expression [ "to" expression ]
 (* ───────── shared ───────── *)
 body               = { NEWLINE | ";" } ( block | statement ) ;   (* original style: one statement or a block *)
 block              = "begin" { separator | statement } "end" ;
-header-end         = NEWLINE | "," | ";" ;                       (* ends a MATLAB-style header *)
+header-end         = NEWLINE | "," | ";" ;                       (* ends a block-style header *)
 statement-list     = { separator | statement } ;                 (* stops before "else", "elseif" or "end" *)
 ```
 
@@ -181,7 +181,7 @@ row-separator      = ";" | NEWLINE ;
 element            = expression ;
 ```
 
-Because `unary` is below `power`, `-2^2` is `-(2^2)` = −4, as in MATLAB, while `2^-1` = 0.5
+Because `unary` is below `power`, `-2^2` is `-(2^2)` = −4, as in mathematics, while `2^-1` = 0.5
 through `power-operand`. A unary operator binds tighter than `*`: `-a*b` is `(-a)*b`.
 
 ### Precedence summary
@@ -198,7 +198,7 @@ through `power-operand`. A unary operator binds tighter than `*`: `-a*b` is `(-a
 | 8 | `^` `.^` | left |
 | 9 (highest) | postfix `'` `.'` `!` | left (postfix) |
 
-What the operators *mean* (matrix vs element-wise, MATLAB semantics) is defined by the
+What the operators *mean* (matrix or element-wise) is defined by the
 interpreter, not the grammar; see the README.
 
 ## Context-dependent rules
@@ -218,14 +218,14 @@ than one token ahead.
    `for … = expression [to expression]`, the parser checks the next token:
    - `then` / `do`: original style; the body is one statement (possibly on the next line) or a
      `begin … end` block.
-   - `NEWLINE`, `,` or `;`: MATLAB style; the body is a statement list ending with `end`
+   - `NEWLINE`, `,` or `;`: block style; the body is a statement list ending with `end`
      (`if` also accepts `elseif` and `else` sections).
    - Anything else is an error: `Expected 'then' or the end of the line, but found …`.
 
 4. **`else` in the original style.** After an original-style `if … then body`, the parser looks
    past newlines and semicolons for `else`. If there is none, it rewinds, so the following
    statement is not affected. An `else` therefore binds to the nearest original-style `if`
-   (the classic "dangling else" rule), even inside a MATLAB-style block.
+   (the classic "dangling else" rule), even inside a block-style `if`, `while` or `for`.
 
 5. **Assignments.** A statement is an assignment when it starts with `IDENTIFIER =`, or with
    `IDENTIFIER ( … ) =` where the parser scans ahead to the matching `)` (on the same line) and
@@ -245,7 +245,7 @@ than one token ahead.
 
 7. **`mod` and `div`.** These keywords are binary operators (`7 mod 3`, from the original
    language). When directly followed by `(` they are parsed as a function call instead, so
-   MATLAB's `mod(k, 2)` also works.
+   `mod(k, 2)` also works.
 
 8. **Special arguments.** In an argument list, a lone `:` or a lone `+`, `-`, `*`, `!` directly
    followed by `,` or `)` is an argument by itself: `:` means "all rows/columns" (`t(1,:)`), and
@@ -253,14 +253,14 @@ than one token ahead.
    `f(-x)` is a negation.
 
 9. **Calls and indexing look the same.** `name(arguments)` is a single syntax form; whether it is a
-   function call or indexing into a variable is decided by the interpreter at run time, as in
-   MATLAB. Likewise, commands such as `grid` or `cls` are plain identifiers.
+   function call or indexing into a variable is decided by the interpreter at run time.
+   Likewise, commands such as `grid` or `cls` are plain identifiers.
 
 ## Errors and incomplete input
 
 Syntax errors are recorded with the location of the offending token, and parsing resumes after the
 statement (at the next newline or `;`, or before an `end`). A parse result is flagged *incomplete*
-when an error occurs at the end of the input — an open `begin` or MATLAB-style block, an unclosed
+when an error occurs at the end of the input — an open `begin` or block-style construct, an unclosed
 bracket or parenthesis, or a header without a body — so interactive front-ends can ask for another
 line instead of reporting an error.
 
@@ -275,7 +275,7 @@ begin
 end
 for k = 1 to 5 do s = s + k;
 
-% MATLAB style
+% block style
 if x > 0
 	s = 1;
 elseif x < 0

@@ -144,7 +144,7 @@ public class ParserTests
 	}
 
 	[Fact]
-	public void MatlabStyleIf()
+	public void BlockStyleIf()
 	{
 		Assert.Equal("(if (> a 0) {(= x 1); (= y 2)})", P("if a > 0\n\tx = 1;\n\ty = 2\nend"));
 		Assert.Equal("(if a {x} {y})", P("if a, x, else, y, end"));
@@ -152,7 +152,7 @@ public class ParserTests
 	}
 
 	[Fact]
-	public void MatlabStyleElseifChainSharesOneEnd()
+	public void BlockStyleElseifChainSharesOneEnd()
 	{
 		const string source = """
 			if x > 0
@@ -168,7 +168,7 @@ public class ParserTests
 	}
 
 	[Fact]
-	public void MatlabStyleLoops()
+	public void BlockStyleLoops()
 	{
 		Assert.Equal("(while (< k 3) {(= k (+ k 1));})", P("while k < 3\n\tk = k + 1;\nend"));
 		Assert.Equal("(while (< k 3) {(= k (+ k 1));})", P("while k < 3, k = k + 1; end"));
@@ -288,7 +288,7 @@ public class ParserErrorTests
 	[InlineData("elseif a")]
 	[InlineData("while a b end")]
 	[InlineData("for k = 1:3 k end")]
-	public void InvalidMatlabBlocksAreReported(string text)
+	public void InvalidBlockStyleIsReported(string text)
 	{
 		var result = Parser.Parse(text);
 		Assert.True(result.HasErrors);
@@ -303,7 +303,7 @@ public class ParserErrorTests
 	}
 
 	[Fact]
-	public void RecoversInsideMatlabBlocks()
+	public void RecoversInsideBlockStyle()
 	{
 		var result = Parser.Parse("if a\n x = *\n y = 1\nend\nz = 2");
 		Assert.Single(result.Diagnostics);

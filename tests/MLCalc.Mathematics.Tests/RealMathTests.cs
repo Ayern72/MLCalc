@@ -1,4 +1,4 @@
-namespace MLCalc.Math.Tests;
+namespace MLCalc.Mathematics.Tests;
 
 public class RealMathTests
 {
@@ -15,7 +15,7 @@ public class RealMathTests
 	[Fact]
 	public void FactorialOfHalfIsGammaOfThreeHalves()
 	{
-		Assert.Equal(System.Math.Sqrt(System.Math.PI) / 2, RealMath.Factorial(0.5), 12);
+		Assert.Equal(Math.Sqrt(Math.PI) / 2, RealMath.Factorial(0.5), 12);
 	}
 
 	[Fact]
@@ -64,7 +64,7 @@ public class RealMathTests
 		for (int i = 1; i <= k; i++)
 			exact = exact * (n - k + i) / i;
 		double expected = (double)exact;
-		Assert.True(System.Math.Abs(RealMath.Comb(n, k) - expected) <= 1e-12 * expected, $"comb({n},{k})");
+		Assert.True(Math.Abs(RealMath.Comb(n, k) - expected) <= 1e-12 * expected, $"comb({n},{k})");
 	}
 
 	[Fact]

@@ -8,7 +8,7 @@ internal readonly record struct Vec3(double X, double Y, double Z)
 	public static Vec3 operator *(Vec3 a, double s) => new(a.X * s, a.Y * s, a.Z * s);
 	public double Dot(Vec3 b) => X * b.X + Y * b.Y + Z * b.Z;
 	public Vec3 Cross(Vec3 b) => new(Y * b.Z - Z * b.Y, Z * b.X - X * b.Z, X * b.Y - Y * b.X);
-	public double Length => System.Math.Sqrt(Dot(this));
+	public double Length => Math.Sqrt(Dot(this));
 	public Vec3 Normalized => this * (1 / Length);
 	public bool IsFinite => double.IsFinite(X) && double.IsFinite(Y) && double.IsFinite(Z);
 }
@@ -42,15 +42,15 @@ public sealed class Projection3D
 		Screen = screen;
 		centerX = screen.Left + screen.Width / 2;
 		centerY = screen.Top + screen.Height / 2;
-		double tan = System.Math.Tan(FieldOfView / 2 * System.Math.PI / 180);
-		double shorter = System.Math.Max(1, System.Math.Min(screen.Width, screen.Height));
+		double tan = Math.Tan(FieldOfView / 2 * Math.PI / 180);
+		double shorter = Math.Max(1, Math.Min(screen.Width, screen.Height));
 		scale = shorter / 2 / tan;
 
 		var camera = axes.Camera;
 		target = camera.Target is { } t ? Cube(t) : new Vec3(0, 0, 0);
-		double az = camera.Azimuth * System.Math.PI / 180, el = camera.Elevation * System.Math.PI / 180;
+		double az = camera.Azimuth * Math.PI / 180, el = camera.Elevation * Math.PI / 180;
 		// The horizontal direction the camera faces, used for "up" when it looks straight down or up.
-		var facing = new Vec3(-System.Math.Sin(az), System.Math.Cos(az), 0);
+		var facing = new Vec3(-Math.Sin(az), Math.Cos(az), 0);
 		Vec3 toCamera;
 		if (camera.Position is { } position && (Cube(position) - target) is { Length: > 0 } offset && offset.IsFinite)
 		{
@@ -59,9 +59,8 @@ public sealed class Projection3D
 		}
 		else
 		{
-			// MATLAB's convention: azimuth 0 looks from −y towards +y, 90 from +x; elevation is the
-			// angle above the x-y plane.
-			toCamera = new Vec3(System.Math.Sin(az) * System.Math.Cos(el), -System.Math.Cos(az) * System.Math.Cos(el), System.Math.Sin(el));
+			// Azimuth 0 looks from −y towards +y, 90 from +x; elevation is the angle above the x-y plane.
+			toCamera = new Vec3(Math.Sin(az) * Math.Cos(el), -Math.Cos(az) * Math.Cos(el), Math.Sin(el));
 			if (el < 0)
 				facing *= -1;
 		}
@@ -122,9 +121,9 @@ public sealed class Projection3D
 			if (offset.IsFinite && offset.Length > 0)
 			{
 				var d = offset.Normalized;
-				double elevation = System.Math.Asin(System.Math.Clamp(d.Z, -1, 1)) * 180 / System.Math.PI;
+				double elevation = Math.Asin(Math.Clamp(d.Z, -1, 1)) * 180 / Math.PI;
 				// Straight above or below, the direction says nothing about the azimuth.
-				double azimuth = System.Math.Abs(d.Z) > 1 - 1e-12 ? camera.Azimuth : System.Math.Atan2(d.X, -d.Y) * 180 / System.Math.PI;
+				double azimuth = Math.Abs(d.Z) > 1 - 1e-12 ? camera.Azimuth : Math.Atan2(d.X, -d.Y) * 180 / Math.PI;
 				return (azimuth, elevation);
 			}
 		}
@@ -175,8 +174,8 @@ public sealed class Projection3D
 	internal bool IsVisible(Vec3 c)
 	{
 		const double Tolerance = 1e-9;
-		return c.IsFinite && System.Math.Abs(c.X) <= 1 + Tolerance && System.Math.Abs(c.Y) <= 1 + Tolerance
-			&& System.Math.Abs(c.Z) <= 1 + Tolerance && Depth(c) >= Near;
+		return c.IsFinite && Math.Abs(c.X) <= 1 + Tolerance && Math.Abs(c.Y) <= 1 + Tolerance
+			&& Math.Abs(c.Z) <= 1 + Tolerance && Depth(c) >= Near;
 	}
 
 	/// <summary>
@@ -194,9 +193,9 @@ public sealed class Projection3D
 			if (fa < 0 && fb < 0)
 				return false;
 			if (fa < 0)
-				t0 = System.Math.Max(t0, fa / (fa - fb));
+				t0 = Math.Max(t0, fa / (fa - fb));
 			else if (fb < 0)
-				t1 = System.Math.Min(t1, fa / (fa - fb));
+				t1 = Math.Min(t1, fa / (fa - fb));
 			if (t0 > t1)
 				return false;
 		}
@@ -256,8 +255,8 @@ public sealed class Projection3D
 		{
 			var q = new Vec3((corner & 1) == 0 ? -1 : 1, (corner & 2) == 0 ? -1 : 1, (corner & 4) == 0 ? -1 : 1) - target;
 			// The corner's depth is q·forward + distance; it must be at least |x| / tanX and |y| / tanY.
-			double needed = System.Math.Max(System.Math.Abs(q.Dot(right)) / tanX, System.Math.Abs(q.Dot(up)) / tanY);
-			distance = System.Math.Max(distance, needed - q.Dot(forward) + Near);
+			double needed = Math.Max(Math.Abs(q.Dot(right)) / tanX, Math.Abs(q.Dot(up)) / tanY);
+			distance = Math.Max(distance, needed - q.Dot(forward) + Near);
 		}
 		return distance;
 	}

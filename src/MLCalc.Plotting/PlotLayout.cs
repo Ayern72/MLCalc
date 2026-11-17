@@ -16,8 +16,8 @@ public static class PlotLayout
 	public static ScreenRect PlotArea(ScreenRect cell) => new(
 		cell.Left + MarginLeft,
 		cell.Top + MarginTop,
-		System.Math.Max(1, cell.Width - MarginLeft - MarginRight),
-		System.Math.Max(1, cell.Height - MarginTop - MarginBottom));
+		Math.Max(1, cell.Width - MarginLeft - MarginRight),
+		Math.Max(1, cell.Height - MarginTop - MarginBottom));
 
 	/// <summary>
 	/// Splits a curve into connected runs: breaks at non-finite points and, when
@@ -53,8 +53,8 @@ public static class PlotLayout
 	/// <summary>Keeps far-away screen points at a finite distance; renderers misbehave with huge coordinates.</summary>
 	public static (double X, double Y) Clamp(double x, double y, ScreenRect plot)
 	{
-		double margin = 10 * System.Math.Max(plot.Width, plot.Height);
-		return (System.Math.Clamp(x, plot.Left - margin, plot.Right + margin), System.Math.Clamp(y, plot.Top - margin, plot.Bottom + margin));
+		double margin = 10 * Math.Max(plot.Width, plot.Height);
+		return (Math.Clamp(x, plot.Left - margin, plot.Right + margin), Math.Clamp(y, plot.Top - margin, plot.Bottom + margin));
 	}
 
 	/// <summary>Formats a tick value compactly (invariant culture).</summary>

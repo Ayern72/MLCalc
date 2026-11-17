@@ -1,2 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>A UI-independent plot model for MLCalc: 2D and 3D plot windows, layout, camera handling and SVG export.</Description>
+	</PropertyGroup>
 </Project>

@@ -55,8 +55,8 @@ public static class Scene3D
 	public static ScreenRect ViewArea(ScreenRect cell) => new(
 		cell.Left + Margin,
 		cell.Top + TitleRoom + Margin / 2,
-		System.Math.Max(1, cell.Width - 2 * Margin),
-		System.Math.Max(1, cell.Height - TitleRoom - 1.5 * Margin));
+		Math.Max(1, cell.Width - 2 * Margin),
+		Math.Max(1, cell.Height - TitleRoom - 1.5 * Margin));
 
 	/// <summary>In a preview, surfaces have at most this many grid lines each way, and curves and clouds at most <see cref="PreviewPoints"/> points.</summary>
 	public const int PreviewGridLines = 40, PreviewPoints = 20_000;
@@ -159,7 +159,7 @@ public static class Scene3D
 
 	/// <summary>Tick values for an axis, about one per 50 pixels of the edge they are drawn on.</summary>
 	static IReadOnlyList<double> Ticks(double min, double max, Projection3D view, (Vec3 From, Vec3 To) edge) =>
-		AxisTicks.Compute(min, max, System.Math.Clamp((int)(EdgeLength(view, edge) / 50), 3, 8));
+		AxisTicks.Compute(min, max, Math.Clamp((int)(EdgeLength(view, edge) / 50), 3, 8));
 
 	static bool IsEndOn(Projection3D view, (Vec3 From, Vec3 To) edge)
 	{
@@ -167,7 +167,7 @@ public static class Scene3D
 			return true;
 		var sight = ((edge.From + edge.To) * 0.5 - view.Eye).Normalized;
 		var direction = (edge.To - edge.From).Normalized;
-		return System.Math.Abs(sight.Dot(direction)) > EndOnCosine;
+		return Math.Abs(sight.Dot(direction)) > EndOnCosine;
 	}
 
 	/// <summary>The length of an edge of the box on the screen, or 0 when it is (partly) behind the camera.</summary>
@@ -177,7 +177,7 @@ public static class Scene3D
 			return 0;
 		var a = view.ToScreen(edge.From);
 		var b = view.ToScreen(edge.To);
-		return System.Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
+		return Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
 	}
 
 	/// <summary>The vertical edge of the box that the z ticks go on: the leftmost on the screen.</summary>
@@ -384,7 +384,7 @@ public static class Scene3D
 			var p = view.ToScreen(at);
 			scene.Add(new ScenePolyline(SceneStroke.Tick, 0, [p, Offset(p, direction, 5)]));
 			// Text is centred on its anchor, so it needs more room below or above the tick than beside it.
-			scene.Add(new SceneText(PlotLayout.FormatTick(tick), Offset(p, direction, 9 + 5 * System.Math.Abs(direction.Y)), Align(direction), 11));
+			scene.Add(new SceneText(PlotLayout.FormatTick(tick), Offset(p, direction, 9 + 5 * Math.Abs(direction.Y)), Align(direction), 11));
 		}
 		var middle = outward;
 		if (view.IsVisible(middle) && Direction(view, middle, outward) is { } away)
@@ -399,7 +399,7 @@ public static class Scene3D
 			return null;
 		var a = view.ToScreen(at);
 		var b = view.ToScreen(beyond);
-		double dx = b.X - a.X, dy = b.Y - a.Y, length = System.Math.Sqrt(dx * dx + dy * dy);
+		double dx = b.X - a.X, dy = b.Y - a.Y, length = Math.Sqrt(dx * dx + dy * dy);
 		// Seen end-on: put the label below.
 		return length < 1e-6 ? new ScreenPoint(0, 1) : new ScreenPoint(dx / length, dy / length);
 	}

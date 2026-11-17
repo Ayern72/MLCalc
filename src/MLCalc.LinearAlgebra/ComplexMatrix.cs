@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Numerics;
 using System.Text;
-using MLCalc.Math;
+using MLCalc.Mathematics;
 
 namespace MLCalc.LinearAlgebra;
 
@@ -137,7 +137,7 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		int rows = list[0].Rows;
 		if (list.Any(p => p.Rows != rows))
 			throw new MathException(MathError.Dimension, "Matrices placed side by side must have the same number of rows.");
-		int columns = (int)System.Math.Min(int.MaxValue, list.Sum(p => (long)p.Columns));
+		int columns = (int)Math.Min(int.MaxValue, list.Sum(p => (long)p.Columns));
 		var result = new Complex[ElementCount(rows, columns)];
 		int offset = 0;
 		foreach (var part in list)
@@ -160,7 +160,7 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		int columns = list[0].Columns;
 		if (list.Any(p => p.Columns != columns))
 			throw new MathException(MathError.Dimension, "Matrices stacked vertically must have the same number of columns.");
-		int rows = (int)System.Math.Min(int.MaxValue, list.Sum(p => (long)p.Rows));
+		int rows = (int)Math.Min(int.MaxValue, list.Sum(p => (long)p.Rows));
 		ElementCount(rows, columns);
 		return new ComplexMatrix(rows, columns, list.SelectMany(p => p.data).ToArray());
 	}
@@ -238,7 +238,7 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 	}
 
 	/// <summary>
-	/// Matrix power (MATLAB <c>A^p</c>): the scalar power for 1×1 operands; for a square matrix an
+	/// Matrix power (<c>A^p</c>): the scalar power for 1×1 operands; for a square matrix an
 	/// integer power by repeated squaring, where a negative power uses the inverse. Stops when
 	/// <paramref name="cancellationToken"/> is cancelled.
 	/// </summary>
@@ -251,12 +251,12 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		if (!a.IsSquare)
 			throw new MathException(MathError.Dimension, $"Matrix power needs a square matrix, got {a.Rows}×{a.Columns}; use .^ for element-wise powers.");
 		var exponent = p.ScalarValue;
-		if (!ComplexMath.IsReal(exponent) || exponent.Real != System.Math.Floor(exponent.Real) || System.Math.Abs(exponent.Real) > int.MaxValue)
+		if (!ComplexMath.IsReal(exponent) || exponent.Real != Math.Floor(exponent.Real) || Math.Abs(exponent.Real) > int.MaxValue)
 			throw new MathException(MathError.Domain, "A matrix can only be raised to an integer power.");
 
 		long n = (long)exponent.Real;
 		var factor = n < 0 ? a.Inverse(cancellationToken) : a;
-		n = System.Math.Abs(n);
+		n = Math.Abs(n);
 		var result = Identity(a.Rows);
 		while (n > 0)
 		{
@@ -269,16 +269,16 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		return result;
 	}
 
-	/// <summary>Plain transpose (no conjugation): MATLAB <c>.'</c>, and the original MLCalc <c>'</c>.</summary>
+	/// <summary>Plain transpose (no conjugation): <c>.'</c>, and <c>'</c> in the original MLCalc.</summary>
 	public ComplexMatrix Transpose() => Create(Columns, Rows, (r, c) => data[c * Columns + r]);
 
 	public ComplexMatrix ConjugateTranspose() => Transpose().Map(Complex.Conjugate);
 
-	/// <summary>Solves A·X = B for X (MATLAB <c>A\B</c>).</summary>
+	/// <summary>Solves A·X = B for X (<c>A\B</c>).</summary>
 	public static ComplexMatrix LeftDivide(ComplexMatrix a, ComplexMatrix b, CancellationToken cancellationToken = default) =>
 		a.IsScalar ? b.ElementDivide(a) : LinearSolver.Solve(a, b, cancellationToken);
 
-	/// <summary>Solves X·B = A for X (MATLAB <c>A/B</c>).</summary>
+	/// <summary>Solves X·B = A for X (<c>A/B</c>).</summary>
 	public static ComplexMatrix RightDivide(ComplexMatrix a, ComplexMatrix b, CancellationToken cancellationToken = default) =>
 		b.IsScalar ? a.ElementDivide(b) : LinearSolver.Solve(b.Transpose(), a.Transpose(), cancellationToken).Transpose();
 
@@ -336,7 +336,7 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 
 	/// <summary>
 	/// Formats a complex number as "a", "bi" or "a+bi" using invariant culture. Negative zero, from
-	/// e.g. round(-0.4) or 0 * -1, is shown as 0, as in MATLAB.
+	/// e.g. round(-0.4) or 0 * -1, is shown as 0.
 	/// </summary>
 	public static string Format(Complex value, string numberFormat = "G10")
 	{
@@ -347,7 +347,7 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		string re = Number(value.Real);
 		if (value.Imaginary == 0)
 			return re;
-		string im = Number(System.Math.Abs(value.Imaginary));
+		string im = Number(Math.Abs(value.Imaginary));
 		if (value.Real == 0)
 			return (value.Imaginary < 0 ? "-" : "") + im + "i";
 		return re + (value.Imaginary < 0 ? "-" : "+") + im + "i";

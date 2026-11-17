@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Numerics;
 using MLCalc.LinearAlgebra;
-using MLCalc.Math;
+using MLCalc.Mathematics;
 using MLCalc.Numerics;
 using MLCalc.Plotting;
 
@@ -110,11 +110,11 @@ internal sealed class Builtins
 		Element(ComplexMath.Conj, "conj");
 		Element(z => z.Real, "re", "real");
 		Element(z => z.Imaginary, "im", "imag");
-		Element(z => new Complex(System.Math.Round(z.Real, MidpointRounding.AwayFromZero), System.Math.Round(z.Imaginary, MidpointRounding.AwayFromZero)), "round");
-		Element(z => new Complex(System.Math.Ceiling(z.Real), System.Math.Ceiling(z.Imaginary)), "ceil");
-		Element(z => new Complex(System.Math.Floor(z.Real), System.Math.Floor(z.Imaginary)), "floor");
-		Element(z => new Complex(System.Math.Truncate(z.Real), System.Math.Truncate(z.Imaginary)), "fix");
-		Element(z => ComplexMath.IsReal(z) ? (double.IsNaN(z.Real) ? double.NaN : System.Math.Sign(z.Real)) : z / ComplexMath.Abs(z), "sign");
+		Element(z => new Complex(Math.Round(z.Real, MidpointRounding.AwayFromZero), Math.Round(z.Imaginary, MidpointRounding.AwayFromZero)), "round");
+		Element(z => new Complex(Math.Ceiling(z.Real), Math.Ceiling(z.Imaginary)), "ceil");
+		Element(z => new Complex(Math.Floor(z.Real), Math.Floor(z.Imaginary)), "floor");
+		Element(z => new Complex(Math.Truncate(z.Real), Math.Truncate(z.Imaginary)), "fix");
+		Element(z => ComplexMath.IsReal(z) ? (double.IsNaN(z.Real) ? double.NaN : Math.Sign(z.Real)) : z / ComplexMath.Abs(z), "sign");
 		Element(z => ComplexMath.IsReal(z) ? RealMath.Factorial(z.Real) : throw new MathException(MathError.ComplexNotAllowed, "Factorial of a complex number."), "factorial");
 		Element2(ComplexMath.Root, "xroot");
 		Element2(RealOnly(RealMath.Comb, "comb"), "comb");
@@ -148,7 +148,7 @@ internal sealed class Builtins
 		}, "size");
 		Add(call => Dimension(call, m => m.Rows), "row", "rows");
 		Add(call => Dimension(call, m => m.Columns), "col", "columns");
-		Add(call => Dimension(call, m => m.IsEmpty ? 0 : System.Math.Max(m.Rows, m.Columns)), "length");
+		Add(call => Dimension(call, m => m.IsEmpty ? 0 : Math.Max(m.Rows, m.Columns)), "length");
 		Add(call => Dimension(call, m => m.Count), "numel");
 		Add(call =>
 		{
@@ -212,8 +212,8 @@ internal sealed class Builtins
 	}
 
 	/// <summary>
-	/// Reduces a vector to a scalar, or each column of a matrix to a row (MATLAB sum/prod). The empty
-	/// matrix [] reduces to the seed, as in MATLAB: sum([]) = 0 and prod([]) = 1.
+	/// Reduces a vector to a scalar, or each column of a matrix to a row. The empty matrix
+	/// [] reduces to the seed: sum([]) = 0 and prod([]) = 1.
 	/// </summary>
 	static ComplexMatrix Reduce(CallContext call, Func<Complex, Complex, Complex> combine, Complex seed)
 	{
@@ -236,7 +236,7 @@ internal sealed class Builtins
 	}
 
 	/// <summary>max/min of a vector, of each column of a matrix, or element-wise of two arguments (by real part).</summary>
-	/// <remarks>NaN values are ignored, as in MATLAB; the result is NaN only when all values are NaN.</remarks>
+	/// <remarks>NaN values are ignored; the result is NaN only when all values are NaN.</remarks>
 	static ComplexMatrix Extreme(CallContext call, Func<Complex, Complex, bool> better)
 	{
 		static bool IsNaN(Complex z) => double.IsNaN(z.Real) || double.IsNaN(z.Imaginary);

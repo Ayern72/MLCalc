@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using MLCalc.Language;
 using MLCalc.LinearAlgebra;
-using MLCalc.Math;
+using MLCalc.Mathematics;
 using MLCalc.Plotting;
 
 namespace MLCalc.Interpreter;
@@ -229,7 +229,7 @@ public sealed partial class MLCalcInterpreter
 
 	void ExecuteExpressionStatement(ExpressionStatement statement)
 	{
-		// A bare variable name displays the variable without changing ans, as in MATLAB.
+		// A bare variable name displays the variable without changing ans.
 		if (statement.Expression is Identifier id && variables.TryGetValue(id.Name, out var existing))
 		{
 			if (!statement.IsSilent)
@@ -277,7 +277,7 @@ public sealed partial class MLCalcInterpreter
 
 		double start = RealScalar(first, statement.Start.Span, "The start of a for loop");
 		double end = RealScalar(Evaluate(statement.End), statement.End.Span, "The end of a for loop");
-		for (double k = start; k <= end + 1e-10 * System.Math.Max(1, System.Math.Abs(end)); k++)
+		for (double k = start; k <= end + 1e-10 * Math.Max(1, Math.Abs(end)); k++)
 		{
 			variables[name] = k;
 			Execute(statement.Body);
@@ -285,7 +285,7 @@ public sealed partial class MLCalcInterpreter
 	}
 
 	/// <summary>
-	/// A condition is true when it is non-empty and all its elements are non-zero (MATLAB rule). A NaN
+	/// A condition is true when it is non-empty and all its elements are non-zero. A NaN
 	/// element is an error, wherever it is.
 	/// </summary>
 	bool IsTrue(Expression condition)

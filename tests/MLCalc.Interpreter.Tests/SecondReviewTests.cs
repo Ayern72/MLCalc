@@ -94,7 +94,7 @@ public class SecondReviewTests
 	public void SolvePassesOverRootsCloserTogetherThanItsStep()
 	{
 		Assert.Contains("No root found near 1000000", host.Fail("solve(\"x\", \"x^2 - 2\", 1e6)").Message);
-		AssertClose(System.Math.Sqrt(2), host.Eval("solve(\"x\", \"x^2 - 2\", 1)"), 1e-12);
+		AssertClose(Math.Sqrt(2), host.Eval("solve(\"x\", \"x^2 - 2\", 1)"), 1e-12);
 	}
 
 	/// <summary>Nearly singular matrices and matrices containing Inf are refused rather than solved with noise.</summary>

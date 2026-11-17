@@ -1,5 +1,5 @@
 using System.Numerics;
-using MLCalc.Math;
+using MLCalc.Mathematics;
 
 namespace MLCalc.LinearAlgebra;
 
@@ -118,7 +118,7 @@ public static class LinearSolver
 	{
 		double max = 0;
 		foreach (var value in m)
-			max = System.Math.Max(max, Complex.Abs(value));
+			max = Math.Max(max, Complex.Abs(value));
 		return max == 0 ? 1 : max;
 	}
 }

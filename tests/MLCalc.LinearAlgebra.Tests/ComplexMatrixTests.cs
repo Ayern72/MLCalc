@@ -1,5 +1,5 @@
 using System.Numerics;
-using MLCalc.Math;
+using MLCalc.Mathematics;
 
 namespace MLCalc.LinearAlgebra.Tests;
 

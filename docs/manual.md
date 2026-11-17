@@ -25,7 +25,7 @@ runs on .NET as a Windows desktop application and as a cross-platform command-li
 10. [The desktop application](#10-the-desktop-application)
 11. [The command-line tool](#11-the-command-line-tool)
 12. [Errors](#12-errors)
-13. [Differences from MATLAB and from the original MLCalc](#13-differences-from-matlab-and-from-the-original-mlcalc)
+13. [Differences from the original MLCalc](#13-differences-from-the-original-mlcalc)
 14. [Limitations](#14-limitations)
 - [Appendix A: All functions and commands](#appendix-a-all-functions-and-commands)
 - [Appendix B: Keywords, operators and constants](#appendix-b-keywords-operators-and-constants)
@@ -331,8 +331,7 @@ M =
 
 ### Arithmetic
 
-MLCalc follows MATLAB: the plain operators work on whole matrices, and the operators with a dot
-work element by element.
+The plain operators work on whole matrices, and the operators with a dot work element by element.
 
 | Operator | Meaning |
 |---|---|
@@ -375,8 +374,7 @@ ans = -1
 ans = 3
 ```
 
-`mod` keeps the sign of the number being divided, so `-7 mod 3` is `-1` (MATLAB's `mod` would give
-`2`). `mod` and `div` can also be written as functions: `mod(7, 3)`, `div(7, 2)`.
+`mod` keeps the sign of the number being divided, so `-7 mod 3` is `-1`, not `2`. `mod` and `div` can also be written as functions: `mod(7, 3)`, `div(7, 2)`.
 
 ### Comparison
 
@@ -406,7 +404,7 @@ ans =
 
 Any non-zero number counts as true. The results are 1 or 0, element by element. Both sides are
 always evaluated (`&&` and `||` do not skip the right-hand side). `NaN` is neither true nor false,
-so `not nan` or `nan and 1` is an error, as in MATLAB; to test for `NaN`, use `x ~= x`, which is
+so `not nan` or `nan and 1` is an error; to test for `NaN`, use `x ~= x`, which is
 1 only for `NaN`.
 
 ### Postfix operators
@@ -458,7 +456,7 @@ ans = 0.5
 ans = 64
 ```
 
-`-2^2` is `-(2^2)`, as in mathematics and MATLAB. An exponent may have its own sign (`2^-1`).
+`-2^2` is `-(2^2)`, as in mathematics. An exponent may have its own sign (`2^-1`).
 Powers are evaluated from left to right: `2^3^2` is `(2^3)^2` = 64.
 
 ---
@@ -500,7 +498,7 @@ quietly take a branch, or loop forever, on an undefined result.
 Every control statement can be written in two styles. MLCalc picks the style from what follows the
 condition:
 
-- **MATLAB style**: the condition ends the line (or is followed by `,` or `;`), and the statements
+- **Block style**: the condition ends the line (or is followed by `,` or `;`), and the statements
   that follow run up to a closing `end`.
 - **Original MLCalc style**: the condition is followed by `then` or `do`, and the body is a single
   statement or a `begin … end` block.
@@ -509,7 +507,7 @@ Both styles can be mixed in the same program.
 
 ### if
 
-MATLAB style:
+Block style:
 
 ```
 if x > 0
@@ -550,7 +548,7 @@ while k < 3
 end
 ```
 
-Original style: `while k < 3 do k = k + 1;` or with a `begin … end` block. On one line in MATLAB
+Original style: `while k < 3 do k = k + 1;` or with a `begin … end` block. On one line in block
 style: `while k < 3, k = k + 1; end`.
 
 The loop runs as long as the condition is true. In the desktop application and the command-line
@@ -754,7 +752,6 @@ right-hand side. A singular matrix gives the error *The equation system has no u
 So does a matrix that is so close to singular that most digits of the result would be rounding
 noise: a pivot smaller than 10⁻¹³ times the largest element counts as zero. For example,
 `inv([1 1; 1 1+1e-14])` is refused, and so is a matrix containing `Inf`.
-(MATLAB computes such results with a warning instead.)
 
 ```
 >> det([1 2; 3 4])
@@ -1096,7 +1093,7 @@ fplot3d("t", "sin(3*t)", "sin(4*t)", "sin(5*t)", 0, 2*pi)
 
 **The camera.** The box is scaled so that its three sides are equally long on the screen, and
 then seen in perspective. By default the camera looks at the middle of the box from azimuth −37.5°
-and elevation 30° (as in MATLAB), just far enough away for the whole box to fit. The azimuth is
+and elevation 30°, just far enough away for the whole box to fit. The azimuth is
 measured around the z axis: 0 looks from −y towards +y, 90 from +x towards −x. The elevation is the
 angle above the x-y plane, from −90 (from below) to 90 (from above).
 
@@ -1330,40 +1327,19 @@ Common messages:
 
 ---
 
-## 13. Differences from MATLAB and from the original MLCalc
+## 13. Differences from the original MLCalc
 
-### Compared with MATLAB
+Compared with the Amiga version from the 1990s:
 
-MLCalc's operators and indexing follow MATLAB, but it is a much smaller language:
-
-- Strings are written in double quotes and can only be given to functions; there are no string
-  variables. `'` is always the transpose operator.
-- `end` cannot be used inside an index (`x(end)`).
-- At most two indices: no three-dimensional arrays.
-- There are no user-defined functions, `break`, `continue` or `return`; scripts are the unit of
-  reuse.
-- Functions of a variable are given as text: `fplot("x", "sin(x)")` rather than `@(x) sin(x)`.
-- The 3D commands are named `plot3d`, `dot3d`, `fplot3d`, `camposition` and `camtarget`.
-  `fplot3d` with three expressions draws a curve like MATLAB's `fplot3`, but the range of t is
-  given as two numbers and is required: `fplot3d("t", "cos(t)", "sin(t)", "t", 0, 10)`. With one
-  expression it draws a surface z = f(x, y), like MATLAB's `fmesh`.
-- `mod` keeps the sign of the dividend (like MATLAB's `rem`).
-- `&&` and `||` evaluate both sides.
-- `clear` clears the current plot, not the variables (use `del(all)`).
-- Names are case-insensitive.
-- In addition to MATLAB-style blocks, the original `then`/`do`/`begin … end` forms are accepted, and
-  so are `<>` (not equal), `!` (factorial), `mod` and `div` as operators.
-
-### Compared with the original Amiga MLCalc
-
-- **Operators follow MATLAB.** In the original, `*` and `/` worked element by element and `.*`
+- **Matrix operators.** In the original, `*` and `/` worked element by element and `.*`
   was the matrix product; now `*` is the matrix product and `.*` works element by element. Scripts
   that multiply matrices of equal size with `*` must use `.*` instead. None of the included
   sample scripts are affected.
 - `-2^2` is −4 (the original computed (−2)² = 4).
 - `row(A)` gives the number of rows (the original returned the number of columns).
-- New: 3D plots ([8.6](#86-3d-plots)), MATLAB-style blocks, `for` loops, ranges `a:b`, `elseif`, growing matrices by assignment,
-  `size`, `length`, `sum`, `prod`, `max`, `min`, `inv`, `disp`, `extreme`, `run`, `savefig` and more.
+- New: 3D plots ([8.6](#86-3d-plots)), `for` loops, the block style of `if`, `while` and `for`, `elseif`,
+  ranges `a:b`, growing matrices by assignment, `size`, `length`, `sum`, `prod`, `max`, `min`,
+  `inv`, `disp`, `extreme`, `run`, `savefig` and more.
 - More accurate numerical methods (Brent's method for `solve`, Ridders' method for `derivata`),
   and several corrections to the complex inverse functions.
 - `print` no longer prints; use `savefig`.
@@ -1376,7 +1352,8 @@ MLCalc's operators and indexing follow MATLAB, but it is a much smaller language
 
 - Matrix powers (`A^p`) only for whole-number `p`; use `.^` for element-by-element powers.
 - At most two indices; `end` is not allowed in indices.
-- No user-defined functions, `break`, `continue` or string variables.
+- No user-defined functions, `break`, `continue`, `return` or string variables; strings can only be
+  given to functions.
 - Up to 3×3 plot windows; no logarithmic or polar axes and no legends.
 - 3D plots: the projection is always perspective, and the mouse cannot move the camera's target
   (only commands can). A surface hides what is behind it, but curves and points are drawn in front

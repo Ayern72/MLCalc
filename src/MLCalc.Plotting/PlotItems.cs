@@ -66,14 +66,14 @@ public enum Projection
 /// <summary>
 /// The camera of a 3D window, in data coordinates. Without a <see cref="Position"/> the camera is
 /// placed relative to the box (from <see cref="Azimuth"/> and <see cref="Elevation"/>, in degrees,
-/// as MATLAB's <c>view</c>), so it follows when the ranges change; <see cref="Distance"/> is then in
+/// as set by <c>view</c>), so it follows when the ranges change; <see cref="Distance"/> is then in
 /// units of half the box (null: as close as the whole box fits). With a <see cref="Position"/>
 /// (<c>camposition</c>) the camera stays where it was put. <see cref="Target"/> is the point looked
 /// at; null means the centre of the box.
 /// </summary>
 public sealed record Camera(double Azimuth, double Elevation, double? Distance, Point3? Position, Point3? Target)
 {
-	/// <summary>MATLAB's default 3D view.</summary>
+	/// <summary>The default 3D view: from the front left, a little above.</summary>
 	public const double DefaultAzimuth = -37.5, DefaultElevation = 30;
 
 	public static Camera Default { get; } = new(DefaultAzimuth, DefaultElevation, null, null, null);

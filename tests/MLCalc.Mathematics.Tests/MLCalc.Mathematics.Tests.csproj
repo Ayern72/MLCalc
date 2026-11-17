@@ -12,6 +12,6 @@
 		<Using Include="Xunit" />
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\MLCalc.Math\MLCalc.Math.csproj" />
+		<ProjectReference Include="..\..\src\MLCalc.Mathematics\MLCalc.Mathematics.csproj" />
 	</ItemGroup>
 </Project>

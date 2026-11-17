@@ -259,8 +259,8 @@ public sealed class PlotView : FrameworkElement
 		var t = TransformFor(axes, plot);
 		double dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
 
-		var xTicks = AxisTicks.Compute(axes.XMin, axes.XMax, System.Math.Max(2, (int)(plot.Width / 90)));
-		var yTicks = AxisTicks.Compute(axes.YMin, axes.YMax, System.Math.Max(2, (int)(plot.Height / 50)));
+		var xTicks = AxisTicks.Compute(axes.XMin, axes.XMax, Math.Max(2, (int)(plot.Width / 90)));
+		var yTicks = AxisTicks.Compute(axes.YMin, axes.YMax, Math.Max(2, (int)(plot.Height / 50)));
 
 		if (axes.ShowGrid)
 		{

@@ -195,7 +195,7 @@ public sealed class Figure
 		{
 			var view = new Projection3D(a, Scene3D.ViewArea(cell));
 			double distance = view.DistanceToTarget;
-			double moved = System.Math.Clamp(distance * factor, MinCameraDistance, MaxCameraDistance);
+			double moved = Math.Clamp(distance * factor, MinCameraDistance, MaxCameraDistance);
 			if (!view.IsPlaced)
 				return a with { Camera = a.Camera with { Distance = moved } };
 			var position = a.Camera.Position!.Value;
@@ -229,7 +229,7 @@ public sealed class Figure
 		ModifyCurrent(a =>
 		{
 			var cube = Projection3D.ToCube(a, position);
-			if (System.Math.Abs(cube.X) <= 1 && System.Math.Abs(cube.Y) <= 1 && System.Math.Abs(cube.Z) <= 1)
+			if (Math.Abs(cube.X) <= 1 && Math.Abs(cube.Y) <= 1 && Math.Abs(cube.Z) <= 1)
 				throw new ArgumentException("The camera must be outside the box set by xrange, yrange and zrange.");
 			return a with { Camera = a.Camera with { Position = position } };
 		});

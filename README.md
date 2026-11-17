@@ -7,8 +7,11 @@
 > terms are in the [MIT license](LICENSE).
 
 MLCalc is a scientific calculator and plotting program with its own small scripting language.
-It was first written in C for the Amiga in the mid-1990s. This repository is a modern C#/.NET
-re-implementation, starting with a WPF desktop front-end.
+It began in high school as a simple graph-drawing program for the Amiga, written in C. When its
+author started studying computer science, the courses used MATLAB, which was not available for the
+Amiga, so MLCalc grew matrices and a similar syntax to make the same work possible at home. This
+repository is a modern C#/.NET re-implementation, with a WPF desktop application and a
+cross-platform command-line tool.
 
 Every value in MLCalc is a complex matrix: scalars are 1×1 matrices and real numbers are complex
 numbers with a zero imaginary part.
@@ -24,7 +27,7 @@ z = (1 + 2i)^2              % complex numbers
 t = 0:0.1:2*pi;             % ranges; ';' suppresses output
 x = A(2, :)                 % indexing is 1-based; ':' selects a whole row or column
 
-for k = 1:5                 % MATLAB-style blocks: if … elseif … else … end, while … end, for … end
+for k = 1:5                 % block style: if … elseif … else … end, while … end, for … end
 	if mod(k, 2) == 0
 		disp("even")
 	else
@@ -81,7 +84,7 @@ used from shell scripts and builds.
 
 ## Differences from the Amiga original
 
-- **Operators follow MATLAB.** `*`, `/`, `\` and `^` are matrix operations and `.*`, `./`, `.^`
+- **Matrix operators.** `*`, `/`, `\` and `^` are matrix operations and `.*`, `./`, `.^`
   are element-wise. The original used `*` and `/` element-wise and `.*` for the matrix product.
   `'` is the conjugate transpose and `.'` the plain transpose.
 - Several numerical routines were replaced with more robust methods (Brent's method for roots,
@@ -91,7 +94,7 @@ used from shell scripts and builds.
 
 | Project | Purpose |
 |---|---|
-| `MLCalc.Math` | Real and complex scalar functions |
+| `MLCalc.Mathematics` | Real and complex scalar functions |
 | `MLCalc.LinearAlgebra` | Complex matrix type and linear algebra (Gauss elimination, least squares, polynomials) |
 | `MLCalc.Numerics` | Numerical analysis: integration, differentiation, root finding |
 | `MLCalc.Language` | Lexer, parser and syntax tree for the MLCalc language |
@@ -101,7 +104,7 @@ used from shell scripts and builds.
 | `MLCalc.Cli` | Cross-platform command-line tool (`mlcalc`) |
 
 The libraries target `net10.0` with no Windows dependencies, so they can be reused by other
-front-ends. Dependencies only point downward: `Math` ← `LinearAlgebra` ← `Numerics` ← `Interpreter` ← `Wpf` / `Cli`.
+front-ends. Dependencies only point downward: `Mathematics` ← `LinearAlgebra` ← `Numerics` ← `Interpreter` ← `Wpf` / `Cli`.
 `Language` and `Plotting` have no dependencies and are used by `Interpreter`; the front-ends also use `Plotting`.
 
 `samples/` contains scripts written for the original Amiga version.
@@ -122,6 +125,24 @@ Two single-file tools live outside the solution:
 ```
 dotnet run benchmarks/FunctionEvaluation.cs            # times function evaluation (see benchmarks/README.md)
 dotnet run tools/build-manual-page/BuildManualPage.cs  # builds the manual's web page into artifacts/
+```
+
+## Packages
+
+The six libraries can be built as NuGet packages. The **Packages** workflow, started by hand from
+the Actions tab, runs the tests and publishes them to GitHub Packages with a pre-release version
+such as `0.1.0-preview.7` (the version in `Directory.Build.props` plus the run number). To build
+them locally:
+
+```
+dotnet pack MLCalc.slnx -c Release --version-suffix preview.1 -o packages
+```
+
+To use them from another project, add the registry as a package source. GitHub Packages needs a
+personal access token with the `read:packages` scope, even for public packages:
+
+```
+dotnet nuget add source https://nuget.pkg.github.com/Ayern72/index.json --name mlcalc --username <github user> --password <token>
 ```
 
 ## License

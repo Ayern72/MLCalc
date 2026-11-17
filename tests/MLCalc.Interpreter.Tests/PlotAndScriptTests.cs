@@ -170,7 +170,7 @@ public class ScriptTests
 		double a = host["a"].ScalarValue.Real;
 		double f(double x) => 1 / (x - 2) + 1 / (x - 3) + 1 / (x - 4) - 10;
 		Assert.InRange(a, 2.01, 2.1);
-		Assert.True(System.Math.Abs(f(a)) < 0.5, $"f({a}) = {f(a)}");
+		Assert.True(Math.Abs(f(a)) < 0.5, $"f({a}) = {f(a)}");
 	}
 
 	[Fact]

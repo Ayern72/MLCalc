@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Numerics;
-using MLCalc.Math;
+using MLCalc.Mathematics;
 
 namespace MLCalc.LinearAlgebra;
 
@@ -149,7 +149,7 @@ public static class Polynomial
 		double sum = 0;
 		foreach (var value in v)
 			sum += value.Real * value.Real + value.Imaginary * value.Imaginary;
-		return System.Math.Sqrt(sum);
+		return Math.Sqrt(sum);
 	}
 
 	static void RequireVector(ComplexMatrix m, string name)

@@ -1,4 +1,4 @@
-using MLCalc.Math;
+using MLCalc.Mathematics;
 
 namespace MLCalc.Numerics;
 
@@ -36,7 +36,7 @@ public static class Calculus
 
 		while (true)
 		{
-			if (error <= relativeTolerance * System.Math.Max(1, System.Math.Abs(total)))
+			if (error <= relativeTolerance * Math.Max(1, Math.Abs(total)))
 			{
 				// The running sums can drift as large terms are added and removed; confirm with fresh ones.
 				(total, error) = (0, 0);
@@ -45,7 +45,7 @@ public static class Calculus
 					total += segment.Value;
 					error += segment.Error;
 				}
-				if (error <= relativeTolerance * System.Math.Max(1, System.Math.Abs(total)))
+				if (error <= relativeTolerance * Math.Max(1, Math.Abs(total)))
 					return total;
 			}
 
@@ -108,7 +108,7 @@ public static class Calculus
 		if (double.IsInfinity(value))
 			throw new MathException(MathError.NoSolution,
 				"The integral did not converge; the function may be singular or oscillate strongly on the interval.");
-		return new Segment(a, b, value, System.Math.Abs((kronrod - gauss) * half));
+		return new Segment(a, b, value, Math.Abs((kronrod - gauss) * half));
 	}
 
 	/// <summary>
@@ -122,12 +122,12 @@ public static class Calculus
 	{
 		ArgumentNullException.ThrowIfNull(f);
 		// Large enough that x + h differs from x even for large |x|.
-		double scale = System.Math.Max(1, System.Math.Abs(x) * 1e-5);
+		double scale = Math.Max(1, Math.Abs(x) * 1e-5);
 		// Absolute starting steps, plus steps relative to x for small |x|: near a point such as
 		// sqrt at x = 1e-4 the function only looks smooth on a scale smaller than x itself.
 		var starts = new List<double> { 0.1 * scale, 1e-2 * scale, 1e-3 * scale, 1e-4 * scale };
-		if (x != 0 && System.Math.Abs(x) < 1e-3)
-			starts.AddRange([System.Math.Abs(x) / 10, System.Math.Abs(x) / 100]);
+		if (x != 0 && Math.Abs(x) < 1e-3)
+			starts.AddRange([Math.Abs(x) / 10, Math.Abs(x) / 100]);
 
 		double best = double.NaN, bestError = double.PositiveInfinity;
 		foreach (double start in starts)
@@ -135,11 +135,11 @@ public static class Calculus
 			var (estimate, error) = Ridders(f, x, start);
 			if (error < bestError)
 				(best, bestError) = (estimate, error);
-			if (bestError <= 1e-13 * System.Math.Max(1, System.Math.Abs(best)))
+			if (bestError <= 1e-13 * Math.Max(1, Math.Abs(best)))
 				break;
 		}
 
-		if (double.IsNaN(best) || !(bestError <= 1e-4 * System.Math.Max(1, System.Math.Abs(best))) || HasKink(f, x, scale, best))
+		if (double.IsNaN(best) || !(bestError <= 1e-4 * Math.Max(1, Math.Abs(best))) || HasKink(f, x, scale, best))
 			throw new MathException(MathError.Domain, string.Create(System.Globalization.CultureInfo.InvariantCulture,
 				$"The derivative at x = {x:G10} could not be determined; the function may not be differentiable there."));
 		return best;
@@ -157,14 +157,14 @@ public static class Calculus
 		{
 			double f0 = f(x), right = f(x + h), left = f(x - h);
 			// The rounding error of the differences, from the size of the function values.
-			noise = 4 * 2.220446049250313e-16 * System.Math.Max(System.Math.Abs(f0), System.Math.Max(System.Math.Abs(right), System.Math.Abs(left))) / h;
+			noise = 4 * 2.220446049250313e-16 * Math.Max(Math.Abs(f0), Math.Max(Math.Abs(right), Math.Abs(left))) / h;
 			return (right - f0) / h - (f0 - left) / h;
 		}
 
 		double coarse = Gap(1e-6 * scale, out _);
 		double fine = Gap(1e-7 * scale, out double noise);
-		return System.Math.Abs(fine) > System.Math.Max(1e-4 * System.Math.Max(1, System.Math.Abs(slope)), 10 * noise)
-			&& System.Math.Abs(fine) > 0.5 * System.Math.Abs(coarse);
+		return Math.Abs(fine) > Math.Max(1e-4 * Math.Max(1, Math.Abs(slope)), 10 * noise)
+			&& Math.Abs(fine) > 0.5 * Math.Abs(coarse);
 	}
 
 	/// <summary>One run of Ridders' method from step <paramref name="h"/>: the best estimate and its error.</summary>
@@ -186,14 +186,14 @@ public static class Calculus
 			{
 				table[j, i] = (table[j - 1, i] * factor - table[j - 1, i - 1]) / (factor - 1);
 				factor *= Shrink2;
-				double error = System.Math.Max(System.Math.Abs(table[j, i] - table[j - 1, i]), System.Math.Abs(table[j, i] - table[j - 1, i - 1]));
+				double error = Math.Max(Math.Abs(table[j, i] - table[j - 1, i]), Math.Abs(table[j, i] - table[j - 1, i - 1]));
 				if (error <= bestError)
 				{
 					bestError = error;
 					best = table[j, i];
 				}
 			}
-			if (System.Math.Abs(table[i, i] - table[i - 1, i - 1]) >= Safety * bestError)
+			if (Math.Abs(table[i, i] - table[i - 1, i - 1]) >= Safety * bestError)
 				break;
 		}
 		return (best, bestError);

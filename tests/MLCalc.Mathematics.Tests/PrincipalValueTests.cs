@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace MLCalc.Math.Tests;
+namespace MLCalc.Mathematics.Tests;
 
 /// <summary>
 /// Principal values on the branch cuts and results for large arguments, with literal expected
@@ -9,27 +9,27 @@ namespace MLCalc.Math.Tests;
 /// </summary>
 public class PrincipalValueTests
 {
-	const double HalfPi = System.Math.PI / 2;
+	const double HalfPi = Math.PI / 2;
 	const double Acosh2 = 1.3169578969248167;   // acosh(2) = ln(2 + √3)
 	const double Asinh2 = 1.4436354751788103;   // asinh(2) = ln(2 + √5)
 	const double Atanh05 = 0.5493061443340548;  // atanh(1/2) = ln(3)/2
-	static readonly double LnTwiceE200 = System.Math.Log(2) + 200 * System.Math.Log(10); // asinh(1e200) = ln(2·10²⁰⁰)
+	static readonly double LnTwiceE200 = Math.Log(2) + 200 * Math.Log(10); // asinh(1e200) = ln(2·10²⁰⁰)
 
 	static void AssertClose(Complex expected, Complex actual, double tolerance = 1e-12)
 	{
-		double scale = System.Math.Max(1, Complex.Abs(expected));
+		double scale = Math.Max(1, Complex.Abs(expected));
 		Assert.True(Complex.Abs(expected - actual) <= tolerance * scale, $"Expected {expected}, got {actual}");
 	}
 
 	public static TheoryData<string, Complex, Complex> CutValues() => new()
 	{
-		// Real arguments outside [-1, 1], with the same conventions as MATLAB.
+		// Real arguments outside [-1, 1]: the principal values.
 		{ "asin", 2, new(HalfPi, -Acosh2) },
 		{ "asin", -2, new(-HalfPi, Acosh2) },
 		{ "acos", 2, new(0, Acosh2) },
-		{ "acos", -2, new(System.Math.PI, -Acosh2) },
-		{ "acosh", 0.5, new(0, System.Math.PI / 3) },
-		{ "acosh", -2, new(Acosh2, System.Math.PI) },
+		{ "acos", -2, new(Math.PI, -Acosh2) },
+		{ "acosh", 0.5, new(0, Math.PI / 3) },
+		{ "acosh", -2, new(Acosh2, Math.PI) },
 		{ "atanh", 2, new(Atanh05, HalfPi) },
 		{ "atanh", -2, new(-Atanh05, HalfPi) },
 		// Imaginary arguments on the cuts of atan and asinh.
@@ -45,7 +45,7 @@ public class PrincipalValueTests
 		{ "asin", -1e8, new(-HalfPi, 19.113827924512311) },
 		{ "asin", -1e7, new(-HalfPi, 16.811242831518264) },
 		{ "asin", 1e200, new(HalfPi, -LnTwiceE200) },
-		{ "acos", -1e8, new(System.Math.PI, -19.113827924512311) },
+		{ "acos", -1e8, new(Math.PI, -19.113827924512311) },
 		{ "acos", 1e200, new(0, LnTwiceE200) },
 		{ "asin", new Complex(0, 1e200), new(0, LnTwiceE200) },
 		{ "asin", new Complex(-1e8, 1e-9), new(-HalfPi, 19.113827924512311) },
@@ -113,7 +113,7 @@ public class GammaTests
 	/// <summary>Γ(n + ½) by the recurrence Γ(x + 1) = x·Γ(x), starting from Γ(½) = √π.</summary>
 	static double HalfIntegerGamma(int n)
 	{
-		double value = System.Math.Sqrt(System.Math.PI);
+		double value = Math.Sqrt(Math.PI);
 		for (int k = 0; k < n; k++)
 			value *= k + 0.5;
 		return value;
@@ -132,7 +132,7 @@ public class GammaTests
 		// factorial(x) = Γ(x + 1), so factorial(n − ½) = Γ(n + ½).
 		double expected = HalfIntegerGamma(n);
 		double actual = RealMath.Factorial(n - 0.5);
-		Assert.True(System.Math.Abs(actual - expected) <= 1e-12 * expected, $"Γ({n}.5): expected {expected}, got {actual}");
+		Assert.True(Math.Abs(actual - expected) <= 1e-12 * expected, $"Γ({n}.5): expected {expected}, got {actual}");
 	}
 
 	[Fact]

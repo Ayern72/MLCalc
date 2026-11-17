@@ -24,10 +24,10 @@ public static class CameraControl
 	/// </summary>
 	public static (double Azimuth, double Elevation) Drag(double azimuth, double elevation, double dx, double dy)
 	{
-		double az = System.Math.Round(System.Math.IEEERemainder(azimuth - dx * DegreesPerPixel, 360), 1);
+		double az = Math.Round(Math.IEEERemainder(azimuth - dx * DegreesPerPixel, 360), 1);
 		if (az <= -180)
 			az += 360;
-		double el = System.Math.Round(System.Math.Clamp(elevation + dy * DegreesPerPixel, -90, 90), 1);
+		double el = Math.Round(Math.Clamp(elevation + dy * DegreesPerPixel, -90, 90), 1);
 		return (az == 0 ? 0 : az, el == 0 ? 0 : el);
 	}
 
@@ -35,7 +35,7 @@ public static class CameraControl
 	/// The factor for <see cref="Figure.MoveCamera"/> from a mouse wheel delta: turning the wheel away
 	/// from you (a positive delta) moves the camera closer.
 	/// </summary>
-	public static double WheelFactor(int delta) => System.Math.Pow(WheelStep, delta / 120.0);
+	public static double WheelFactor(int delta) => Math.Pow(WheelStep, delta / 120.0);
 
 	/// <summary>
 	/// The camera as a command that sets it, for the status bar: <c>view(az, el)</c> while the
@@ -53,7 +53,7 @@ public static class CameraControl
 			$"camposition({Format(p.X, axes.XMax - axes.XMin)}, {Format(p.Y, axes.YMax - axes.YMin)}, {Format(p.Z, axes.ZMax - axes.ZMin)})");
 	}
 
-	static string Format(double value, double span) => Format(System.Math.Abs(value) < span * 1e-9 ? 0 : value);
+	static string Format(double value, double span) => Format(Math.Abs(value) < span * 1e-9 ? 0 : value);
 
 	static string Format(double value)
 	{

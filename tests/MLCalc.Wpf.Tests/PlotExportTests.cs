@@ -41,9 +41,9 @@ public class PlotExportTests
 		converted.CopyPixels(pixels, stride, 0);
 		int count = 0;
 		for (int k = 0; k < pixels.Length; k += 4)
-			if (System.Math.Abs(pixels[k + 2] - (int)((rgb >> 16) & 0xFF)) < 24
-				&& System.Math.Abs(pixels[k + 1] - (int)((rgb >> 8) & 0xFF)) < 24
-				&& System.Math.Abs(pixels[k] - (int)(rgb & 0xFF)) < 24)
+			if (Math.Abs(pixels[k + 2] - (int)((rgb >> 16) & 0xFF)) < 24
+				&& Math.Abs(pixels[k + 1] - (int)((rgb >> 8) & 0xFF)) < 24
+				&& Math.Abs(pixels[k] - (int)(rgb & 0xFF)) < 24)
 				count++;
 		return count;
 	}

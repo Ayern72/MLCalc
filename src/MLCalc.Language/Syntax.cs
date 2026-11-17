@@ -78,7 +78,7 @@ public sealed record RangeExpression(SourceSpan Span, Expression Start, Expressi
 
 /// <summary>
 /// <c>name(arguments)</c>: a function call or an index into a variable. Which one is decided at run
-/// time, as in MATLAB.
+/// time.
 /// </summary>
 public sealed record ApplyExpression(SourceSpan Span, Identifier Target, ImmutableArray<Expression> Arguments) : Expression(Span);
 

@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Real and complex scalar functions used by MLCalc, with principal values and error categories.</Description>
+	</PropertyGroup>
+</Project>

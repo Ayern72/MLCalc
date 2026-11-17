@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Numerical analysis for MLCalc: integration, differentiation, root finding, intersections and extrema.</Description>
+	</PropertyGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\MLCalc.Math\MLCalc.Math.csproj" />
+		<ProjectReference Include="..\MLCalc.Mathematics\MLCalc.Mathematics.csproj" />
 		<ProjectReference Include="..\MLCalc.LinearAlgebra\MLCalc.LinearAlgebra.csproj" />
 	</ItemGroup>
 </Project>

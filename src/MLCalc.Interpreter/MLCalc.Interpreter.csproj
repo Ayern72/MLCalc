@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Runs MLCalc expressions and scripts: variables, control flow, complex matrices, numerical and plotting commands.</Description>
+	</PropertyGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\MLCalc.Math\MLCalc.Math.csproj" />
+		<ProjectReference Include="..\MLCalc.Mathematics\MLCalc.Mathematics.csproj" />
 		<ProjectReference Include="..\MLCalc.LinearAlgebra\MLCalc.LinearAlgebra.csproj" />
 		<ProjectReference Include="..\MLCalc.Numerics\MLCalc.Numerics.csproj" />
 		<ProjectReference Include="..\MLCalc.Language\MLCalc.Language.csproj" />

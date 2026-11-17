@@ -3,7 +3,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using MLCalc.Language;
 using MLCalc.LinearAlgebra;
-using MLCalc.Math;
+using MLCalc.Mathematics;
 
 namespace MLCalc.Interpreter;
 
@@ -12,7 +12,7 @@ public sealed partial class MLCalcInterpreter
 	/// <summary>Constants; a variable with the same name (e.g. <c>i</c> as a loop counter) takes precedence.</summary>
 	internal static readonly IReadOnlyDictionary<string, ComplexMatrix> Constants = new Dictionary<string, ComplexMatrix>(StringComparer.OrdinalIgnoreCase)
 	{
-		["pi"] = System.Math.PI,
+		["pi"] = Math.PI,
 		["i"] = Complex.ImaginaryOne,
 		["j"] = Complex.ImaginaryOne,
 		["eps"] = double.BitIncrement(1.0) - 1.0,
@@ -142,7 +142,7 @@ public sealed partial class MLCalcInterpreter
 		if (step == 0 || double.IsNaN(start + step + end))
 			throw new RuntimeError("The step of a range must be a non-zero number.", range.Span);
 
-		double count = System.Math.Floor((end - start) / step + 1e-10) + 1;
+		double count = Math.Floor((end - start) / step + 1e-10) + 1;
 		if (count <= 0)
 			return ComplexMatrix.Zeros(1, 0);
 		if (!(count <= ComplexMatrix.MaxElements))
@@ -238,7 +238,7 @@ internal readonly record struct IndexArgument(ComplexMatrix? Values, SourceSpan 
 }
 
 /// <summary>
-/// The operators, with MATLAB meanings. Shared by the tree-walking evaluator and the compiled
+/// The operators: the plain ones work on whole matrices, the dotted ones element by element. Shared by the tree-walking evaluator and the compiled
 /// functions so both give the same results and the same errors.
 /// </summary>
 internal static class Operators
@@ -262,8 +262,8 @@ internal static class Operators
 	}
 
 	/// <summary>
-	/// The truth value of one element: non-zero is true. NaN is neither, so it is an error, as in
-	/// MATLAB; treating it as true made <c>while nan</c> loop forever and sent comparisons with an
+	/// The truth value of one element: non-zero is true. NaN is neither, so it is an error;
+	/// treating it as true made <c>while nan</c> loop forever and sent comparisons with an
 	/// undefined result down the wrong branch without a word.
 	/// </summary>
 	public static bool IsTrue(Complex x) =>

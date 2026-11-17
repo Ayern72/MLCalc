@@ -1,2 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Lexer, parser and syntax tree for the MLCalc calculator language.</Description>
+	</PropertyGroup>
 </Project>

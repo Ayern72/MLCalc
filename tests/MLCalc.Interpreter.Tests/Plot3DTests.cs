@@ -92,7 +92,7 @@ public class Plot3DTests
 		Assert.Equal(Figure.FunctionSamples, curve.Points.Length);
 		Assert.Equal(new Point3(1, 0, 7), curve.Points[0]);
 		var end = curve.Points[^1];
-		Assert.Equal((1, 7 + 2 * System.Math.PI), (end.X, end.Z));
+		Assert.Equal((1, 7 + 2 * Math.PI), (end.X, end.Z));
 		Assert.Equal(0, end.Y, 12);
 		AssertClose(7, host["x"]);
 	}
@@ -143,7 +143,7 @@ public class Plot3DTests
 		var series = Assert.IsType<PointSeries3D>(Assert.Single(Current.Items));
 		Assert.Equal(PlotStyle.Line, series.Style);
 		Assert.Equal(5, series.Points.Length);
-		Assert.Equal(new Point3(System.Math.Cos(1), System.Math.Sin(1), 1), series.Points[2]);
+		Assert.Equal(new Point3(Math.Cos(1), Math.Sin(1), 1), series.Points[2]);
 		Assert.Equal(2, Current.Pen);
 	}
 

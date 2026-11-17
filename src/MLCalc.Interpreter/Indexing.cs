@@ -1,11 +1,11 @@
 using System.Numerics;
 using MLCalc.LinearAlgebra;
-using MLCalc.Math;
+using MLCalc.Mathematics;
 
 namespace MLCalc.Interpreter;
 
 /// <summary>
-/// MATLAB-style indexing with one-based indices: <c>x(k)</c> uses column-major linear indexing,
+/// Indexing with one-based indices: <c>x(k)</c> uses column-major linear indexing,
 /// <c>x(r, c)</c> selects rows and columns, and <c>:</c> selects all. Assignment grows the matrix
 /// as needed, filling new elements with zeros.
 /// </summary>
@@ -60,8 +60,8 @@ internal static class Indexing
 			: ToZeroBased(columnIndex, int.MaxValue, "Column index");
 
 		var source = ValueSource(value, rows.Length, columns.Length);
-		int newRows = System.Math.Max(current.Rows, rows.Length == 0 ? 0 : rows.Max() + 1);
-		int newColumns = System.Math.Max(current.Columns, columns.Length == 0 ? 0 : columns.Max() + 1);
+		int newRows = Math.Max(current.Rows, rows.Length == 0 ? 0 : rows.Max() + 1);
+		int newColumns = Math.Max(current.Columns, columns.Length == 0 ? 0 : columns.Max() + 1);
 		var data = Grow(current, newRows, newColumns);
 		for (int r = 0; r < rows.Length; r++)
 			for (int c = 0; c < columns.Length; c++)
@@ -130,7 +130,7 @@ internal static class Indexing
 		for (int i = 0; i < values.Length; i++)
 		{
 			var v = values[i];
-			if (v.Imaginary != 0 || v.Real != System.Math.Floor(v.Real) || v.Real < 1)
+			if (v.Imaginary != 0 || v.Real != Math.Floor(v.Real) || v.Real < 1)
 				throw new MathException(MathError.Index, $"{what} must be a positive integer, got {ComplexMatrix.Format(v)}.");
 			if (v.Real > limit)
 				throw new MathException(MathError.Index, FormattableString.Invariant($"{what} {v.Real:G10} exceeds the size {limit}."));

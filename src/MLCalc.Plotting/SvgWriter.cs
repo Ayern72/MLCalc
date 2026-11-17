@@ -60,7 +60,7 @@ public static class SvgWriter
 					break;
 				case SceneMarkers markers:
 					if (markers.Style == PlotStyle.Dot)
-						DotPath(svg, markers.Points.Select(p => (System.Math.Round(p.X, 2), System.Math.Round(p.Y, 2))), ColorOf(markers.Pen));
+						DotPath(svg, markers.Points.Select(p => (Math.Round(p.X, 2), Math.Round(p.Y, 2))), ColorOf(markers.Pen));
 					else
 						MarkerPath(svg, markers.Points.Select(p => (p.X, p.Y)), ColorOf(markers.Pen), markers.Style == PlotStyle.Star);
 					break;
@@ -96,8 +96,8 @@ public static class SvgWriter
 		if (plot.Width < 20 || plot.Height < 20)
 			return;
 		var t = new PlotTransform(axes, plot);
-		var xTicks = AxisTicks.Compute(axes.XMin, axes.XMax, System.Math.Max(2, (int)(plot.Width / 90)));
-		var yTicks = AxisTicks.Compute(axes.YMin, axes.YMax, System.Math.Max(2, (int)(plot.Height / 50)));
+		var xTicks = AxisTicks.Compute(axes.XMin, axes.XMax, Math.Max(2, (int)(plot.Width / 90)));
+		var yTicks = AxisTicks.Compute(axes.YMin, axes.YMax, Math.Max(2, (int)(plot.Height / 50)));
 
 		if (axes.ShowGrid)
 		{
@@ -221,7 +221,7 @@ public static class SvgWriter
 				continue;
 			double x = t.ToScreenX(p.X), y = t.ToScreenY(p.Y);
 			if (x >= s.Left - MarkerSize && x <= s.Right + MarkerSize && y >= s.Top - MarkerSize && y <= s.Bottom + MarkerSize)
-				yield return (System.Math.Round(x, 2), System.Math.Round(y, 2));
+				yield return (Math.Round(x, 2), Math.Round(y, 2));
 		}
 	}
 

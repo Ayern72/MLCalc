@@ -1,4 +1,4 @@
-namespace MLCalc.Math;
+namespace MLCalc.Mathematics;
 
 /// <summary>Error categories raised by the MLCalc libraries (replaces the original <c>Serror</c> codes).</summary>
 public enum MathError

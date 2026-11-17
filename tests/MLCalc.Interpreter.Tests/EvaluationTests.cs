@@ -39,12 +39,12 @@ public class EvaluationTests
 		Assert.Equal(new Complex(0, 2), host.Eval("sqrt(-4)").ScalarValue);
 		Assert.Equal(new Complex(1, -2), host.Eval("(1+2i)'").ScalarValue);
 		// A negated literal must stay on the principal branch: ln(-1) = πi, (-1)^0.5 = i.
-		Assert.Equal(System.Math.PI, host.Eval("ln(-1)").ScalarValue.Imaginary, 12);
+		Assert.Equal(Math.PI, host.Eval("ln(-1)").ScalarValue.Imaginary, 12);
 		Assert.Equal(1, host.Eval("(-1)^0.5").ScalarValue.Imaginary, 12);
 	}
 
 	[Fact]
-	public void MatrixOperatorsFollowMatlab()
+	public void MatrixOperatorsWorkOnWholeMatrices()
 	{
 		AssertMatrix(new double[,] { { 3 }, { 7 } }, host.Eval("[1, 2; 3, 4] * [1; 1]"));
 		AssertMatrix(new double[,] { { 3, 8 } }, host.Eval("[1 2] .* [3 4]"));
@@ -82,7 +82,7 @@ public class EvaluationTests
 	[Fact]
 	public void Constants()
 	{
-		AssertClose(System.Math.PI, host.Eval("PI"));
+		AssertClose(Math.PI, host.Eval("PI"));
 		Assert.Equal(Complex.ImaginaryOne, host.Eval("i").ScalarValue);
 		Assert.True(host.Eval("eps").ScalarValue.Real is > 2e-16 and < 3e-16);
 	}
@@ -230,7 +230,7 @@ public class ControlFlowTests
 	}
 
 	[Fact]
-	public void MatlabStyleBlocks()
+	public void BlockStyle()
 	{
 		const string source = """
 			s = 0;
@@ -360,7 +360,7 @@ public class FunctionTests
 		AssertMatrix(new double[,] { { 0, 1, 4 } }, host.Eval("feval(\"t\", \"t^2\", [0 1 2])"));
 		AssertClose(1.0 / 3, host.Eval("integral(\"x\", \"x^2\", 0, 1)"));
 		AssertClose(27, host.Eval("derivata(\"x\", \"x^3\", 3)"), 1e-7);
-		AssertClose(System.Math.Sqrt(2), host.Eval("solve(\"x\", \"x^2 - 2\", 1)"));
+		AssertClose(Math.Sqrt(2), host.Eval("solve(\"x\", \"x^2 - 2\", 1)"));
 		AssertClose(2, host.Eval("isect(\"x\", \"x^2\", \"x + 2\", 1.5)"));
 		AssertClose(1.5, host.Eval("extreme(\"x\", \"(x - 1.5)^2\", 0)"), 1e-6);
 	}

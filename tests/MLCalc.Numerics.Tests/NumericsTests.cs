@@ -1,4 +1,4 @@
-using MLCalc.Math;
+using MLCalc.Mathematics;
 
 namespace MLCalc.Numerics.Tests;
 
@@ -16,20 +16,20 @@ public class CalculusTests
 	[Fact]
 	public void IntegratesSineOverHalfPeriod()
 	{
-		Assert.Equal(2, Calculus.Integrate(System.Math.Sin, 0, System.Math.PI), 11);
+		Assert.Equal(2, Calculus.Integrate(Math.Sin, 0, Math.PI), 11);
 	}
 
 	[Fact]
 	public void IntegralWithReversedLimitsChangesSign()
 	{
-		Assert.Equal(-1, Calculus.Integrate(System.Math.Exp, System.Math.Log(2), 0), 11);
+		Assert.Equal(-1, Calculus.Integrate(Math.Exp, Math.Log(2), 0), 11);
 	}
 
 	[Fact]
 	public void IntegratesGaussianBell()
 	{
-		double result = Calculus.Integrate(x => System.Math.Exp(-x * x), -10, 10);
-		Assert.Equal(System.Math.Sqrt(System.Math.PI), result, 10);
+		double result = Calculus.Integrate(x => Math.Exp(-x * x), -10, 10);
+		Assert.Equal(Math.Sqrt(Math.PI), result, 10);
 	}
 
 	[Theory]
@@ -38,7 +38,7 @@ public class CalculusTests
 	[InlineData(-250)]
 	public void DerivativeOfSine(double x)
 	{
-		Assert.Equal(System.Math.Cos(x), Calculus.Derivative(System.Math.Sin, x), 9);
+		Assert.Equal(Math.Cos(x), Calculus.Derivative(Math.Sin, x), 9);
 	}
 
 	[Fact]
@@ -54,14 +54,14 @@ public class CalculusTests
 	public void DerivativeOfFastOscillations(double frequency)
 	{
 		// A fixed first step of 0.1 used to give 27.3 for frequency 100.
-		double d = Calculus.Derivative(x => System.Math.Sin(frequency * x), 0);
-		Assert.True(System.Math.Abs(d - frequency) <= 1e-6 * frequency, $"got {d}");
+		double d = Calculus.Derivative(x => Math.Sin(frequency * x), 0);
+		Assert.True(Math.Abs(d - frequency) <= 1e-6 * frequency, $"got {d}");
 	}
 
 	[Fact]
 	public void DerivativeWithLargeFunctionValues()
 	{
-		Assert.Equal(1, Calculus.Derivative(System.Math.Exp, 30) / System.Math.Exp(30), 9);
+		Assert.Equal(1, Calculus.Derivative(Math.Exp, 30) / Math.Exp(30), 9);
 		Assert.Equal(0, Calculus.Derivative(x => 1e8 + x * x, 0), 6);
 	}
 
@@ -69,13 +69,13 @@ public class CalculusTests
 	public void DerivativeNearTheEdgeOfTheDomain()
 	{
 		// sqrt is undefined for x < 0, which the larger steps reach; smaller steps still work.
-		Assert.Equal(50, Calculus.Derivative(System.Math.Sqrt, 1e-4), 6);
+		Assert.Equal(50, Calculus.Derivative(Math.Sqrt, 1e-4), 6);
 	}
 
 	[Fact]
 	public void DerivativeOfAJumpIsAnError()
 	{
-		var ex = Assert.Throws<MathException>(() => Calculus.Derivative(x => System.Math.Sign(x), 0));
+		var ex = Assert.Throws<MathException>(() => Calculus.Derivative(x => Math.Sign(x), 0));
 		Assert.Equal(MathError.Domain, ex.Error);
 	}
 
@@ -83,7 +83,7 @@ public class CalculusTests
 	public void IntegralThatDoesNotConvergeIsAnError()
 	{
 		// sin(1/x) oscillates infinitely often near 0; few subintervals are allowed here to keep the test fast.
-		var ex = Assert.Throws<MathException>(() => Calculus.Integrate(x => System.Math.Sin(1 / x), 1e-6, 1, maxIntervals: 500));
+		var ex = Assert.Throws<MathException>(() => Calculus.Integrate(x => Math.Sin(1 / x), 1e-6, 1, maxIntervals: 500));
 		Assert.Equal(MathError.NoSolution, ex.Error);
 	}
 }
@@ -93,7 +93,7 @@ public class RootFindingTests
 	[Fact]
 	public void FindsSquareRootOfTwoInBracket()
 	{
-		Assert.Equal(System.Math.Sqrt(2), RootFinding.FindRoot(x => x * x - 2, 0, 2), 13);
+		Assert.Equal(Math.Sqrt(2), RootFinding.FindRoot(x => x * x - 2, 0, 2), 13);
 	}
 
 	[Fact]
@@ -107,8 +107,8 @@ public class RootFindingTests
 	public void FindsRootClosestToStart()
 	{
 		// sin has roots at multiples of π; start near 3π.
-		Assert.Equal(3 * System.Math.PI, RootFinding.FindRootNear(System.Math.Sin, 9.0), 12);
-		Assert.Equal(-System.Math.PI, RootFinding.FindRootNear(System.Math.Sin, -3.0), 12);
+		Assert.Equal(3 * Math.PI, RootFinding.FindRootNear(Math.Sin, 9.0), 12);
+		Assert.Equal(-Math.PI, RootFinding.FindRootNear(Math.Sin, -3.0), 12);
 	}
 
 	[Fact]
@@ -128,7 +128,7 @@ public class RootFindingTests
 	{
 		// Starting at 1.4, the pole of tan at π/2 (distance 0.17) is reached before the root at 0
 		// (distance 1.4); the pole must be skipped.
-		Assert.Equal(0, RootFinding.FindRootNear(System.Math.Tan, 1.4), 10);	}
+		Assert.Equal(0, RootFinding.FindRootNear(Math.Tan, 1.4), 10);	}
 
 	[Theory]
 	[InlineData(0.5)]
@@ -146,7 +146,7 @@ public class RootFindingTests
 	public void PoleOfTanNextToTheStartIsSkipped()
 	{
 		// Starting at π/2 + 0.01, the search reaches the pole at π/2 first, then the root at π.
-		Assert.Equal(System.Math.PI, RootFinding.FindRootNear(System.Math.Tan, System.Math.PI / 2 + 0.01), 10);
+		Assert.Equal(Math.PI, RootFinding.FindRootNear(Math.Tan, Math.PI / 2 + 0.01), 10);
 	}
 
 	[Fact]

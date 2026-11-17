@@ -40,7 +40,7 @@ public static class ResultFormatter
 			for (int c = 0; c < value.Columns; c++)
 			{
 				cells[r, c] = ComplexMatrix.Format(value[r, c]);
-				widths[c] = System.Math.Max(widths[c], cells[r, c].Length);
+				widths[c] = Math.Max(widths[c], cells[r, c].Length);
 			}
 
 		var builder = new StringBuilder();

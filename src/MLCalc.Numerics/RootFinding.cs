@@ -1,4 +1,4 @@
-using MLCalc.Math;
+using MLCalc.Mathematics;
 
 namespace MLCalc.Numerics;
 
@@ -20,10 +20,10 @@ public static class RootFinding
 			return a;
 		if (fb == 0)
 			return b;
-		if (System.Math.Sign(fa) == System.Math.Sign(fb))
+		if (Math.Sign(fa) == Math.Sign(fb))
 			throw new MathException(MathError.NoSolution, FormattableString.Invariant($"f({a:G10}) and f({b:G10}) have the same sign."));
 
-		if (System.Math.Abs(fa) < System.Math.Abs(fb))
+		if (Math.Abs(fa) < Math.Abs(fb))
 		{
 			(a, b) = (b, a);
 			(fa, fb) = (fb, fa);
@@ -40,14 +40,14 @@ public static class RootFinding
 				s = b - fb * (b - a) / (fb - fa);
 
 			// Brent's 2·ε·|b| uses machine epsilon; double.Epsilon is the smallest denormal instead.
-			double delta = 2 * MachineEpsilon * System.Math.Abs(b) + tolerance * System.Math.Abs(b);
+			double delta = 2 * MachineEpsilon * Math.Abs(b) + tolerance * Math.Abs(b);
 			double mid = (3 * a + b) / 4;
-			bool outside = !(s > System.Math.Min(mid, b) && s < System.Math.Max(mid, b));
+			bool outside = !(s > Math.Min(mid, b) && s < Math.Max(mid, b));
 			if (outside
-				|| (bisected && System.Math.Abs(s - b) >= System.Math.Abs(b - c) / 2)
-				|| (!bisected && System.Math.Abs(s - b) >= System.Math.Abs(c - d) / 2)
-				|| (bisected && System.Math.Abs(b - c) < delta)
-				|| (!bisected && System.Math.Abs(c - d) < delta))
+				|| (bisected && Math.Abs(s - b) >= Math.Abs(b - c) / 2)
+				|| (!bisected && Math.Abs(s - b) >= Math.Abs(c - d) / 2)
+				|| (bisected && Math.Abs(b - c) < delta)
+				|| (!bisected && Math.Abs(c - d) < delta))
 			{
 				s = (a + b) / 2;
 				bisected = true;
@@ -59,7 +59,7 @@ public static class RootFinding
 			d = c;
 			c = b;
 			fc = fb;
-			if (System.Math.Sign(fa) == System.Math.Sign(fs))
+			if (Math.Sign(fa) == Math.Sign(fs))
 			{
 				a = s;
 				fa = fs;
@@ -69,12 +69,12 @@ public static class RootFinding
 				b = s;
 				fb = fs;
 			}
-			if (System.Math.Abs(fa) < System.Math.Abs(fb))
+			if (Math.Abs(fa) < Math.Abs(fb))
 			{
 				(a, b) = (b, a);
 				(fa, fb) = (fb, fa);
 			}
-			if (fb == 0 || System.Math.Abs(b - a) <= tolerance * System.Math.Max(1, System.Math.Abs(b)))
+			if (fb == 0 || Math.Abs(b - a) <= tolerance * Math.Max(1, Math.Abs(b)))
 				return b;
 		}
 		return b;
@@ -154,8 +154,8 @@ public static class RootFinding
 		// At a true root |f| is (nearly) zero, at most |f| at either end of the bracket. A pole also
 		// changes sign, but there |f| is huge, larger than at one or both ends (the end that lies
 		// next to the pole may itself be huge, so comparing with the larger end is not enough).
-		double fRoot = System.Math.Abs(f(root));
-		return fRoot <= System.Math.Min(System.Math.Abs(fa), System.Math.Abs(fb));
+		double fRoot = Math.Abs(f(root));
+		return fRoot <= Math.Min(Math.Abs(fa), Math.Abs(fb));
 	}
 
 	/// <summary>Brent's method cannot continue through NaN; report it as an undefined function value.</summary>
@@ -165,6 +165,6 @@ public static class RootFinding
 			: value;
 
 	static bool IsSignChange(double a, double b) =>
-		!double.IsNaN(a) && !double.IsNaN(b) && (a == 0 || b == 0 || System.Math.Sign(a) != System.Math.Sign(b))
+		!double.IsNaN(a) && !double.IsNaN(b) && (a == 0 || b == 0 || Math.Sign(a) != Math.Sign(b))
 		&& !(double.IsInfinity(a) || double.IsInfinity(b));
 }
