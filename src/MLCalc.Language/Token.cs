@@ -1,6 +1,6 @@
 namespace MLCalc.Language;
 
-public enum TokenKind
+internal enum TokenKind
 {
 	EndOfFile,
 	NewLine,
@@ -70,7 +70,7 @@ public enum TokenKind
 /// <param name="Text">The source text of the token (the contents, without quotes, for strings).</param>
 /// <param name="Value">The numeric value of a number token.</param>
 /// <param name="HasLeadingSpace">Whether whitespace precedes the token; used to separate matrix elements.</param>
-public sealed record Token(TokenKind Kind, SourceSpan Span, string Text, double Value = 0, bool HasLeadingSpace = false)
+internal sealed record Token(TokenKind Kind, SourceSpan Span, string Text, double Value = 0, bool HasLeadingSpace = false)
 {
 	public override string ToString() => $"{Kind} '{Text}'";
 }

@@ -53,9 +53,10 @@ public static class Polynomial
 			throw new MathException(MathError.Domain, $"A degree {degree} fit needs more than {degree} points, got {x.Count}.");
 
 		int n = x.Count, terms = degree + 1;
-		if ((long)n * terms > ComplexMatrix.MaxElements)
+		int limit = ComplexMatrix.ElementLimit;
+		if ((long)n * terms > limit)
 			throw new MathException(MathError.TooLarge, string.Create(CultureInfo.InvariantCulture,
-				$"A degree {degree} fit to {n} points needs {(long)n * terms} intermediate values; the limit is {ComplexMatrix.MaxElements}."));
+				$"A degree {degree} fit to {n} points needs {(long)n * terms} intermediate values; the limit is {limit}."));
 		var xs = x.AsSpan().ToArray();
 
 		// Centre and scale: u = (x − m)/s with |u| ≤ 1.

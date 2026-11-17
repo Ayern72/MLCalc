@@ -1,5 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<Description>A UI-independent plot model for MLCalc: 2D and 3D plot windows, layout, camera handling and SVG export.</Description>
+		<Description>Plots for the MLCalc interpreter: the plot commands (plot, fplot, plot3d, fplot3d, view, savefig and more), and a UI-independent plot model with 2D and 3D windows, layout, camera handling and SVG export.</Description>
+		<PackageTags>plotting;charts;graphs;svg;3d;math;calculator</PackageTags>
 	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\MLCalc.Interpreter\MLCalc.Interpreter.csproj" />
+		<!-- Not dependencies of the package: they come with MLCalc.Scripting and MLCalc.Numerics. -->
+		<ProjectReference Include="..\MLCalc.Mathematics\MLCalc.Mathematics.csproj" PrivateAssets="all" />
+		<ProjectReference Include="..\MLCalc.LinearAlgebra\MLCalc.LinearAlgebra.csproj" PrivateAssets="all" />
+		<ProjectReference Include="..\MLCalc.Language\MLCalc.Language.csproj" PrivateAssets="all" />
+	</ItemGroup>
 </Project>

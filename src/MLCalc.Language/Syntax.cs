@@ -5,11 +5,13 @@ namespace MLCalc.Language;
 /// <summary>Base of all syntax nodes. <see cref="ToString"/> renders the node as an S-expression.</summary>
 public abstract record SyntaxNode(SourceSpan Span)
 {
+	/// <summary>The node as an S-expression, e.g. <c>(+ 1 (* 2 x))</c>.</summary>
 	public sealed override string ToString() => SyntaxPrinter.Print(this);
 }
 
 // ───────────── Expressions ─────────────
 
+/// <summary>Base of all expressions: anything that can give a value.</summary>
 public abstract record Expression(SourceSpan Span) : SyntaxNode(Span);
 
 /// <summary>A real number literal, or an imaginary literal such as <c>2i</c>.</summary>
@@ -27,13 +29,26 @@ public sealed record ColonAll(SourceSpan Span) : Expression(Span);
 /// <summary>A bare operator symbol used as an argument, such as the line style in <c>plot(x, y, -)</c>.</summary>
 public sealed record StyleLiteral(SourceSpan Span, string Symbol) : Expression(Span);
 
-public enum UnaryOperator { Plus, Negate, Not }
+/// <summary>A prefix operator.</summary>
+public enum UnaryOperator
+{
+	/// <summary>Unary plus <c>+</c>, which changes nothing.</summary>
+	Plus,
+	/// <summary>Negation <c>-</c>.</summary>
+	Negate,
+	/// <summary>Logical not: <c>not</c> or <c>~</c>.</summary>
+	Not,
+}
 
+/// <summary>A prefix operator applied to an operand, e.g. <c>-x</c>.</summary>
 public sealed record UnaryExpression(SourceSpan Span, UnaryOperator Operator, Expression Operand) : Expression(Span);
 
+/// <summary>An infix operator.</summary>
 public enum BinaryOperator
 {
+	/// <summary>Sum <c>+</c>.</summary>
 	Add,
+	/// <summary>Difference <c>-</c>.</summary>
 	Subtract,
 	/// <summary>Matrix product <c>*</c>.</summary>
 	Multiply,
@@ -43,34 +58,53 @@ public enum BinaryOperator
 	LeftDivide,
 	/// <summary>Matrix power <c>^</c>.</summary>
 	Power,
+	/// <summary>Element-wise product <c>.*</c>.</summary>
 	ElementMultiply,
+	/// <summary>Element-wise quotient <c>./</c>.</summary>
 	ElementDivide,
+	/// <summary>Element-wise left division <c>.</c>.</summary>
 	ElementLeftDivide,
+	/// <summary>Element-wise power <c>.^</c>.</summary>
 	ElementPower,
+	/// <summary>Remainder <c>mod</c>, with the sign of the number divided.</summary>
 	Modulo,
+	/// <summary>Integer division <c>div</c>.</summary>
 	IntegerDivide,
+	/// <summary>Comparison <c>==</c>.</summary>
 	Equal,
+	/// <summary>Comparison <c>~=</c> or <c>&lt;&gt;</c>.</summary>
 	NotEqual,
+	/// <summary>Comparison <c>&lt;</c>.</summary>
 	Less,
+	/// <summary>Comparison <c>&lt;=</c>.</summary>
 	LessOrEqual,
+	/// <summary>Comparison <c>&gt;</c>.</summary>
 	Greater,
+	/// <summary>Comparison <c>&gt;=</c>.</summary>
 	GreaterOrEqual,
+	/// <summary>Logical and: <c>and</c>, <c>&amp;</c> or <c>&amp;&amp;</c>; both sides are evaluated.</summary>
 	And,
+	/// <summary>Logical or: <c>or</c>, <c>|</c> or <c>||</c>; both sides are evaluated.</summary>
 	Or,
+	/// <summary>Exclusive or <c>xor</c>.</summary>
 	Xor,
 }
 
+/// <summary>An infix operator applied to two operands, e.g. <c>a * b</c>.</summary>
 public sealed record BinaryExpression(SourceSpan Span, BinaryOperator Operator, Expression Left, Expression Right) : Expression(Span);
 
+/// <summary>An operator written after its operand.</summary>
 public enum PostfixOperator
 {
 	/// <summary>Conjugate transpose <c>'</c>.</summary>
 	ConjugateTranspose,
 	/// <summary>Plain transpose <c>.'</c>.</summary>
 	Transpose,
+	/// <summary>Factorial <c>!</c>.</summary>
 	Factorial,
 }
 
+/// <summary>A postfix operator applied to an operand, e.g. <c>A'</c> or <c>5!</c>.</summary>
 public sealed record PostfixExpression(SourceSpan Span, PostfixOperator Operator, Expression Operand) : Expression(Span);
 
 /// <summary>A range <c>start:end</c> or <c>start:step:end</c>.</summary>
@@ -87,6 +121,7 @@ public sealed record MatrixLiteral(SourceSpan Span, ImmutableArray<ImmutableArra
 
 // ───────────── Statements ─────────────
 
+/// <summary>Base of all statements.</summary>
 public abstract record Statement(SourceSpan Span) : SyntaxNode(Span);
 
 /// <summary>An expression or command. <paramref name="IsSilent"/> is true when it ends with <c>;</c>.</summary>

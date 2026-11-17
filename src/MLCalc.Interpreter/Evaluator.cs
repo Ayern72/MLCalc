@@ -145,9 +145,10 @@ public sealed partial class MLCalcInterpreter
 		double count = Math.Floor((end - start) / step + 1e-10) + 1;
 		if (count <= 0)
 			return ComplexMatrix.Zeros(1, 0);
-		if (!(count <= ComplexMatrix.MaxElements))
+		int limit = ComplexMatrix.ElementLimit;
+		if (!(count <= limit))
 			throw new RuntimeError(string.Create(CultureInfo.InvariantCulture,
-				$"The range would have {count:0} elements; the limit is {ComplexMatrix.MaxElements}."), range.Span);
+				$"The range would have {count:0} elements; the limit is {limit}."), range.Span);
 		return ComplexMatrix.Create(1, (int)count, (_, k) => start + k * step);
 	}
 

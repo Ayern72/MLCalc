@@ -78,7 +78,7 @@ public class SecondReviewTests
 	public void BitmapImagesAreLimitedInPixels()
 	{
 		var saved = new List<(double Width, double Height)>();
-		host.Interpreter.RegisterFigureFormat("png", (_, _, width, height) => saved.Add((width, height)));
+		host.Plotting.RegisterFigureFormat("png", (_, _, width, height) => saved.Add((width, height)));
 		host.Interpreter.WorkingDirectory = Path.GetTempPath();
 		Assert.Contains("at most 64 million pixels", host.Fail("savefig(\"a.png\", 16000, 16000)").Message);
 		Assert.Contains("at most 64 million pixels", host.Fail("savefig(\"a.png\", 9000, 8000)").Message);

@@ -3,7 +3,7 @@ using System.Globalization;
 namespace MLCalc.Language;
 
 /// <summary>Renders syntax trees as compact S-expressions, e.g. <c>(+ 1 (* 2 3))</c>.</summary>
-public static class SyntaxPrinter
+internal static class SyntaxPrinter
 {
 	public static string Print(SyntaxNode node) => node switch
 	{

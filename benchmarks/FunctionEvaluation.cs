@@ -1,4 +1,5 @@
-#:project ../src/MLCalc.Interpreter/MLCalc.Interpreter.csproj
+#:project ../src/MLCalc.Plotting/MLCalc.Plotting.csproj
+#:project ../src/MLCalc.LinearAlgebra/MLCalc.LinearAlgebra.csproj
 #:property Configuration=Release
 // Measures how fast functions given as text (fplot, integral, …) are evaluated.
 // Run from the repository root:  dotnet run benchmarks/FunctionEvaluation.cs
@@ -11,7 +12,8 @@ using MLCalc.Plotting;
 
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
-var interpreter = new MLCalcInterpreter(new Figure(), new NullOutput(), randomSeed: 1);
+var interpreter = new MLCalcInterpreter(new NullOutput(), new InterpreterOptions { RandomSeed = 1 });
+interpreter.AddPlotting(new Figure());
 Run("a = 1.5; b = 0.25;");
 
 // An expression whose constant parts (sin(pi/4)*a, cos(pi/3)*exp(-b), sqrt(a^2 + b^2)) can be

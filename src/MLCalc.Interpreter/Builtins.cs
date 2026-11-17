@@ -2,17 +2,14 @@ using System.Globalization;
 using System.Numerics;
 using MLCalc.LinearAlgebra;
 using MLCalc.Mathematics;
+using MLCalc.Language;
 using MLCalc.Numerics;
-using MLCalc.Plotting;
 
 namespace MLCalc.Interpreter;
 
 /// <summary>The built-in functions and commands, looked up case-insensitively.</summary>
 internal sealed class Builtins
 {
-	/// <summary>The most pixels in an image saved by <c>savefig</c> in a bitmap format such as PNG.</summary>
-	const double MaxImagePixels = 64_000_000;
-
 	readonly Dictionary<string, Builtin> table = new(StringComparer.OrdinalIgnoreCase);
 	readonly HashSet<string> pure = new(StringComparer.OrdinalIgnoreCase);
 	readonly HashSet<string> commands = new(StringComparer.OrdinalIgnoreCase);
@@ -29,8 +26,8 @@ internal sealed class Builtins
 	public bool IsPure(string name) => pure.Contains(name);
 
 	/// <summary>
-	/// True for commands: plotting, console and file commands such as <c>plot</c>, <c>del</c> or
-	/// <c>savefig</c>. They change state and are not allowed in functions given as text.
+	/// True for commands: console and file commands such as <c>del</c> or <c>run</c>, and those
+	/// the host adds, such as <c>plot</c>. They change state and are not allowed in functions given as text.
 	/// </summary>
 	public bool IsCommand(string name) => commands.Contains(name);
 
@@ -46,9 +43,24 @@ internal sealed class Builtins
 		// Not marked pure: functions given as text (they run their own evaluations), and commands.
 		RegisterNumericFunctions();
 		registeringCommands = true;
-		RegisterPlotCommands();
 		RegisterConsoleCommands();
 		registeringCommands = false;
+	}
+
+	/// <summary>Adds a function or command for <see cref="MLCalcInterpreter.AddFunction"/> and <see cref="MLCalcInterpreter.AddCommand"/>.</summary>
+	public void Define(string name, BuiltinKind kind, Builtin builtin)
+	{
+		ArgumentNullException.ThrowIfNull(name);
+		var tokens = Lexer.Tokenize(name).Tokens;
+		if (tokens.Count != 2 || tokens[0].Kind != TokenKind.Identifier || tokens[0].Text != name)
+			throw new ArgumentException($"'{name}' is not a valid name: use letters, digits and underscores, starting with a letter, and not a keyword.", nameof(name));
+		if (table.ContainsKey(name))
+			throw new ArgumentException($"There is already a function or command named '{name}'.", nameof(name));
+		table.Add(name, builtin);
+		if (kind == BuiltinKind.PureFunction)
+			pure.Add(name);
+		if (kind == BuiltinKind.Command)
+			commands.Add(name);
 	}
 
 	void Add(Builtin builtin, params string[] names)
@@ -308,377 +320,6 @@ internal sealed class Builtins
 			return RootFinding.FindExtremum(call.RealFunction(0, 1), call.Real(2));
 		}, "extreme");
 	}
-
-	// ───────────── Plotting ─────────────
-
-	void RegisterPlotCommands()
-	{
-		Add(call =>
-		{
-			call.RequireCount(2);
-			call.Figure.Initialize(call.Integer(0, min: 1), call.Integer(1, min: 1));
-			return null;
-		}, "initdisplay");
-		Add(call =>
-		{
-			call.RequireCount(2);
-			call.Figure.SelectAxes(call.Integer(0, min: 1), call.Integer(1, min: 1));
-			return null;
-		}, "currentwin");
-		Add(call =>
-		{
-			call.RequireCount(2);
-			call.Figure.SetXRange(call.Real(0), call.Real(1));
-			return null;
-		}, "xrange");
-		Add(call =>
-		{
-			call.RequireCount(2);
-			call.Figure.SetYRange(call.Real(0), call.Real(1));
-			return null;
-		}, "yrange");
-		Add(call =>
-		{
-			call.RequireCount(1);
-			call.Figure.SetPen(call.Integer(0, min: 0));
-			return null;
-		}, "pen");
-		Add(call =>
-		{
-			call.RequireCount(0);
-			call.Figure.ClearCurrent();
-			return null;
-		}, "clear", "clf");
-		Add(call =>
-		{
-			call.RequireCount(0, 1);
-			call.Figure.ShowGrid(call.Count == 0 || call.Real(0) != 0);
-			return null;
-		}, "grid");
-		Add(call => SetText(call, call.Figure.SetTitle), "title");
-		Add(call => SetText(call, call.Figure.SetXTitle), "xtitle", "xlabel");
-		Add(call => SetText(call, call.Figure.SetYTitle), "ytitle", "ylabel");
-		Add(call =>
-		{
-			call.RequireCount(2);
-			call.Figure.AddDot(call.Real(0), call.Real(1));
-			return null;
-		}, "dot");
-		Add(Plot, "plot");
-		Add(call =>
-		{
-			call.RequireCount(1, 2);
-			var z = call.Matrix(0);
-			call.Figure.AddComplexSeries(z.AsSpan().ToArray().Select(v => new PlotPoint(v.Real, v.Imaginary)), call.Style(1));
-			return null;
-		}, "cplot");
-		Add(call =>
-		{
-			call.RequireCount(2);
-			var function = PlotFunction(call.RealFunction(0, 1));
-			call.Figure.AddFunction(call.String(1), function);
-			return null;
-		}, "fplot");
-		RegisterPlot3DCommands();
-		Add(call =>
-		{
-			call.RequireCount(1);
-			var coefficients = call.Matrix(0);
-			if (!coefficients.IsVector)
-				throw call.Error("the coefficients must be a vector.", 0);
-			var c = coefficients.AsSpan().ToArray();
-			call.Figure.AddFunction(PolynomialLabel(c), x => Polynomial.Evaluate(c, x).Real);
-			return null;
-		}, "polyplot");
-		Add(call =>
-		{
-			call.Output.WriteLine("print: printing is not supported in this version; use savefig(\"plot.svg\").");
-			return null;
-		}, "print");
-
-		// savefig("plot.svg") or savefig("plot.png", width, height); formats beyond SVG come from the front-end.
-		Add(call =>
-		{
-			call.RequireCount(1, 3);
-			string path = call.String(0);
-			// A ':' in the file name would write to an NTFS alternate data stream ("a.txt:b.svg"
-			// creates a.txt), getting around the file type check below.
-			if (Path.GetFileName(path).Contains(':'))
-				throw call.Error("the file name must not contain ':'.", 0);
-			string extension = Path.GetExtension(path);
-			MLCalcInterpreter.FigureSaver? saver = null;
-			if (!extension.Equals(".svg", StringComparison.OrdinalIgnoreCase) && !call.Interpreter.TryGetFigureFormat(extension, out saver))
-				throw call.Error($"unsupported file type '{extension}'; use {string.Join(" or ", call.Interpreter.FigureFormats)}.", 0);
-			double width = call.Count > 1 ? call.Real(1) : 800;
-			double height = call.Count > 2 ? call.Real(2) : 600;
-			// Written so that NaN is rejected too (every comparison with NaN is false).
-			if (!(width >= 50 && height >= 50 && width <= 16000 && height <= 16000))
-				throw call.Error("the size must be between 50 and 16000.", 1);
-			// A bitmap of 16000×16000 takes 1 GB, rendered in one piece; SVG has no such cost.
-			if (saver is not null && width * height > MaxImagePixels)
-				throw call.Error($"an image can have at most {MaxImagePixels / 1_000_000} million pixels (for example 8000×8000).", 1);
-			string fullPath = call.Interpreter.ResolvePath(path);
-			try
-			{
-				var snapshot = call.Figure.Snapshot();
-				if (saver is null)
-					SvgWriter.Save(snapshot, fullPath, width, height);
-				else
-					saver(snapshot, fullPath, width, height);
-			}
-			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-			{
-				throw call.Error(ex.Message, 0);
-			}
-			call.Output.WriteLine($"Saved {fullPath}");
-			return null;
-		}, "savefig");
-	}
-
-	/// <summary>The default and largest number of grid lines each way in <c>fplot3d</c>.</summary>
-	const int DefaultSurfaceSamples = 40, MaxSurfaceSamples = 200;
-
-	void RegisterPlot3DCommands()
-	{
-		Add(call =>
-		{
-			call.RequireCount(2);
-			call.Figure.SetZRange(call.Real(0), call.Real(1));
-			return null;
-		}, "zrange");
-		Add(call => SetText(call, call.Figure.SetZTitle), "ztitle", "zlabel");
-		Add(call =>
-		{
-			call.RequireCount(3);
-			call.Figure.AddDot3D(call.Real(0), call.Real(1), call.Real(2));
-			return null;
-		}, "dot3d");
-		Add(Plot3D, "plot3d");
-		Add(call => call.Count >= 5 ? FPlot3DCurve(call) : FPlot3DSurface(call), "fplot3d");
-		Add(call =>
-		{
-			call.RequireCount(0, 2);
-			if (call.Count == 2)
-				call.Figure.SetView(call.Real(0), call.Real(1));
-			else if (call.Count == 0 || call.Real(0) == 3)
-				call.Figure.ResetView();
-			else if (call.Real(0) == 2)
-				call.Figure.SetView(0, 90);
-			else
-				throw call.Error("use view(az, el), view(2) (from above) or view(3) (the default).", 0);
-			return null;
-		}, "view");
-		Add(call =>
-		{
-			call.RequireCount(1, 3);
-			call.Figure.SetCameraPosition(call.Point(0));
-			return null;
-		}, "camposition");
-		Add(call =>
-		{
-			call.RequireCount(1, 3);
-			call.Figure.SetCameraTarget(call.Point(0));
-			return null;
-		}, "camtarget");
-	}
-
-	/// <summary>fplot3d("x", "y", "f(x, y)" [, n]): a surface over the x and y ranges on an n×n grid.</summary>
-	static ComplexMatrix? FPlot3DSurface(CallContext call)
-	{
-		if (call.Count is not (3 or 4))
-			throw call.Error(FPlot3DUsage);
-		int samples = DefaultSurfaceSamples;
-		if (call.Count == 4)
-		{
-			samples = call.Integer(3, min: 1);
-			if (samples is < 2 or > MaxSurfaceSamples)
-				throw call.Error($"the number of grid lines must be between 2 and {MaxSurfaceSamples}.", 3);
-		}
-		var function = call.RealFunction2(0, 1, 2);
-		call.Figure.AddSurface(call.String(2), (x, y) =>
-		{
-			try
-			{
-				return function(x, y);
-			}
-			catch (RuntimeError error) when (IsUndefinedHere(error))
-			{
-				return double.NaN;
-			}
-		}, samples);
-		return null;
-	}
-
-	/// <summary>
-	/// fplot3d("t", "x(t)", "y(t)", "z(t)", t0, t1 [, n]): a curve through the points (x(t), y(t), z(t))
-	/// for n values of t from t0 to t1. Points where an expression is undefined become gaps.
-	/// </summary>
-	static ComplexMatrix? FPlot3DCurve(CallContext call)
-	{
-		if (call.Count is not (6 or 7))
-			throw call.Error(FPlot3DUsage);
-		double t0 = call.Real(4), t1 = call.Real(5);
-		if (!double.IsFinite(t0))
-			throw call.Error("the start of the range must be a finite number.", 4);
-		if (!double.IsFinite(t1))
-			throw call.Error("the end of the range must be a finite number.", 5);
-		if (t0 == t1)
-			throw call.Error("the range must not be empty: t0 and t1 are equal.", 5);
-		int samples = Figure.FunctionSamples;
-		if (call.Count == 7)
-		{
-			samples = call.Integer(6, min: 1);
-			if (samples is < 2 or > MaxCurveSamples)
-				throw call.Error($"the number of points must be between 2 and {MaxCurveSamples}.", 6);
-		}
-		var x = PlotFunction(call.RealFunction(0, 1));
-		var y = PlotFunction(call.RealFunction(0, 2));
-		var z = PlotFunction(call.RealFunction(0, 3));
-		var points = new Point3[samples];
-		double step = (t1 - t0) / (samples - 1);
-		for (int k = 0; k < samples; k++)
-		{
-			double t = k == samples - 1 ? t1 : t0 + k * step;
-			points[k] = new Point3(x(t), y(t), z(t));
-		}
-		call.Figure.AddSeries3D(points, PlotStyle.Line);
-		return null;
-	}
-
-	/// <summary>The largest number of points in an <c>fplot3d</c> curve.</summary>
-	const int MaxCurveSamples = 100_000;
-
-	const string FPlot3DUsage = "use fplot3d(\"x\", \"y\", \"f(x, y)\") or fplot3d(\"x\", \"y\", \"f(x, y)\", n) for a surface, "
-		+ "or fplot3d(\"t\", \"x(t)\", \"y(t)\", \"z(t)\", t0, t1) or fplot3d(…, t0, t1, n) for a curve.";
-
-	/// <summary>
-	/// plot3d(x, y, z [, style]) with vectors of the same length, or matrices of the same size whose
-	/// rows are drawn as separate curves; or plot3d(P [, style]) with one point per row of an n×3
-	/// matrix (or per column of a 3×n one).
-	/// </summary>
-	static ComplexMatrix? Plot3D(CallContext call)
-	{
-		call.RequireCount(1, 4);
-		var curves = new List<Point3[]>();
-		PlotStyle style;
-		if (call.Count <= 2)
-		{
-			var p = call.Matrix(0);
-			style = call.Style(1);
-			if (p.Columns == 3)
-				curves.Add([.. Enumerable.Range(0, p.Rows).Select(r => new Point3(p[r, 0].Real, p[r, 1].Real, p[r, 2].Real))]);
-			else if (p.Rows == 3)
-				curves.Add([.. Enumerable.Range(0, p.Columns).Select(c => new Point3(p[0, c].Real, p[1, c].Real, p[2, c].Real))]);
-			else
-				throw call.Error($"the points must be an n×3 matrix (one point per row), not {p.Rows}×{p.Columns}.", 0);
-		}
-		else
-		{
-			var x = call.Matrix(0);
-			var y = call.Matrix(1);
-			var z = call.Matrix(2);
-			style = call.Style(3);
-			if (x.IsVector && y.IsVector && z.IsVector)
-			{
-				if (y.Count != x.Count || z.Count != x.Count)
-					throw call.Error($"x, y and z must have the same number of elements; they have {x.Count}, {y.Count} and {z.Count}.");
-				var (xs, ys, zs) = (x.AsSpan().ToArray(), y.AsSpan().ToArray(), z.AsSpan().ToArray());
-				curves.Add([.. Enumerable.Range(0, xs.Length).Select(k => new Point3(xs[k].Real, ys[k].Real, zs[k].Real))]);
-			}
-			else
-			{
-				if (y.Rows != x.Rows || y.Columns != x.Columns || z.Rows != x.Rows || z.Columns != x.Columns)
-					throw call.Error($"x, y and z must be vectors of the same length or matrices of the same size; they are {x.Rows}×{x.Columns}, {y.Rows}×{y.Columns} and {z.Rows}×{z.Columns}.");
-				for (int r = 0; r < x.Rows; r++)
-					curves.Add([.. Enumerable.Range(0, x.Columns).Select(c => new Point3(x[r, c].Real, y[r, c].Real, z[r, c].Real))]);
-			}
-		}
-		foreach (var curve in curves)
-			call.Figure.AddSeries3D(curve, style);
-		return null;
-	}
-
-	static ComplexMatrix? SetText(CallContext call, Action<string> set)
-	{
-		call.RequireCount(1);
-		set(call.String(0));
-		return null;
-	}
-
-	/// <summary>
-	/// plot(y), plot(x, y) or plot(x, y, style). When y is a matrix, each row (or column, when its
-	/// length matches x) is drawn as its own series.
-	/// </summary>
-	static ComplexMatrix? Plot(CallContext call)
-	{
-		call.RequireCount(1, 3);
-		ComplexMatrix x, y;
-		PlotStyle style;
-		if (call.Count == 1)
-		{
-			y = call.Matrix(0);
-			x = ComplexMatrix.Create(1, y.IsVector ? y.Count : y.Columns, (_, c) => c + 1);
-			style = PlotStyle.Line;
-		}
-		else
-		{
-			x = call.Matrix(0);
-			y = call.Matrix(1);
-			style = call.Style(2);
-		}
-
-		if (!x.IsVector)
-			throw call.Error("x must be a vector.", 0);
-		var xs = x.AsSpan().ToArray().Select(v => v.Real).ToArray();
-		int n = xs.Length;
-
-		IEnumerable<double[]> series;
-		if (y.IsVector && y.Count == n)
-			series = [y.AsSpan().ToArray().Select(v => v.Real).ToArray()];
-		else if (y.Columns == n)
-			series = Enumerable.Range(0, y.Rows).Select(r => Enumerable.Range(0, n).Select(c => y[r, c].Real).ToArray());
-		else if (y.Rows == n)
-			series = Enumerable.Range(0, y.Columns).Select(c => Enumerable.Range(0, n).Select(r => y[r, c].Real).ToArray());
-		else
-			throw call.Error($"x has {n} elements but y is {y.Rows}×{y.Columns}.", 1);
-
-		foreach (var ys in series)
-			call.Figure.AddSeries(xs.Zip(ys, (a, b) => new PlotPoint(a, b)), style);
-		return null;
-	}
-
-	/// <summary>
-	/// Plots the real part. Points where the function is undefined (division by zero, a logarithm
-	/// of zero, …) become gaps; errors in the expression itself (a wrong index or size) are reported,
-	/// since they would otherwise just leave the plot empty.
-	/// </summary>
-	static Func<double, double> PlotFunction(Func<double, double> function) => x =>
-	{
-		try
-		{
-			return function(x);
-		}
-		catch (RuntimeError error) when (IsUndefinedHere(error))
-		{
-			return double.NaN;
-		}
-	};
-
-	static bool IsUndefinedHere(Exception error)
-	{
-		for (Exception? e = error; e is not null; e = e.InnerException)
-			if (e is MathException math)
-				return math.Error is not (MathError.Index or MathError.Dimension or MathError.TooLarge);
-		return false;
-	}
-
-	static string PolynomialLabel(Complex[] coefficients) =>
-		string.Join(" + ", coefficients.Select((c, k) => k switch
-		{
-			0 => ComplexMatrix.Format(c, "G4"),
-			1 => ComplexMatrix.Format(c, "G4") + "·x",
-			_ => ComplexMatrix.Format(c, "G4") + "·x^" + k.ToString(CultureInfo.InvariantCulture),
-		}));
 
 	// ───────────── Console and variables ─────────────
 

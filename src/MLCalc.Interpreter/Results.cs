@@ -19,6 +19,7 @@ public interface IConsoleOutput
 /// <summary>An error raised while running a program, with the location of the code that caused it.</summary>
 public sealed class RuntimeError(string message, SourceSpan span, Exception? inner = null) : Exception(message, inner)
 {
+	/// <summary>Where in the program the error is.</summary>
 	public SourceSpan Span { get; } = span;
 }
 
@@ -28,6 +29,7 @@ public sealed class RuntimeError(string message, SourceSpan span, Exception? inn
 /// <param name="Cancelled">True when execution was stopped through the cancellation token.</param>
 public sealed record ExecutionResult(ParseResult Parse, RuntimeError? Error, bool Cancelled = false)
 {
+	/// <summary>True when the program parsed, ran to the end without an error and was not cancelled.</summary>
 	public bool Success => !Parse.HasErrors && Error is null && !Cancelled;
 
 	/// <summary>All error messages with one-based line:column positions.</summary>

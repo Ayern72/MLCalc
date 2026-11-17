@@ -30,6 +30,6 @@ jobs:
       - run: dotnet build MLCalc.slnx --no-restore -c Release --version-suffix ${{ env.VERSION_SUFFIX }}
       # Nothing is published unless the tests pass.
       - run: dotnet test MLCalc.slnx --no-build -c Release
-      # Only the libraries are packable; the applications and tests set IsPackable to false.
+      # Three packages: MLCalc.Numerics, MLCalc.Scripting and MLCalc.Plotting (see Directory.Build.targets).
       - run: dotnet pack MLCalc.slnx --no-build -c Release --version-suffix ${{ env.VERSION_SUFFIX }} -o packages
       - run: dotnet nuget push "packages/*.nupkg" --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate

@@ -1,13 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<Description>Runs MLCalc expressions and scripts: variables, control flow, complex matrices, numerical and plotting commands.</Description>
+		<PackageId>MLCalc.Scripting</PackageId>
+		<Description>An embeddable interpreter for the MLCalc calculator language: complex matrices, variables, if/while/for, numerical analysis on functions given as text, and an API for adding functions and commands.</Description>
+		<PackageTags>interpreter;scripting;expression-evaluator;calculator;math;matrix;complex-numbers</PackageTags>
 	</PropertyGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\MLCalc.Mathematics\MLCalc.Mathematics.csproj" />
-		<ProjectReference Include="..\MLCalc.LinearAlgebra\MLCalc.LinearAlgebra.csproj" />
 		<ProjectReference Include="..\MLCalc.Numerics\MLCalc.Numerics.csproj" />
-		<ProjectReference Include="..\MLCalc.Language\MLCalc.Language.csproj" />
-		<ProjectReference Include="..\MLCalc.Plotting\MLCalc.Plotting.csproj" />
+		<!-- Carried in this package; see Directory.Build.targets. -->
+		<ProjectReference Include="..\MLCalc.Language\MLCalc.Language.csproj" Bundle="true" PrivateAssets="all" />
+		<!-- Not dependencies of the package: they come with MLCalc.Numerics. -->
+		<ProjectReference Include="..\MLCalc.Mathematics\MLCalc.Mathematics.csproj" PrivateAssets="all" />
+		<ProjectReference Include="..\MLCalc.LinearAlgebra\MLCalc.LinearAlgebra.csproj" PrivateAssets="all" />
 	</ItemGroup>
 	<ItemGroup>
 		<InternalsVisibleTo Include="MLCalc.Interpreter.Tests" />

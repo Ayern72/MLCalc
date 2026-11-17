@@ -5,17 +5,24 @@ namespace MLCalc.Plotting;
 /// <summary>What a line in a 3D scene is: part of the box, a grid line, a tick, or data in a pen's colour.</summary>
 public enum SceneStroke
 {
+	/// <summary>The edges of the box.</summary>
 	Frame,
+	/// <summary>Grid lines on the back walls.</summary>
 	Grid,
+	/// <summary>Tick marks.</summary>
 	Tick,
+	/// <summary>A plotted item, in its pen's colour.</summary>
 	Pen,
 }
 
 /// <summary>Horizontal alignment of a text label relative to its anchor point.</summary>
 public enum TextAlign
 {
+	/// <summary>The text starts at the anchor.</summary>
 	Start,
+	/// <summary>The text is centred on the anchor.</summary>
 	Middle,
+	/// <summary>The text ends at the anchor.</summary>
 	End,
 }
 

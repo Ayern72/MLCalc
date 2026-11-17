@@ -5,8 +5,11 @@ namespace MLCalc.Plotting;
 /// <summary>Whether the axes show real data (x, y), the complex plane (Re, Im) or 3D data (x, y, z).</summary>
 public enum AxesKind
 {
+	/// <summary>An x-y window.</summary>
 	Cartesian,
+	/// <summary>The complex plane, from <c>cplot</c>: real part across, imaginary part up.</summary>
 	Complex,
+	/// <summary>A 3D window with x, y and z axes.</summary>
 	Space,
 }
 
@@ -28,6 +31,7 @@ public sealed record Axes(
 	ImmutableArray<PlotItem> Items,
 	int PointCount = 0)
 {
+	/// <summary>An empty x-y window with both ranges from −10 to 10.</summary>
 	public static Axes Default { get; } = new(AxesKind.Cartesian, -10, 10, -10, 10, "", "", "", false, 1, []);
 
 	/// <summary>The z range; used by 3D windows.</summary>
@@ -36,11 +40,13 @@ public sealed record Axes(
 	/// <summary>The z range; used by 3D windows.</summary>
 	public double ZMax { get; init; } = 10;
 
+	/// <summary>The z axis title of a 3D window.</summary>
 	public string ZTitle { get; init; } = "";
 
 	/// <summary>The camera of a 3D window. Kept when the window is cleared or changes kind.</summary>
 	public Camera Camera { get; init; } = Camera.Default;
 
+	/// <summary>How a 3D window is projected onto the screen.</summary>
 	public Projection Projection { get; init; } = Projection.Perspective;
 }
 
@@ -89,6 +95,7 @@ public sealed class Figure
 	/// <summary>Raised after every change, on the thread that made it.</summary>
 	public event EventHandler? Changed;
 
+	/// <summary>An immutable copy of the whole figure, safe to render on any thread.</summary>
 	public FigureSnapshot Snapshot()
 	{
 		lock (gate)
@@ -258,12 +265,18 @@ public sealed class Figure
 			axes[i] = Clear(axes[i]);
 	});
 
+	/// <summary>Selects the pen for what is drawn next in the current window.</summary>
 	public void SetPen(int pen) => ModifyCurrent(a => a with { Pen = Pens.Normalize(pen) });
 
+	/// <summary>Sets the title of the current window.</summary>
 	public void SetTitle(string title) => ModifyCurrent(a => a with { Title = title });
+	/// <summary>Sets the x axis title of the current window.</summary>
 	public void SetXTitle(string title) => ModifyCurrent(a => a with { XTitle = title });
+	/// <summary>Sets the y axis title of the current window.</summary>
 	public void SetYTitle(string title) => ModifyCurrent(a => a with { YTitle = title });
+	/// <summary>Sets the z axis title of the current window.</summary>
 	public void SetZTitle(string title) => ModifyCurrent(a => a with { ZTitle = title });
+	/// <summary>Shows or hides the grid in the current window.</summary>
 	public void ShowGrid(bool show = true) => ModifyCurrent(a => a with { ShowGrid = show });
 
 	/// <summary>Adds a series of points in the current pen, then advances the pen (<c>plot</c>).</summary>

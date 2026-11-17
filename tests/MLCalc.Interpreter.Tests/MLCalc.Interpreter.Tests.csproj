@@ -13,6 +13,10 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\MLCalc.Interpreter\MLCalc.Interpreter.csproj" />
+		<ProjectReference Include="..\..\src\MLCalc.Plotting\MLCalc.Plotting.csproj" />
+		<ProjectReference Include="..\..\src\MLCalc.Mathematics\MLCalc.Mathematics.csproj" />
+		<ProjectReference Include="..\..\src\MLCalc.LinearAlgebra\MLCalc.LinearAlgebra.csproj" />
+		<ProjectReference Include="..\..\src\MLCalc.Language\MLCalc.Language.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Include="..\..\samples\*.m" LinkBase="samples" CopyToOutputDirectory="PreserveNewest" />

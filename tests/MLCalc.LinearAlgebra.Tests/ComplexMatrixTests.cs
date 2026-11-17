@@ -175,4 +175,31 @@ public class ComplexMatrixTests
 	{
 		Assert.Equal("0\t0", ComplexMatrix.RowVector(-0.0, 0).ToString());
 	}
+
+	[Fact]
+	public void TheElementLimitCanBeLoweredForAScope()
+	{
+		using (ComplexMatrix.LimitElements(10))
+		{
+			Assert.Equal(10, ComplexMatrix.ElementLimit);
+			using (ComplexMatrix.LimitElements(1000))   // cannot be raised
+				Assert.Equal(10, ComplexMatrix.ElementLimit);
+			using (ComplexMatrix.LimitElements(4))
+				Assert.Throws<MathException>(() => ComplexMatrix.Zeros(1, 5));
+			Assert.Equal(10, ComplexMatrix.ElementLimit);
+			Assert.Equal(10, ComplexMatrix.Zeros(2, 5).Count);
+		}
+		Assert.Equal(ComplexMatrix.MaxElements, ComplexMatrix.ElementLimit);
+	}
+
+	[Fact]
+	public void TheElementLimitBelongsToOneThread()
+	{
+		using var limit = ComplexMatrix.LimitElements(10);
+		int seen = 0;
+		var other = new Thread(() => seen = ComplexMatrix.ElementLimit);
+		other.Start();
+		other.Join();
+		Assert.Equal(ComplexMatrix.MaxElements, seen);
+	}
 }

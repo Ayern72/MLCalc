@@ -13,6 +13,7 @@ namespace MLCalc.Language;
 /// </param>
 public sealed record ParseResult(SourceText Text, ProgramSyntax Root, ImmutableArray<Diagnostic> Diagnostics, bool IsIncomplete)
 {
+	/// <summary>True when the text has syntax errors.</summary>
 	public bool HasErrors => !Diagnostics.IsEmpty;
 }
 
@@ -55,6 +56,7 @@ public sealed class Parser
 
 	Parser(IReadOnlyList<Token> tokens) => this.tokens = tokens;
 
+	/// <summary>Parses a program. Syntax errors are collected in <see cref="ParseResult.Diagnostics"/>; parsing goes on after each one.</summary>
 	public static ParseResult Parse(string text)
 	{
 		var (tokens, lexerDiagnostics) = Lexer.Tokenize(text);
@@ -444,7 +446,7 @@ public sealed class Parser
 
 	// ───────────── Expressions ─────────────
 
-	public Expression ParseExpression()
+	Expression ParseExpression()
 	{
 		Deeper();
 		try

@@ -4,7 +4,6 @@ using System.Text.RegularExpressions;
 using MLCalc.Language;
 using MLCalc.LinearAlgebra;
 using MLCalc.Mathematics;
-using MLCalc.Plotting;
 
 namespace MLCalc.Interpreter;
 
@@ -12,6 +11,12 @@ namespace MLCalc.Interpreter;
 /// Runs MLCalc programs: console input or <c>.m</c> scripts. Variables persist between calls.
 /// Names (variables, functions, commands, keywords) are case-insensitive, as in the original.
 /// </summary>
+/// <remarks>
+/// An interpreter is not thread-safe: it holds the variables and the state of the running program,
+/// so use each instance from one thread at a time. Several interpreters can run at the same time on
+/// different threads; they share nothing. A program runs on the thread that calls
+/// <see cref="Execute(string, CancellationToken)"/>, and stops early when its cancellation token is cancelled.
+/// </remarks>
 public sealed partial class MLCalcInterpreter
 {
 	readonly Dictionary<string, ComplexMatrix> variables = new(StringComparer.OrdinalIgnoreCase);
@@ -23,67 +28,109 @@ public sealed partial class MLCalcInterpreter
 	/// <summary>The token of the running program, for operations that can run for a long time.</summary>
 	internal CancellationToken Cancellation => cancellation;
 
-	public MLCalcInterpreter(Figure figure, IConsoleOutput output, int? randomSeed = null)
+	/// <summary>Creates an interpreter that writes results to <paramref name="output"/>.</summary>
+	/// <param name="output">Receives the values and messages that programs show.</param>
+	/// <param name="options">Script files and limits; <see cref="InterpreterOptions.Default"/> when null.</param>
+	public MLCalcInterpreter(IConsoleOutput output, InterpreterOptions? options = null)
 	{
-		Figure = figure;
 		Output = output;
-		Random = randomSeed is { } seed ? new Random(seed) : new Random();
+		Options = options ?? InterpreterOptions.Default;
+		Random = Options.RandomSeed is { } seed ? new Random(seed) : new Random();
 		builtins = new Builtins();
 	}
 
-	public Figure Figure { get; }
+	/// <summary>Where the values and messages of programs go.</summary>
 	public IConsoleOutput Output { get; }
+
+	/// <summary>The settings given when the interpreter was created.</summary>
+	public InterpreterOptions Options { get; }
+
 	internal Random Random { get; }
 
-	/// <summary>Folder that relative script paths are resolved against.</summary>
+	/// <summary>
+	/// The folder that relative paths are resolved against, e.g. in <c>run("file.m")</c>. While a
+	/// script runs, it is the script's folder.
+	/// </summary>
 	public string WorkingDirectory { get; set; } = Environment.CurrentDirectory;
 
+	/// <summary>The variables, by name (case-insensitive).</summary>
 	public IReadOnlyDictionary<string, ComplexMatrix> Variables => variables;
 
-	/// <summary>Names of all built-in functions and commands.</summary>
+	/// <summary>Names of all built-in functions and commands, including those added by the host.</summary>
 	public IEnumerable<string> BuiltinNames => builtins.Names;
 
-	readonly Dictionary<string, FigureSaver> figureFormats = new(StringComparer.OrdinalIgnoreCase);
-
-	/// <summary>Saves a figure to a file: (figure, full path, width, height).</summary>
-	public delegate void FigureSaver(FigureSnapshot figure, string path, double width, double height);
-
 	/// <summary>
-	/// Lets a front-end add an image format for <c>savefig</c>, e.g. ".png" in the desktop app.
-	/// SVG is always available. The saver is called on the interpreter's thread.
+	/// Adds a function that programs can call, e.g. <c>myfun(1, 2)</c>. It reads its arguments
+	/// through the <see cref="CallContext"/> and returns a value, which becomes <c>ans</c> when
+	/// the call stands alone. It reports errors by throwing <see cref="CallContext.Error"/>.
 	/// </summary>
-	public void RegisterFigureFormat(string extension, FigureSaver saver)
+	/// <param name="name">A name that is not a keyword or an existing function or command.</param>
+	/// <param name="function">Computes the result.</param>
+	/// <param name="isPure">
+	/// True if the result depends only on the arguments and the function has no side effects; a call
+	/// with constant arguments inside a function given as text is then evaluated only once.
+	/// </param>
+	/// <exception cref="ArgumentException">The name is not valid or already in use.</exception>
+	public void AddFunction(string name, Func<CallContext, ComplexMatrix> function, bool isPure = false)
 	{
-		if (!extension.StartsWith('.'))
-			extension = "." + extension;
-		figureFormats[extension] = saver;
+		ArgumentNullException.ThrowIfNull(function);
+		builtins.Define(name, isPure ? BuiltinKind.PureFunction : BuiltinKind.Function,
+			call => function(call) ?? throw new InvalidOperationException($"The function '{call.Name}' returned null."));
 	}
 
-	internal bool TryGetFigureFormat(string extension, out FigureSaver saver) => figureFormats.TryGetValue(extension, out saver!);
+	/// <summary>
+	/// Adds a command: something a program does rather than computes, such as drawing or
+	/// printing. Commands give no value and cannot be used in functions given as text.
+	/// </summary>
+	/// <param name="name">A name that is not a keyword or an existing function or command.</param>
+	/// <param name="command">Carries out the command.</param>
+	/// <exception cref="ArgumentException">The name is not valid or already in use.</exception>
+	public void AddCommand(string name, Action<CallContext> command)
+	{
+		ArgumentNullException.ThrowIfNull(command);
+		builtins.Define(name, BuiltinKind.Command, call =>
+		{
+			command(call);
+			return null;
+		});
+	}
 
-	internal IEnumerable<string> FigureFormats => figureFormats.Keys.Prepend(".svg").Distinct(StringComparer.OrdinalIgnoreCase);
-
+	/// <summary>Gets a variable; false if there is none with that name.</summary>
 	public bool TryGetVariable(string name, out ComplexMatrix value) => variables.TryGetValue(name, out value!);
 
+	/// <summary>Creates or replaces a variable.</summary>
 	public void SetVariable(string name, ComplexMatrix value) => variables[name] = value;
 
+	/// <summary>Deletes a variable; false if there was none with that name.</summary>
 	public bool DeleteVariable(string name) => variables.Remove(name);
 
+	/// <summary>Deletes all variables.</summary>
 	public void ClearVariables() => variables.Clear();
 
 	/// <summary>
 	/// Parses and runs <paramref name="source"/>. If the source has syntax errors nothing is run.
-	/// A line consisting only of a file name ending in <c>.m</c> runs that script, as in the original.
+	/// A line consisting only of a file name ending in <c>.m</c> runs that script, as in the original;
+	/// without <see cref="InterpreterOptions.Scripts"/> such a line is an error.
 	/// </summary>
 	public ExecutionResult Execute(string source, CancellationToken cancellationToken = default)
 	{
-		if (ScriptFileName().Match(source.Trim()) is { Success: true } match && File.Exists(ResolvePath(match.Value)))
-			return ExecuteFile(match.Value, cancellationToken);
+		if (ScriptFileName().Match(source.Trim()) is { Success: true } match)
+		{
+			if (Options.Scripts is null)
+				return Failure(NoScriptFiles);
+			var script = ReadScript(match.Value);
+			if (script.Error is not null)
+				return Failure(script.Error);
+			if (script.Source is not null)
+				return ExecuteScript(script.FullPath, script.Source, cancellationToken);
+			// No such file: parse the line as usual, which reports what is wrong with it.
+		}
 
 		var parse = Parser.Parse(source);
 		if (parse.HasErrors)
 			return new ExecutionResult(parse, null);
 
+		using var limit = ComplexMatrix.LimitElements(Options.MaxMatrixElements);
 		var previous = cancellation;
 		cancellation = cancellationToken;
 		try
@@ -106,27 +153,44 @@ public sealed partial class MLCalcInterpreter
 		}
 	}
 
-	/// <summary>How deeply scripts may run other scripts (with <c>run</c> or by typing a file name).</summary>
-	public const int MaxScriptDepth = 32;
+	const string NoScriptFiles = "Script files cannot be run here.";
 
-	/// <summary>Runs a script file. Relative paths are resolved against <see cref="WorkingDirectory"/>.</summary>
+	/// <summary>
+	/// Runs a script file from <see cref="InterpreterOptions.Scripts"/>. Relative paths are resolved
+	/// against <see cref="WorkingDirectory"/>.
+	/// </summary>
 	public ExecutionResult ExecuteFile(string path, CancellationToken cancellationToken = default)
 	{
-		string fullPath = ResolvePath(path);
-		// Checked here so that it covers both run("file.m") and a script containing a file name;
-		// a script that runs itself would otherwise recurse until the process crashes.
-		if (scriptDepth >= MaxScriptDepth)
-			return Failure("Scripts are nested too deeply (does a script run itself?).");
+		if (Options.Scripts is null)
+			return Failure(NoScriptFiles);
+		var script = ReadScript(path);
+		if (script.Error is not null)
+			return Failure(script.Error);
+		if (script.Source is null)
+			return Failure($"Cannot find the script '{path}'.");
+		return ExecuteScript(script.FullPath, script.Source, cancellationToken);
+	}
 
-		string source;
+	/// <summary>Reads a script: Source is null when there is none, and Error is set when it cannot be read.</summary>
+	(string FullPath, string? Source, string? Error) ReadScript(string path)
+	{
+		string fullPath = ResolvePath(path);
 		try
 		{
-			source = File.ReadAllText(fullPath);
+			return (fullPath, Options.Scripts!.Read(fullPath), null);
 		}
 		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 		{
-			return Failure($"Cannot read '{path}': {ex.Message}");
+			return (fullPath, null, $"Cannot read '{path}': {ex.Message}");
 		}
+	}
+
+	ExecutionResult ExecuteScript(string fullPath, string source, CancellationToken cancellationToken)
+	{
+		// Checked here so that it covers both run("file.m") and a script containing a file name;
+		// a script that runs itself would otherwise recurse until the process crashes.
+		if (scriptDepth >= Options.MaxScriptDepth)
+			return Failure("Scripts are nested too deeply (does a script run itself?).");
 
 		var previousDirectory = WorkingDirectory;
 		WorkingDirectory = Path.GetDirectoryName(fullPath) ?? WorkingDirectory;
@@ -145,7 +209,8 @@ public sealed partial class MLCalcInterpreter
 	/// <summary>A result for an error that happens before any code is parsed.</summary>
 	static ExecutionResult Failure(string message) => new(Parser.Parse(""), new RuntimeError(message, default));
 
-	internal string ResolvePath(string path) => Path.GetFullPath(Path.Combine(WorkingDirectory, path));
+	/// <summary>The full path of <paramref name="path"/>, relative to <see cref="WorkingDirectory"/>.</summary>
+	public string ResolvePath(string path) => Path.GetFullPath(Path.Combine(WorkingDirectory, path));
 
 	[GeneratedRegex(@"^[^\s""(),;=]+\.m$", RegexOptions.IgnoreCase)]
 	private static partial Regex ScriptFileName();
@@ -153,15 +218,19 @@ public sealed partial class MLCalcInterpreter
 	/// <summary>Runs a script from inside another program (<c>run("file.m")</c>), propagating its errors.</summary>
 	internal void RunNestedScript(string path, SourceSpan span)
 	{
-		string fullPath = ResolvePath(path);
-		if (!File.Exists(fullPath))
+		if (Options.Scripts is null)
+			throw new RuntimeError(NoScriptFiles, span);
+		var script = ReadScript(path);
+		if (script.Error is not null)
+			throw new RuntimeError(script.Error, span);
+		if (script.Source is null)
 			throw new RuntimeError($"Cannot find the script '{path}'.", span);
 
-		var result = ExecuteFile(fullPath, cancellation);
+		var result = ExecuteScript(script.FullPath, script.Source, cancellation);
 		cancellation.ThrowIfCancellationRequested();
 		var message = result.Messages().FirstOrDefault();
 		if (message is not null)
-			throw new RuntimeError($"In {Path.GetFileName(fullPath)} at {message}", span);
+			throw new RuntimeError($"In {Path.GetFileName(script.FullPath)} at {message}", span);
 	}
 
 	// ───────────── Statements ─────────────

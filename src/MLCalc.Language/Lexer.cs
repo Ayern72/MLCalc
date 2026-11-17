@@ -7,7 +7,7 @@ namespace MLCalc.Language;
 /// strings use double quotes, and <c>...</c> continues a line. Newlines inside parentheses are
 /// ignored; inside brackets they separate matrix rows.
 /// </summary>
-public sealed class Lexer
+internal sealed class Lexer
 {
 	static readonly Dictionary<string, TokenKind> Keywords = new(StringComparer.OrdinalIgnoreCase)
 	{

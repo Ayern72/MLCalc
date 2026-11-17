@@ -3,24 +3,33 @@ namespace MLCalc.Plotting;
 /// <summary>A rectangle in screen (device) coordinates; y grows downward.</summary>
 public readonly record struct ScreenRect(double Left, double Top, double Width, double Height)
 {
+	/// <summary>The x coordinate of the right edge.</summary>
 	public double Right => Left + Width;
+	/// <summary>The y coordinate of the bottom edge.</summary>
 	public double Bottom => Top + Height;
 }
 
 /// <summary>Maps between world coordinates of an <see cref="Axes"/> and a screen rectangle.</summary>
 public readonly struct PlotTransform(Axes axes, ScreenRect screen)
 {
+	/// <summary>The window whose ranges are mapped.</summary>
 	public Axes Axes { get; } = axes;
+	/// <summary>The area on the screen that the ranges are mapped to.</summary>
 	public ScreenRect Screen { get; } = screen;
 
+	/// <summary>The screen x coordinate of a data x value.</summary>
 	public double ToScreenX(double x) => Screen.Left + (x - Axes.XMin) / (Axes.XMax - Axes.XMin) * Screen.Width;
 
+	/// <summary>The screen y coordinate of a data y value; screen y grows downwards.</summary>
 	public double ToScreenY(double y) => Screen.Bottom - (y - Axes.YMin) / (Axes.YMax - Axes.YMin) * Screen.Height;
 
+	/// <summary>The data x value at a screen x coordinate.</summary>
 	public double ToWorldX(double screenX) => Axes.XMin + (screenX - Screen.Left) / Screen.Width * (Axes.XMax - Axes.XMin);
 
+	/// <summary>The data y value at a screen y coordinate.</summary>
 	public double ToWorldY(double screenY) => Axes.YMin + (Screen.Bottom - screenY) / Screen.Height * (Axes.YMax - Axes.YMin);
 
+	/// <summary>True when the point lies within the window's ranges.</summary>
 	public bool Contains(PlotPoint p) =>
 		p.X >= Axes.XMin && p.X <= Axes.XMax && p.Y >= Axes.YMin && p.Y <= Axes.YMax;
 }

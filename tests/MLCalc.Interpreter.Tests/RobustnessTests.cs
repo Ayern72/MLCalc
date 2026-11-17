@@ -46,7 +46,7 @@ public class RobustnessTests
 	[Fact]
 	public void UnexpectedExceptionsAreReportedAsErrorsAndTheInterpreterKeepsWorking()
 	{
-		host.Interpreter.RegisterFigureFormat("png", (_, _, _, _) => throw new InvalidOperationException("Simulated failure."));
+		host.Plotting.RegisterFigureFormat("png", (_, _, _, _) => throw new InvalidOperationException("Simulated failure."));
 		host.Interpreter.WorkingDirectory = Path.GetTempPath();
 		var error = host.Fail("a = 1;\nsavefig(\"plot.png\")");
 		Assert.Equal("Internal error (InvalidOperationException): Simulated failure.", error.Message);
@@ -120,9 +120,9 @@ public class ScriptSafetyTests : IDisposable
 	[Fact]
 	public void ScriptsMayNestUpToTheLimit()
 	{
-		for (int i = 1; i < MLCalcInterpreter.MaxScriptDepth; i++)
+		for (int i = 1; i < InterpreterOptions.Default.MaxScriptDepth; i++)
 			File.WriteAllText(Path.Combine(directory.FullName, $"s{i}.m"), $"run(\"s{i + 1}.m\")");
-		File.WriteAllText(Path.Combine(directory.FullName, $"s{MLCalcInterpreter.MaxScriptDepth}.m"), "deepest = 1;");
+		File.WriteAllText(Path.Combine(directory.FullName, $"s{InterpreterOptions.Default.MaxScriptDepth}.m"), "deepest = 1;");
 		Assert.True(host.Interpreter.ExecuteFile("s1.m").Success);
 		TestHost.AssertClose(1, host["deepest"]);
 	}

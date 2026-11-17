@@ -9,6 +9,7 @@ public static class SvgWriter
 {
 	const double MarkerSize = 3.5, DotSize = 2.2;
 
+	/// <summary>The figure as an SVG document of the given size in pixels.</summary>
 	public static string Render(FigureSnapshot figure, double width = 800, double height = 600)
 	{
 		// Written so that NaN is rejected too (every comparison with NaN is false).
@@ -29,6 +30,7 @@ public static class SvgWriter
 		return svg.ToString();
 	}
 
+	/// <summary>Writes the figure to an SVG file.</summary>
 	public static void Save(FigureSnapshot figure, string path, double width = 800, double height = 600) =>
 		File.WriteAllText(path, Render(figure, width, height));
 

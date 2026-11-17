@@ -3,6 +3,7 @@ namespace MLCalc.Plotting;
 /// <summary>Layout and geometry shared by all renderers, so every front-end draws the same picture.</summary>
 public static class PlotLayout
 {
+	/// <summary>Space around a window's plot area, in pixels, for the tick labels and titles.</summary>
 	public const double MarginLeft = 62, MarginRight = 18, MarginTop = 28, MarginBottom = 44;
 
 	/// <summary>The rectangle of one grid cell in a figure drawn at the given size.</summary>

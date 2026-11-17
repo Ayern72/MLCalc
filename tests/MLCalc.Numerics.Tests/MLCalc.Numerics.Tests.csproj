@@ -13,5 +13,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\MLCalc.Numerics\MLCalc.Numerics.csproj" />
+		<ProjectReference Include="..\..\src\MLCalc.Mathematics\MLCalc.Mathematics.csproj" />
+		<ProjectReference Include="..\..\src\MLCalc.LinearAlgebra\MLCalc.LinearAlgebra.csproj" />
 	</ItemGroup>
 </Project>

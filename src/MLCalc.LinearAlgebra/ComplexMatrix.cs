@@ -13,8 +13,11 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 {
 	readonly Complex[] data;
 
+	/// <summary>The number of rows.</summary>
 	public int Rows { get; }
+	/// <summary>The number of columns.</summary>
 	public int Columns { get; }
+	/// <summary>The number of elements, rows × columns.</summary>
 	public int Count => data.Length;
 
 	ComplexMatrix(int rows, int columns, Complex[] data)
@@ -31,18 +34,55 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 	/// </summary>
 	public const int MaxElements = 25_000_000;
 
+	[ThreadStatic]
+	static int elementLimit;
+
+	/// <summary>
+	/// The largest number of elements a matrix created on the current thread may have:
+	/// <see cref="MaxElements"/>, or less inside a <see cref="LimitElements"/> scope.
+	/// </summary>
+	public static int ElementLimit => elementLimit > 0 ? elementLimit : MaxElements;
+
+	/// <summary>
+	/// Lowers <see cref="ElementLimit"/> on the current thread until the returned scope is disposed,
+	/// for example while an interpreter runs a program for a web user. The limit can only be lowered:
+	/// a value above the current limit leaves it unchanged. Scopes nest; disposing one restores the
+	/// limit that was in force when it was created.
+	/// </summary>
+	public static IDisposable LimitElements(int maxElements)
+	{
+		ArgumentOutOfRangeException.ThrowIfLessThan(maxElements, 1);
+		int previous = elementLimit;
+		elementLimit = Math.Min(maxElements, ElementLimit);
+		return new ElementLimitScope(previous);
+	}
+
+	sealed class ElementLimitScope(int previous) : IDisposable
+	{
+		bool disposed;
+
+		public void Dispose()
+		{
+			if (disposed)
+				return;
+			disposed = true;
+			elementLimit = previous;
+		}
+	}
+
 	/// <summary>
 	/// The number of elements of a rows×columns matrix. Throws <see cref="MathError.TooLarge"/> when it
-	/// exceeds <see cref="MaxElements"/> (computed without integer overflow).
+	/// exceeds <see cref="ElementLimit"/> (computed without integer overflow).
 	/// </summary>
 	public static int ElementCount(long rows, long columns)
 	{
 		if (rows < 0 || columns < 0)
 			throw new MathException(MathError.Dimension, $"A matrix cannot have a negative size ({rows}×{columns}).");
 		long count = rows * columns; // both are at most int.MaxValue, so this cannot overflow a long
-		if (count > MaxElements)
+		int limit = ElementLimit;
+		if (count > limit)
 			throw new MathException(MathError.TooLarge,
-				string.Create(CultureInfo.InvariantCulture, $"A {rows}×{columns} matrix would have {count} elements; the limit is {MaxElements}."));
+				string.Create(CultureInfo.InvariantCulture, $"A {rows}×{columns} matrix would have {count} elements; the limit is {limit}."));
 		return (int)count;
 	}
 
@@ -55,6 +95,7 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		return new ComplexMatrix(rows, columns, rowMajorData.ToArray());
 	}
 
+	/// <summary>Creates a matrix whose element (r, c), zero-based, is <paramref name="element"/>(r, c).</summary>
 	public static ComplexMatrix Create(int rows, int columns, Func<int, int, Complex> element)
 	{
 		var values = new Complex[ElementCount(rows, columns)];
@@ -64,14 +105,18 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		return new ComplexMatrix(rows, columns, values);
 	}
 
+	/// <summary>Creates a matrix from a two-dimensional array.</summary>
 	public static ComplexMatrix FromRows(Complex[,] values) =>
 		Create(values.GetLength(0), values.GetLength(1), (r, c) => values[r, c]);
 
+	/// <summary>Creates a real matrix from a two-dimensional array.</summary>
 	public static ComplexMatrix FromRows(double[,] values) =>
 		Create(values.GetLength(0), values.GetLength(1), (r, c) => values[r, c]);
 
+	/// <summary>A 1×1 matrix.</summary>
 	public static ComplexMatrix Scalar(Complex value) => new(1, 1, [value]);
 
+	/// <summary>A 1×n matrix of real numbers.</summary>
 	public static ComplexMatrix RowVector(params ReadOnlySpan<double> values)
 	{
 		var array = new Complex[values.Length];
@@ -80,15 +125,21 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		return new ComplexMatrix(1, values.Length, array);
 	}
 
+	/// <summary>An n×1 matrix of real numbers.</summary>
 	public static ComplexMatrix ColumnVector(params ReadOnlySpan<double> values) => RowVector(values).Transpose();
 
+	/// <summary>A matrix of zeros.</summary>
 	public static ComplexMatrix Zeros(int rows, int columns) => new(rows, columns, new Complex[ElementCount(rows, columns)]);
 
+	/// <summary>A matrix of ones.</summary>
 	public static ComplexMatrix Ones(int rows, int columns) => Create(rows, columns, (_, _) => Complex.One);
 
+	/// <summary>The size×size identity matrix.</summary>
 	public static ComplexMatrix Identity(int size) => Create(size, size, (r, c) => r == c ? Complex.One : Complex.Zero);
 
+	/// <summary>A complex number as a 1×1 matrix.</summary>
 	public static implicit operator ComplexMatrix(Complex value) => Scalar(value);
+	/// <summary>A real number as a 1×1 matrix.</summary>
 	public static implicit operator ComplexMatrix(double value) => Scalar(value);
 
 	/// <summary>Element at zero-based row and column.</summary>
@@ -113,12 +164,18 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		}
 	}
 
+	/// <summary>The elements in row-major order.</summary>
 	public ReadOnlySpan<Complex> AsSpan() => data;
 
+	/// <summary>True for a 1×1 matrix.</summary>
 	public bool IsScalar => Rows == 1 && Columns == 1;
+	/// <summary>True for a matrix without elements.</summary>
 	public bool IsEmpty => data.Length == 0;
+	/// <summary>True when the number of rows equals the number of columns.</summary>
 	public bool IsSquare => Rows == Columns;
+	/// <summary>True for a matrix with one row or one column (including 1×1).</summary>
 	public bool IsVector => Rows == 1 || Columns == 1;
+	/// <summary>True when every element has a zero imaginary part.</summary>
 	public bool IsReal => data.All(ComplexMath.IsReal);
 
 	/// <summary>The single element of a 1×1 matrix.</summary>
@@ -165,7 +222,9 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		return new ComplexMatrix(rows, columns, list.SelectMany(p => p.data).ToArray());
 	}
 
+	/// <summary>Row <paramref name="row"/> (zero-based) as a 1×n matrix.</summary>
 	public ComplexMatrix Row(int row) => Create(1, Columns, (_, c) => this[row, c]);
+	/// <summary>Column <paramref name="column"/> (zero-based) as an n×1 matrix.</summary>
 	public ComplexMatrix Column(int column) => Create(Rows, 1, (r, _) => this[r, column]);
 
 	/// <summary>Applies a function to every element.</summary>
@@ -203,12 +262,18 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		throw DimensionMismatch(a, b);
 	}
 
+	/// <summary>Element-wise sum; a scalar is combined with every element.</summary>
 	public static ComplexMatrix operator +(ComplexMatrix a, ComplexMatrix b) => ElementWise(a, b, (x, y) => x + y);
+	/// <summary>Element-wise difference; a scalar is combined with every element.</summary>
 	public static ComplexMatrix operator -(ComplexMatrix a, ComplexMatrix b) => ElementWise(a, b, (x, y) => x - y);
+	/// <summary>Negation of every element.</summary>
 	public static ComplexMatrix operator -(ComplexMatrix a) => a.Map(ComplexMath.Negate);
 
+	/// <summary>Element-wise product (<c>.*</c>).</summary>
 	public ComplexMatrix ElementMultiply(ComplexMatrix other) => ElementWise(this, other, ComplexMath.Multiply);
+	/// <summary>Element-wise quotient (<c>./</c>).</summary>
 	public ComplexMatrix ElementDivide(ComplexMatrix other) => ElementWise(this, other, ComplexMath.Divide);
+	/// <summary>Element-wise power (<c>.^</c>).</summary>
 	public ComplexMatrix ElementPower(ComplexMatrix other) => ElementWise(this, other, ComplexMath.Pow);
 
 	/// <summary>Matrix product. A scalar operand multiplies every element.</summary>
@@ -272,6 +337,7 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 	/// <summary>Plain transpose (no conjugation): <c>.'</c>, and <c>'</c> in the original MLCalc.</summary>
 	public ComplexMatrix Transpose() => Create(Columns, Rows, (r, c) => data[c * Columns + r]);
 
+	/// <summary>Conjugate transpose (<c>'</c>).</summary>
 	public ComplexMatrix ConjugateTranspose() => Transpose().Map(Complex.Conjugate);
 
 	/// <summary>Solves A·X = B for X (<c>A\B</c>).</summary>
@@ -282,18 +348,23 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 	public static ComplexMatrix RightDivide(ComplexMatrix a, ComplexMatrix b, CancellationToken cancellationToken = default) =>
 		b.IsScalar ? a.ElementDivide(b) : LinearSolver.Solve(b.Transpose(), a.Transpose(), cancellationToken).Transpose();
 
+	/// <summary>The determinant of a square matrix.</summary>
 	public Complex Determinant(CancellationToken cancellationToken = default) => LinearSolver.Determinant(this, cancellationToken);
 
+	/// <summary>The inverse of a square matrix; a singular matrix is a <see cref="MathError.SingularMatrix"/> error.</summary>
 	public ComplexMatrix Inverse(CancellationToken cancellationToken = default) => LinearSolver.Solve(this, Identity(Rows), cancellationToken);
 
 	static MathException DimensionMismatch(ComplexMatrix a, ComplexMatrix b) =>
 		new(MathError.Dimension, $"Matrix dimensions do not agree: {a.Rows}×{a.Columns} and {b.Rows}×{b.Columns}.");
 
+	/// <summary>True when both matrices have the same size and the same elements.</summary>
 	public bool Equals(ComplexMatrix? other) =>
 		other is not null && Rows == other.Rows && Columns == other.Columns && data.AsSpan().SequenceEqual(other.data);
 
+	/// <summary>True when <paramref name="obj"/> is a matrix of the same size with the same elements.</summary>
 	public override bool Equals(object? obj) => Equals(obj as ComplexMatrix);
 
+	/// <summary>A hash code from the size and the elements.</summary>
 	public override int GetHashCode()
 	{
 		var hash = new HashCode();
@@ -315,6 +386,7 @@ public sealed class ComplexMatrix : IEquatable<ComplexMatrix>
 		return true;
 	}
 
+	/// <summary>The elements as text: tab-separated columns, one line per row.</summary>
 	public override string ToString()
 	{
 		if (IsScalar)

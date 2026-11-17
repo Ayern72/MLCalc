@@ -6,24 +6,37 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<NoWarn>$(NoWarn);CS1591</NoWarn>
 		<Authors>Martin Larsson</Authors>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<RepositoryUrl>https://github.com/Ayern72/MLCalc</RepositoryUrl>
 		<PackageProjectUrl>https://github.com/Ayern72/MLCalc</PackageProjectUrl>
-		<PackageTags>mlcalc;calculator;complex;matrix;interpreter</PackageTags>
 	</PropertyGroup>
 
 	<!--
-		NuGet packages: the libraries are packable, the applications and tests are not. The packages
-		workflow (.github/workflows/packages.yml) adds a pre-release suffix to this version.
+		The libraries in src/ ship in the packages, so every public type and member must have an XML
+		comment (CS1591). The applications, tests and tools are exempt. The applications are matched
+		by folder, because the WPF build also compiles a temporary project with another name. Decided
+		here rather than in Directory.Build.targets: MSBuild reads NoWarn while evaluating the props.
+	-->
+	<PropertyGroup Condition="!$(MSBuildProjectDirectory.Replace('\', '/').Contains('/src/')) or $(MSBuildProjectDirectory.EndsWith('MLCalc.Cli')) or $(MSBuildProjectDirectory.EndsWith('MLCalc.Wpf'))">
+		<NoWarn>$(NoWarn);CS1591</NoWarn>
+	</PropertyGroup>
+
+	<!--
+		NuGet packages; see also Directory.Build.targets. The packages workflow
+		(.github/workflows/packages.yml) adds a pre-release suffix to this version.
 	-->
 	<PropertyGroup>
 		<VersionPrefix>0.1.0</VersionPrefix>
+		<PackageIcon>icon.png</PackageIcon>
 		<!-- Source Link: the package records the commit, and debuggers fetch the sources from GitHub. -->
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
-		<!-- The symbols go inside the DLL; GitHub Packages does not take separate symbol packages. -->
+		<!--
+			The symbols (PDB) go inside each DLL rather than in a separate .snupkg symbol package:
+			GitHub Packages does not accept symbol packages, and embedded symbols reach every user of
+			the package without a symbol server.
+		-->
 		<DebugType>embedded</DebugType>
 	</PropertyGroup>
 </Project>

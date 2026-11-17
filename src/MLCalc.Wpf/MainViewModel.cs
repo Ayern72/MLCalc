@@ -53,9 +53,10 @@ public sealed partial class MainViewModel : ObservableObject, IConsoleOutput
 		// Moves program output into the console every 30 ms. Background priority keeps input and
 		// rendering responsive while output streams in; a running timer is kept alive by the dispatcher.
 		_ = new DispatcherTimer(TimeSpan.FromMilliseconds(30), DispatcherPriority.Background, (_, _) => FlushOutput(), dispatcher);
-		interpreter = new MLCalcInterpreter(Figure, this);
+		interpreter = new MLCalcInterpreter(this, new InterpreterOptions { Scripts = FileScriptSource.Instance });
+		var plotting = interpreter.AddPlotting(Figure, new PlottingOptions { WriteSvgFiles = true });
 		// savefig("plot.png") renders with the same code as the plot view; WPF rendering needs the UI thread.
-		interpreter.RegisterFigureFormat(".png", (snapshot, path, width, height) =>
+		plotting.RegisterFigureFormat(".png", (snapshot, path, width, height) =>
 			dispatcher.Invoke(() => PlotExporter.SavePng(PlotExporter.Render(snapshot, width, height), path)));
 		string samples = Path.Combine(AppContext.BaseDirectory, "samples");
 		interpreter.WorkingDirectory = Directory.Exists(samples) ? samples : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);

@@ -1,0 +1,35 @@
+<Project>
+	<!--
+		Packages built from several projects. The six libraries become three NuGet packages:
+
+			MLCalc.Numerics   MLCalc.Numerics + MLCalc.LinearAlgebra + MLCalc.Mathematics
+			MLCalc.Scripting  MLCalc.Interpreter + MLCalc.Language
+			MLCalc.Plotting   MLCalc.Plotting
+
+		The project that gives a package its name marks the projects it carries with Bundle="true"
+		on their ProjectReference; their assemblies and documentation go into its lib folder. The
+		carried projects set IsPackable to false. Every reference to a carried project also has
+		PrivateAssets="all", so that it does not become a package dependency: the package that
+		carries it is a dependency already. As a consequence such references do not flow on to the
+		projects that reference this one, which reference the carried projects they use themselves.
+	-->
+	<PropertyGroup Condition="'$(IsPackable)' != 'false'">
+		<TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);_MLCalcBundledProjectOutput</TargetsForTfmSpecificBuildOutput>
+		<PackageReadmeFile Condition="Exists('README.md')">README.md</PackageReadmeFile>
+	</PropertyGroup>
+
+	<ItemGroup Condition="'$(IsPackable)' != 'false'">
+		<None Include="README.md" Pack="true" PackagePath="\" Condition="Exists('README.md')" />
+		<None Include="$(MSBuildThisFileDirectory)packaging\icon.png" Pack="true" PackagePath="\" Visible="false" />
+	</ItemGroup>
+
+	<Target Name="_MLCalcBundledProjectOutput">
+		<MSBuild Projects="@(ProjectReference)" Condition="'%(ProjectReference.Bundle)' == 'true'" Targets="GetTargetPath">
+			<Output TaskParameter="TargetOutputs" ItemName="_MLCalcBundledAssembly" />
+		</MSBuild>
+		<ItemGroup>
+			<BuildOutputInPackage Include="@(_MLCalcBundledAssembly)" />
+			<BuildOutputInPackage Include="@(_MLCalcBundledAssembly->'%(RootDir)%(Directory)%(Filename).xml')" />
+		</ItemGroup>
+	</Target>
+</Project>

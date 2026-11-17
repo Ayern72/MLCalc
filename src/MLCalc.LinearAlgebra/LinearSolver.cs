@@ -59,6 +59,7 @@ public static class LinearSolver
 		return ComplexMatrix.FromRows(x);
 	}
 
+	/// <summary>The determinant of a square matrix, by Gaussian elimination with pivoting. Stops when <paramref name="cancellationToken"/> is cancelled.</summary>
 	public static Complex Determinant(ComplexMatrix a, CancellationToken cancellationToken = default)
 	{
 		if (!a.IsSquare)

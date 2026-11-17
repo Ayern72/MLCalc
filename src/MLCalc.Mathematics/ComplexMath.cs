@@ -8,10 +8,13 @@ namespace MLCalc.Mathematics;
 /// </summary>
 public static class ComplexMath
 {
+	/// <summary>The imaginary unit i.</summary>
 	public static readonly Complex I = Complex.ImaginaryOne;
 
+	/// <summary>True when the imaginary part is zero.</summary>
 	public static bool IsReal(Complex z) => z.Imaginary == 0;
 
+	/// <summary>The absolute value |z|.</summary>
 	public static double Abs(Complex z) => Complex.Abs(z);
 
 	/// <summary>
@@ -24,6 +27,7 @@ public static class ComplexMath
 	/// <summary>Negation that keeps real numbers exactly real (no -0 imaginary part).</summary>
 	public static Complex Negate(Complex z) => IsReal(z) ? -z.Real : -z;
 
+	/// <summary>The complex conjugate.</summary>
 	public static Complex Conj(Complex z) => Complex.Conjugate(z);
 
 	/// <summary>
@@ -33,6 +37,7 @@ public static class ComplexMath
 	public static Complex Multiply(Complex a, Complex b) =>
 		IsReal(a) && IsReal(b) ? a.Real * b.Real : a * b;
 
+	/// <summary>Quotient that stays exactly real for real operands; division by zero is a <see cref="MathError.DivisionByZero"/> error.</summary>
 	public static Complex Divide(Complex a, Complex b)
 	{
 		if (b == Complex.Zero)
@@ -64,6 +69,7 @@ public static class ComplexMath
 		return new Complex(Math.Log(scale) + Math.Log(Complex.Abs(new Complex(z.Real / scale, z.Imaginary / scale))), Arg(z));
 	}
 
+	/// <summary>The exponential function eᶻ.</summary>
 	public static Complex Exp(Complex z) => IsReal(z) ? Math.Exp(z.Real) : Complex.Exp(z);
 
 	/// <summary>Natural logarithm (principal branch).</summary>
@@ -117,6 +123,7 @@ public static class ComplexMath
 		return Exp(w * Ln(z));
 	}
 
+	/// <summary>The principal square root; for a negative real number, a purely imaginary result.</summary>
 	public static Complex Sqrt(Complex z)
 	{
 		if (IsReal(z))
@@ -132,8 +139,11 @@ public static class ComplexMath
 		return Pow(z, Divide(1, n));
 	}
 
+	/// <summary>Sine.</summary>
 	public static Complex Sin(Complex z) => IsReal(z) ? Math.Sin(z.Real) : Complex.Sin(z);
+	/// <summary>Cosine.</summary>
 	public static Complex Cos(Complex z) => IsReal(z) ? Math.Cos(z.Real) : Complex.Cos(z);
+	/// <summary>Tangent.</summary>
 	public static Complex Tan(Complex z) => IsReal(z) ? Math.Tan(z.Real) : Complex.Tan(z);
 
 	/// <summary>
@@ -142,8 +152,11 @@ public static class ComplexMath
 	/// </summary>
 	public static Complex Cot(Complex z) => Divide(1, Tan(z));
 
+	/// <summary>Hyperbolic sine.</summary>
 	public static Complex Sinh(Complex z) => IsReal(z) ? Math.Sinh(z.Real) : Complex.Sinh(z);
+	/// <summary>Hyperbolic cosine.</summary>
 	public static Complex Cosh(Complex z) => IsReal(z) ? Math.Cosh(z.Real) : Complex.Cosh(z);
+	/// <summary>Hyperbolic tangent.</summary>
 	public static Complex Tanh(Complex z) => IsReal(z) ? Math.Tanh(z.Real) : Complex.Tanh(z);
 
 	/// <summary>

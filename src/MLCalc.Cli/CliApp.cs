@@ -48,7 +48,8 @@ internal sealed class CliApp : IConsoleOutput
 		this.output = output;
 		this.error = error;
 		this.isConsole = isConsole;
-		interpreter = new MLCalcInterpreter(Figure, this);
+		interpreter = new MLCalcInterpreter(this, new InterpreterOptions { Scripts = FileScriptSource.Instance });
+		interpreter.AddPlotting(Figure, new PlottingOptions { WriteSvgFiles = true });
 	}
 
 	public Figure Figure { get; } = new();

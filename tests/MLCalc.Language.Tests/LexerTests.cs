@@ -116,9 +116,10 @@ public class LexerTests
 	[InlineData(".\\", TokenKind.DotBackslash)]
 	[InlineData("&&", TokenKind.AmpersandAmpersand)]
 	[InlineData("!", TokenKind.Bang)]
-	public void Operators(string text, TokenKind kind)
+	// The kind is passed as object: TokenKind is internal, and test methods must be public.
+	public void Operators(string text, object kind)
 	{
-		Assert.Equal(kind, Single(text).Kind);
+		Assert.Equal((TokenKind)kind, Single(text).Kind);
 	}
 
 	[Fact]

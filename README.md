@@ -98,14 +98,20 @@ used from shell scripts and builds.
 | `MLCalc.LinearAlgebra` | Complex matrix type and linear algebra (Gauss elimination, least squares, polynomials) |
 | `MLCalc.Numerics` | Numerical analysis: integration, differentiation, root finding |
 | `MLCalc.Language` | Lexer, parser and syntax tree for the MLCalc language |
-| `MLCalc.Plotting` | UI-independent plot model (figures, axes, series, layout) and SVG export |
-| `MLCalc.Interpreter` | Evaluates MLCalc expressions and scripts |
+| `MLCalc.Interpreter` | Evaluates MLCalc expressions and scripts; hosts can add functions and commands and decide whether programs may read script files |
+| `MLCalc.Plotting` | The plot commands, and a UI-independent plot model (figures, 2D and 3D windows, layout, camera) with SVG export |
 | `MLCalc.Wpf` | Windows desktop application |
 | `MLCalc.Cli` | Cross-platform command-line tool (`mlcalc`) |
 
 The libraries target `net10.0` with no Windows dependencies, so they can be reused by other
-front-ends. Dependencies only point downward: `Mathematics` ← `LinearAlgebra` ← `Numerics` ← `Interpreter` ← `Wpf` / `Cli`.
-`Language` and `Plotting` have no dependencies and are used by `Interpreter`; the front-ends also use `Plotting`.
+front-ends. Dependencies only point downward: `Mathematics` ← `LinearAlgebra` ← `Numerics` ←
+`Interpreter` ← `Plotting` ← `Wpf` / `Cli`. `Language` has no dependencies and is used by
+`Interpreter`. The plot commands are a module that a front-end adds to the interpreter
+(`interpreter.AddPlotting(figure)`).
+
+An interpreter is not thread-safe: each instance belongs to one thread at a time, such as the
+worker thread that runs programs in the desktop app. A `Figure` can be rendered from another thread
+while a program draws into it.
 
 `samples/` contains scripts written for the original Amiga version.
 
@@ -129,10 +135,19 @@ dotnet run tools/build-manual-page/BuildManualPage.cs  # builds the manual's web
 
 ## Packages
 
-The six libraries can be built as NuGet packages. The **Packages** workflow, started by hand from
-the Actions tab, runs the tests and publishes them to GitHub Packages with a pre-release version
-such as `0.1.0-preview.7` (the version in `Directory.Build.props` plus the run number). To build
-them locally:
+The six libraries are published as three NuGet packages. Each package has its own README, shown
+on its page in GitHub Packages:
+
+| Package | Projects | README |
+|---|---|---|
+| `MLCalc.Numerics` | Mathematics, LinearAlgebra, Numerics | [src/MLCalc.Numerics/README.md](src/MLCalc.Numerics/README.md) |
+| `MLCalc.Scripting` | Interpreter, Language | [src/MLCalc.Interpreter/README.md](src/MLCalc.Interpreter/README.md) |
+| `MLCalc.Plotting` | Plotting | [src/MLCalc.Plotting/README.md](src/MLCalc.Plotting/README.md) |
+
+`Directory.Build.targets` explains how one package carries several projects. The **Packages**
+workflow, started by hand from the Actions tab, runs the tests and publishes the packages to GitHub
+Packages with a pre-release version such as `0.1.0-preview.7` (the version in
+`Directory.Build.props` plus the run number). To build them locally:
 
 ```
 dotnet pack MLCalc.slnx -c Release --version-suffix preview.1 -o packages

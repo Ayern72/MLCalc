@@ -1,9 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<Description>Numerical analysis for MLCalc: integration, differentiation, root finding, intersections and extrema.</Description>
+		<Description>Numerical mathematics with complex numbers: real and complex scalar functions, a complex matrix type with linear algebra (Gauss elimination, least squares, determinants, polynomials), and numerical analysis (integration, differentiation, root finding, intersections and extrema).</Description>
+		<PackageTags>math;complex-numbers;matrix;linear-algebra;numerical-analysis;integration;root-finding;polynomial</PackageTags>
 	</PropertyGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\MLCalc.Mathematics\MLCalc.Mathematics.csproj" />
-		<ProjectReference Include="..\MLCalc.LinearAlgebra\MLCalc.LinearAlgebra.csproj" />
+		<ProjectReference Include="..\MLCalc.Mathematics\MLCalc.Mathematics.csproj" Bundle="true" PrivateAssets="all" />
+		<ProjectReference Include="..\MLCalc.LinearAlgebra\MLCalc.LinearAlgebra.csproj" Bundle="true" PrivateAssets="all" />
 	</ItemGroup>
 </Project>

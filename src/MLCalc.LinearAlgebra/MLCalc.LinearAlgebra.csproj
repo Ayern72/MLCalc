@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<Description>A complex matrix type with linear algebra: products, powers, Gauss elimination, least squares, determinants and polynomials.</Description>
+		<!-- Carried by another package; see Directory.Build.targets. -->
+		<IsPackable>false</IsPackable>
 	</PropertyGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\MLCalc.Mathematics\MLCalc.Mathematics.csproj" />

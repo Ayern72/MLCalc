@@ -2,32 +2,72 @@ using System.Numerics;
 using MLCalc.Language;
 using MLCalc.LinearAlgebra;
 using MLCalc.Mathematics;
-using MLCalc.Plotting;
 
 namespace MLCalc.Interpreter;
 
 /// <summary>A built-in function or command. Commands return null; functions return a value.</summary>
 internal delegate ComplexMatrix? Builtin(CallContext call);
 
-/// <summary>
-/// Arguments of a built-in call. Arguments are kept as syntax and evaluated on request, so that
-/// functions can take strings (<c>fplot("x", "sin(x)")</c>), names (<c>del x</c>) or style symbols.
-/// </summary>
-internal sealed class CallContext(MLCalcInterpreter interpreter, string name, IReadOnlyList<Expression> arguments, SourceSpan span)
+/// <summary>What kind of built-in a name refers to.</summary>
+internal enum BuiltinKind
 {
-	public MLCalcInterpreter Interpreter { get; } = interpreter;
-	public string Name { get; } = name;
-	public IReadOnlyList<Expression> Arguments { get; } = arguments;
-	public SourceSpan Span { get; } = span;
+	/// <summary>Computes a value.</summary>
+	Function,
+	/// <summary>Computes a value from its arguments only, without side effects.</summary>
+	PureFunction,
+	/// <summary>Does something and gives no value.</summary>
+	Command,
+}
+
+/// <summary>
+/// A call of a function or command added with <see cref="MLCalcInterpreter.AddFunction"/> or
+/// <see cref="MLCalcInterpreter.AddCommand"/>, and of the built-in ones. The arguments are kept as
+/// syntax and evaluated on request, so that functions can take strings
+/// (<c>fplot("x", "sin(x)")</c>), names (<c>del x</c>) or style symbols (<c>plot(x, y, +)</c>).
+/// The methods that read an argument report a wrong argument as an error in the program.
+/// </summary>
+public sealed class CallContext
+{
+	internal CallContext(MLCalcInterpreter interpreter, string name, IReadOnlyList<Expression> arguments, SourceSpan span)
+	{
+		Interpreter = interpreter;
+		Name = name;
+		Arguments = arguments;
+		Span = span;
+	}
+
+	/// <summary>The interpreter running the call.</summary>
+	public MLCalcInterpreter Interpreter { get; }
+
+	/// <summary>The name the function or command was called by.</summary>
+	public string Name { get; }
+
+	/// <summary>The arguments as written, not yet evaluated.</summary>
+	public IReadOnlyList<Expression> Arguments { get; }
+
+	/// <summary>Where the call is in the program, for error messages.</summary>
+	public SourceSpan Span { get; }
+
+	/// <summary>The number of arguments.</summary>
 	public int Count => Arguments.Count;
 
-	public Figure Figure => Interpreter.Figure;
+	/// <summary>Where the program's values and messages go.</summary>
 	public IConsoleOutput Output => Interpreter.Output;
+
+	/// <summary>Cancelled when the program should stop; check it in long calculations.</summary>
 	public CancellationToken Cancellation => Interpreter.Cancellation;
 
+	/// <summary>
+	/// An error in this call, to throw: the message is prefixed with the name, and points at
+	/// argument <paramref name="argument"/> (zero-based) when given, otherwise at the whole call.
+	/// </summary>
 	public RuntimeError Error(string message, int? argument = null) =>
 		new($"{Name}: {message}", argument is { } i && i < Count ? Arguments[i].Span : Span);
 
+	/// <summary>
+	/// Checks the number of arguments: exactly <paramref name="min"/>, or from <paramref name="min"/>
+	/// to <paramref name="max"/> (<see cref="int.MaxValue"/> for no upper limit).
+	/// </summary>
 	public void RequireCount(int min, int? max = null)
 	{
 		int upper = max ?? min;
@@ -37,20 +77,24 @@ internal sealed class CallContext(MLCalcInterpreter interpreter, string name, IR
 		throw Error($"expected {expected} argument{(upper == 1 ? "" : "s")}, got {Count}.");
 	}
 
+	/// <summary>Evaluates argument <paramref name="index"/> (zero-based).</summary>
 	public ComplexMatrix Matrix(int index) => Interpreter.Evaluate(Arguments[index]);
 
+	/// <summary>Evaluates an argument that must be a scalar.</summary>
 	public Complex Scalar(int index)
 	{
 		var value = Matrix(index);
 		return value.IsScalar ? value.ScalarValue : throw Error($"argument {index + 1} must be a scalar.", index);
 	}
 
+	/// <summary>Evaluates an argument that must be a real scalar.</summary>
 	public double Real(int index)
 	{
 		var value = Scalar(index);
 		return ComplexMath.IsReal(value) ? value.Real : throw Error($"argument {index + 1} must be real.", index);
 	}
 
+	/// <summary>Evaluates an argument that must be a whole number of at least <paramref name="min"/>.</summary>
 	public int Integer(int index, int min = int.MinValue)
 	{
 		double value = Real(index);
@@ -61,6 +105,7 @@ internal sealed class CallContext(MLCalcInterpreter interpreter, string name, IR
 		return (int)value;
 	}
 
+	/// <summary>An argument that must be a string in double quotes, e.g. <c>"sin(x)"</c>; strings are not values.</summary>
 	public string String(int index) => Arguments[index] switch
 	{
 		StringLiteral s => s.Value,
@@ -74,27 +119,6 @@ internal sealed class CallContext(MLCalcInterpreter interpreter, string name, IR
 		StringLiteral s => s.Value,
 		_ => throw Error($"argument {index + 1} must be a name.", index),
 	};
-
-	/// <summary>A plot style: <c>-</c> (line), <c>+</c> (crosses), <c>*</c> (stars), <c>.</c> (dots), bare or as a string.</summary>
-	public PlotStyle Style(int index)
-	{
-		if (index >= Count)
-			return PlotStyle.Line;
-		string symbol = Arguments[index] switch
-		{
-			StyleLiteral s => s.Symbol,
-			StringLiteral s => s.Value,
-			_ => throw Error($"argument {index + 1} must be a plot style: -, +, * or \".\".", index),
-		};
-		return symbol switch
-		{
-			"-" => PlotStyle.Line,
-			"+" => PlotStyle.Cross,
-			"*" => PlotStyle.Star,
-			"." or "!" => PlotStyle.Dot,
-			_ => throw Error($"unknown plot style '{symbol}'; use -, +, * or \".\".", index),
-		};
-	}
 
 	/// <summary>
 	/// A function of one variable given as two strings: the variable name and an expression,
@@ -135,23 +159,5 @@ internal sealed class CallContext(MLCalcInterpreter interpreter, string name, IR
 				throw new RuntimeError($"{Name}: the function must return a scalar, got a {value.Rows}×{value.Columns} matrix.", span);
 			return value.ScalarValue.Real;
 		};
-	}
-
-	/// <summary>
-	/// A 3D point given as three real numbers starting at <paramref name="index"/>, or as one real
-	/// vector of three elements, e.g. <c>camposition(20, -30, 10)</c> or <c>camposition([20 -30 10])</c>.
-	/// </summary>
-	public Point3 Point(int index)
-	{
-		if (Count == index + 3)
-			return new Point3(Real(index), Real(index + 1), Real(index + 2));
-		var value = Matrix(index);
-		if (Count != index + 1 || !value.IsVector || value.Count != 3)
-			throw Error("expected a point: x, y and z, or a vector [x y z].");
-		var span = value.AsSpan();
-		for (int k = 0; k < 3; k++)
-			if (!ComplexMath.IsReal(span[k]))
-				throw Error("the point must be real.", index);
-		return new Point3(span[0].Real, span[1].Real, span[2].Real);
 	}
 }

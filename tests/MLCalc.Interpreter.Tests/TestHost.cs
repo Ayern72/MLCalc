@@ -22,7 +22,13 @@ sealed class TestHost
 	public RecordingOutput Output { get; } = new();
 	public MLCalcInterpreter Interpreter { get; }
 
-	public TestHost() => Interpreter = new MLCalcInterpreter(Figure, Output, randomSeed: 1);
+	public PlotCommands Plotting { get; }
+
+	public TestHost()
+	{
+		Interpreter = new MLCalcInterpreter(Output, new InterpreterOptions { RandomSeed = 1, Scripts = FileScriptSource.Instance });
+		Plotting = Interpreter.AddPlotting(Figure, new PlottingOptions { WriteSvgFiles = true });
+	}
 
 	/// <summary>Runs source that must succeed.</summary>
 	public TestHost Run(string source)

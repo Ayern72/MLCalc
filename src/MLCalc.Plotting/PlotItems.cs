@@ -5,9 +5,13 @@ namespace MLCalc.Plotting;
 /// <summary>How a series of points is drawn: connected by lines, or as a marker at each point.</summary>
 public enum PlotStyle
 {
+	/// <summary>Connected lines.</summary>
 	Line,
+	/// <summary>A cross at each point.</summary>
 	Cross,
+	/// <summary>A star at each point.</summary>
 	Star,
+	/// <summary>A dot at each point.</summary>
 	Dot,
 }
 
@@ -36,6 +40,7 @@ public sealed record DotCloud(int Pen, ImmutableList<PlotPoint> Points) : PlotIt
 /// <summary>A point in 3D world (data) coordinates.</summary>
 public readonly record struct Point3(double X, double Y, double Z)
 {
+	/// <summary>True when all three coordinates are finite numbers.</summary>
 	public bool IsFinite => double.IsFinite(X) && double.IsFinite(Y) && double.IsFinite(Z);
 }
 
@@ -54,12 +59,14 @@ public sealed record DotCloud3D(int Pen, ImmutableList<Point3> Points) : PlotIte
 /// </summary>
 public sealed record Surface(int Pen, string Label, int XCount, int YCount, ImmutableArray<Point3> Points) : PlotItem(Pen)
 {
+	/// <summary>The grid point in column <paramref name="i"/> (along x) and row <paramref name="j"/> (along y), zero-based.</summary>
 	public Point3 this[int i, int j] => Points[j * XCount + i];
 }
 
 /// <summary>How a 3D window is projected onto the screen. Only perspective for now.</summary>
 public enum Projection
 {
+	/// <summary>Perspective: distant parts look smaller.</summary>
 	Perspective,
 }
 
@@ -76,6 +83,7 @@ public sealed record Camera(double Azimuth, double Elevation, double? Distance, 
 	/// <summary>The default 3D view: from the front left, a little above.</summary>
 	public const double DefaultAzimuth = -37.5, DefaultElevation = 30;
 
+	/// <summary>The default camera: azimuth −37.5°, elevation 30°, looking at the middle of the box from just far enough away.</summary>
 	public static Camera Default { get; } = new(DefaultAzimuth, DefaultElevation, null, null, null);
 }
 

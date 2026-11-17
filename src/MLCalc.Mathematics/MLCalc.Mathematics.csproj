@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<Description>Real and complex scalar functions used by MLCalc, with principal values and error categories.</Description>
+		<!-- Carried by another package; see Directory.Build.targets. -->
+		<IsPackable>false</IsPackable>
 	</PropertyGroup>
 </Project>

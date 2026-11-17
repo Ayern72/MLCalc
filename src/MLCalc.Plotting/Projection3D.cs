@@ -36,6 +36,7 @@ public sealed class Projection3D
 	readonly Vec3 eye, target, right, up, forward;
 	readonly double scale, centerX, centerY;
 
+	/// <summary>The projection of a 3D window drawn in <paramref name="screen"/>.</summary>
 	public Projection3D(Axes axes, ScreenRect screen)
 	{
 		this.axes = axes;
