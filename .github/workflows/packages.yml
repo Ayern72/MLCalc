@@ -32,4 +32,12 @@ jobs:
       - run: dotnet test MLCalc.slnx --no-build -c Release
       # Three packages: MLCalc.Numerics, MLCalc.Scripting and MLCalc.Plotting (see Directory.Build.targets).
       - run: dotnet pack MLCalc.slnx --no-build -c Release --version-suffix ${{ env.VERSION_SUFFIX }} -o packages
-      - run: dotnet nuget push "packages/*.nupkg" --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
+      # One push per file: on Windows, dotnet nuget push does not expand a wildcard written with a
+      # forward slash ("packages/*.nupkg" gives "File does not exist").
+      - name: Push to GitHub Packages
+        shell: pwsh
+        run: |
+          foreach ($package in Get-ChildItem packages -Filter *.nupkg) {
+            dotnet nuget push $package.FullName --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
