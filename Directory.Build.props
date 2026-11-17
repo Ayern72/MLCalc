@@ -26,7 +26,4 @@
 		<!-- The symbols go inside the DLL; GitHub Packages does not take separate symbol packages. -->
 		<DebugType>embedded</DebugType>
 	</PropertyGroup>
-	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
-		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
-	</PropertyGroup>
 </Project>

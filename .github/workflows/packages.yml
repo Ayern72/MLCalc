@@ -16,6 +16,10 @@ jobs:
     env:
       # e.g. 0.1.0-preview.7: the version in Directory.Build.props plus the number of this run.
       VERSION_SUFFIX: preview.${{ github.run_number }}
+      # Deterministic packages: source paths become /_/ and Source Link points at this commit. Only
+      # here, not in Directory.Build.props: tools such as BuildManualPage.cs find the repository
+      # from their own source path, which the setting replaces.
+      ContinuousIntegrationBuild: true
     steps:
       # Actions are pinned to exact commits, as in ci.yml.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
