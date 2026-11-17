@@ -115,6 +115,14 @@ while a program draws into it.
 
 `samples/` contains scripts written for the original Amiga version.
 
+## Downloads
+
+Every CI run builds the applications. Open a run under **Actions › CI** and download them from
+**Artifacts**: `MLCalc-desktop-win-x64` (the desktop app), `mlcalc-cli-win-x64` and
+`mlcalc-cli-linux-x64` (the command-line tool). Each is a zip file with one self-contained program
+that needs no .NET installation. On Linux, make it executable first: `chmod +x mlcalc`. GitHub
+keeps the files for 30 days, and downloading them requires a GitHub account.
+
 ## Building
 
 Requires the .NET 10 SDK.

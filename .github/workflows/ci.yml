@@ -26,3 +26,37 @@ jobs:
       - run: dotnet build benchmarks/FunctionEvaluation.cs
       # Build the manual's web page; fails if a link within the page has no target.
       - run: dotnet run tools/build-manual-page/BuildManualPage.cs
+
+      # Downloadable builds of the applications, under Artifacts on the run's page (each one is
+      # downloaded as a zip file). Self-contained single files, so that no .NET runtime needs to be
+      # installed; the MIT license asks for the license text to go with every copy.
+      - name: Publish the applications
+        shell: pwsh
+        run: |
+          $common = @('-c', 'Release', '--self-contained', '-p:PublishSingleFile=true',
+            '-p:IncludeNativeLibrariesForSelfExtract=true', '-p:EnableCompressionInSingleFile=true',
+            '-p:PublishDocumentationFiles=false', '-p:PublishReferencesDocumentationFiles=false')
+          foreach ($app in @(
+            @('src/MLCalc.Wpf', 'win-x64', 'desktop-win-x64'),
+            @('src/MLCalc.Cli', 'win-x64', 'cli-win-x64'),
+            @('src/MLCalc.Cli', 'linux-x64', 'cli-linux-x64'))) {
+            dotnet publish $app[0] -r $app[1] -o "publish/$($app[2])" @common
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            Copy-Item LICENSE "publish/$($app[2])"
+          }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: MLCalc-desktop-win-x64
+          path: publish/desktop-win-x64
+          retention-days: 30
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mlcalc-cli-win-x64
+          path: publish/cli-win-x64
+          retention-days: 30
+      # Zip files keep no file permissions: on Linux, make the program executable with chmod +x mlcalc.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mlcalc-cli-linux-x64
+          path: publish/cli-linux-x64
+          retention-days: 30
