@@ -7,6 +7,8 @@
     <Project Path="src/MLCalc.Mathematics/MLCalc.Mathematics.csproj" />
     <Project Path="src/MLCalc.Numerics/MLCalc.Numerics.csproj" />
     <Project Path="src/MLCalc.Plotting/MLCalc.Plotting.csproj" />
+    <Project Path="src/MLCalc.Web.Protocol/MLCalc.Web.Protocol.csproj" />
+    <Project Path="src/MLCalc.Web.Server/MLCalc.Web.Server.csproj" />
     <Project Path="src/MLCalc.Wpf/MLCalc.Wpf.csproj" />
   </Folder>
   <Folder Name="/tests/">
@@ -17,6 +19,7 @@
     <Project Path="tests/MLCalc.Mathematics.Tests/MLCalc.Mathematics.Tests.csproj" />
     <Project Path="tests/MLCalc.Numerics.Tests/MLCalc.Numerics.Tests.csproj" />
     <Project Path="tests/MLCalc.Plotting.Tests/MLCalc.Plotting.Tests.csproj" />
+    <Project Path="tests/MLCalc.Web.Tests/MLCalc.Web.Tests.csproj" />
     <Project Path="tests/MLCalc.Wpf.Tests/MLCalc.Wpf.Tests.csproj" />
   </Folder>
 </Solution>

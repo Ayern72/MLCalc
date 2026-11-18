@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>The messages between the MLCalc web server and its clients. docs/web-protocol.md describes them for clients in any language.</Description>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+</Project>

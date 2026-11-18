@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+	<PropertyGroup>
+		<IsPackable>false</IsPackable>
+		<RootNamespace>MLCalc.Web.Server</RootNamespace>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\MLCalc.Web.Protocol\MLCalc.Web.Protocol.csproj" />
+		<ProjectReference Include="..\MLCalc.Interpreter\MLCalc.Interpreter.csproj" />
+		<ProjectReference Include="..\MLCalc.Plotting\MLCalc.Plotting.csproj" />
+		<ProjectReference Include="..\MLCalc.Mathematics\MLCalc.Mathematics.csproj" />
+		<ProjectReference Include="..\MLCalc.LinearAlgebra\MLCalc.LinearAlgebra.csproj" />
+		<ProjectReference Include="..\MLCalc.Language\MLCalc.Language.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="MLCalc.Web.Tests" />
+	</ItemGroup>
+</Project>
