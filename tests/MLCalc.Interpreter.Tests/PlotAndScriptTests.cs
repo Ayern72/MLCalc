@@ -75,7 +75,7 @@ public class PlotCommandTests
 	public void SavefigUsesRegisteredFormatsAndRejectsOthers()
 	{
 		var saved = new List<(string Path, double Width, double Height, int Items)>();
-		host.Plotting.RegisterFigureFormat("png", (figure, path, width, height) => saved.Add((path, width, height, figure[0, 0].Items.Length)));
+		host.Plotting.RegisterFigureFormat("png", (figure, path, width, height) => { saved.Add((path, width, height, figure[0, 0].Items.Length)); return null; });
 		host.Interpreter.WorkingDirectory = Path.GetTempPath();
 		host.Run("dot(1, 1); savefig(\"a.PNG\", 300, 200)");
 		var (path, width, height, items) = Assert.Single(saved);

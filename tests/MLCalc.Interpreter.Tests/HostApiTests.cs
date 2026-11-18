@@ -137,7 +137,7 @@ public class HostApiTests
 		Assert.Equal("savefig: saving figures is not available here.", interpreter.Execute("savefig(\"plot.svg\")").Error?.Message);
 
 		var saved = new List<string>();
-		plotting.RegisterFigureFormat("png", (_, path, _, _) => saved.Add(Path.GetFileName(path)));
+		plotting.RegisterFigureFormat("png", (_, path, _, _) => { saved.Add(Path.GetFileName(path)); return null; });
 		Assert.Equal("savefig: unsupported file type '.svg'; use .png.", interpreter.Execute("savefig(\"plot.svg\")").Error?.Message);
 		Assert.True(interpreter.Execute("savefig(\"plot.png\")").Success);
 		Assert.Equal(["plot.png"], saved);

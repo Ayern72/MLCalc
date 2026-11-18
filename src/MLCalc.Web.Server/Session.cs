@@ -31,6 +31,7 @@ sealed class Session : IConsoleOutput, IDisposable
 	Task running = Task.CompletedTask;
 	CancellationTokenSource? cancel;
 	List<OutputEntry> pending = [];
+	List<DownloadMessage> downloads = [];
 	int outputCount;
 	bool outputTruncated;
 
@@ -46,10 +47,19 @@ sealed class Session : IConsoleOutput, IDisposable
 		Figure = new Figure(options.MaxPointsPerWindow);
 		// No script files: programs come from the client as text (see InterpreterOptions.Scripts).
 		interpreter = new MLCalcInterpreter(this, new InterpreterOptions { MaxMatrixElements = options.MaxMatrixElements });
-		interpreter.AddPlotting(Figure, new PlottingOptions
+		var plotting = interpreter.AddPlotting(Figure, new PlottingOptions
 		{
 			MaxSurfaceGridLines = options.MaxSurfaceGridLines,
 			MaxCurvePoints = options.MaxCurvePoints,
+		});
+		// savefig writes nothing on the server: the SVG goes to the browser, which saves it.
+		plotting.RegisterFigureFormat(".svg", (snapshot, path, width, height) =>
+		{
+			string fileName = Path.GetFileName(path);
+			var download = new DownloadMessage(fileName, "image/svg+xml", SvgWriter.Render(snapshot, width, height));
+			lock (gate)
+				downloads.Add(download);
+			return $"Sent {fileName} to the browser to save.";
 		});
 	}
 
@@ -267,14 +277,17 @@ sealed class Session : IConsoleOutput, IDisposable
 		}
 	}
 
-	/// <summary>Sends the output written since the last flush, then what changed in the plots.</summary>
+	/// <summary>Sends the output written since the last flush, then what changed in the plots, then files from savefig.</summary>
 	async Task FlushAsync()
 	{
 		List<OutputEntry> entries;
+		List<DownloadMessage> files;
 		lock (gate)
 		{
 			entries = pending;
 			pending = [];
+			files = downloads;
+			downloads = [];
 		}
 		await SendAsync(async client =>
 		{
@@ -282,6 +295,8 @@ sealed class Session : IConsoleOutput, IDisposable
 				await client.Output(new OutputMessage(entries));
 			if (encoder.Changes(Figure.Snapshot()) is { } changes)
 				await client.FigureChanged(changes);
+			foreach (var file in files)
+				await client.Download(file);
 		});
 	}
 

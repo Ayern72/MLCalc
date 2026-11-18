@@ -1,5 +1,17 @@
 // Small helpers for the Blazor page; everything else is C#.
 window.mlcalc = {
+	// Saves a file from the server (savefig) the way the browser saves downloads.
+	download(fileName, mediaType, content) {
+		const url = URL.createObjectURL(new Blob([content], { type: mediaType }));
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = fileName;
+		document.body.appendChild(link);
+		link.click();
+		link.remove();
+		setTimeout(() => URL.revokeObjectURL(url), 10000);
+	},
+
 	// Keys the page handles itself, so the browser must not also act on them: Enter runs (Shift+Enter
 	// starts a new line), Up/Down recall earlier input when the box has one line, Esc stops.
 	setupInput(element) {

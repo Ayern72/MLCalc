@@ -107,13 +107,16 @@
 	{
 		Connection.Welcome += message => Update(() =>
 		{
-			bool lost = welcome is not null && message.NewSession;
+			bool reconnected = welcome is not null;
 			welcome = message;
 			running = message.Running;
 			figure.Apply(message.Figure);
-			if (lost)
+			if (reconnected && message.NewSession)
 				console.AddInfo("The server started a new session: earlier variables and plots are gone.");
+			else if (reconnected && message.Running)
+				console.AddInfo("Reconnected; the program is still running. Output written while the connection was lost is not shown.");
 		});
+		Connection.Download += message => _ = InvokeAsync(() => JS.InvokeVoidAsync("mlcalc.download", message.FileName, message.MediaType, message.Content).AsTask());
 		Connection.Output += message => Update(() => console.Apply(message));
 		Connection.FigureChanged += message => Update(() => figure.Apply(message));
 		Connection.RunFinished += message => Update(() =>

@@ -57,7 +57,10 @@ public sealed partial class MainViewModel : ObservableObject, IConsoleOutput
 		var plotting = interpreter.AddPlotting(Figure, new PlottingOptions { WriteSvgFiles = true });
 		// savefig("plot.png") renders with the same code as the plot view; WPF rendering needs the UI thread.
 		plotting.RegisterFigureFormat(".png", (snapshot, path, width, height) =>
-			dispatcher.Invoke(() => PlotExporter.SavePng(PlotExporter.Render(snapshot, width, height), path)));
+		{
+			dispatcher.Invoke(() => PlotExporter.SavePng(PlotExporter.Render(snapshot, width, height), path));
+			return null;
+		});
 		string samples = Path.Combine(AppContext.BaseDirectory, "samples");
 		interpreter.WorkingDirectory = Directory.Exists(samples) ? samples : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 

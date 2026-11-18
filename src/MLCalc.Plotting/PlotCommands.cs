@@ -44,8 +44,12 @@ public sealed record PlottingOptions
 	} = 100_000;
 }
 
-/// <summary>Saves a figure to a file: (figure, full path, width, height).</summary>
-public delegate void FigureSaver(FigureSnapshot figure, string path, double width, double height);
+/// <summary>
+/// Saves a figure to a file: (figure, full path, width, height). Returns the line <c>savefig</c>
+/// shows in the console, or null for "Saved" and the path; a web server, for example, sends the
+/// file to the browser and says so.
+/// </summary>
+public delegate string? FigureSaver(FigureSnapshot figure, string path, double width, double height);
 
 /// <summary>
 /// The plot commands of the MLCalc language (<c>plot</c>, <c>fplot</c>, <c>fplot3d</c>,
@@ -73,7 +77,11 @@ public sealed class PlotCommands
 		this.figure = figure;
 		this.options = options;
 		if (options.WriteSvgFiles)
-			formats[".svg"] = SvgWriter.Save;
+			formats[".svg"] = (snapshot, path, width, height) =>
+			{
+				SvgWriter.Save(snapshot, path, width, height);
+				return null;
+			};
 		RegisterCommands();
 	}
 
@@ -255,15 +263,16 @@ public sealed class PlotCommands
 			if (bitmap && width * height > MaxImagePixels)
 				throw call.Error($"an image can have at most {MaxImagePixels / 1_000_000} million pixels (for example 8000×8000).", 1);
 			string fullPath = call.Interpreter.ResolvePath(path);
+			string? message;
 			try
 			{
-				saver(figure.Snapshot(), fullPath, width, height);
+				message = saver(figure.Snapshot(), fullPath, width, height);
 			}
 			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 			{
 				throw call.Error(ex.Message, 0);
 			}
-			call.Output.WriteLine($"Saved {fullPath}");
+			call.Output.WriteLine(message ?? $"Saved {fullPath}");
 			return null;
 		}, "savefig");
 	}

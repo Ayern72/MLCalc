@@ -195,6 +195,40 @@ public class SessionTests
 		var finished = await client.NextAsync<RunFinishedMessage>();
 		Assert.Equal("Unknown function or variable 'a'.", Assert.Single(finished.Errors!).Message);
 	}
+
+	[Fact]
+	public async Task SavefigSendsTheFileToTheBrowser()
+	{
+		await using var server = new WebTestServer();
+		await using var client = await server.ConnectAsync();
+		await client.RunAsync("savefig(\"plot.svg\", 400, 300)");
+		Assert.Equal("Sent plot.svg to the browser to save.", Assert.Single((await client.NextAsync<OutputMessage>()).Entries).Text);
+		var download = await client.NextAsync<DownloadMessage>();
+		Assert.Equal(("plot.svg", "image/svg+xml"), (download.FileName, download.MediaType));
+		Assert.StartsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"300\"", download.Content);
+		Assert.Equal(RunStatus.Ok, (await client.NextAsync<RunFinishedMessage>()).Status);
+
+		// Only SVG: there is no bitmap renderer on the server.
+		var (_, png) = await client.RunToEndAsync("savefig(\"plot.png\")");
+		Assert.Equal("savefig: unsupported file type '.png'; use .svg.", Assert.Single(png.Errors!).Message);
+	}
+
+	[Fact]
+	public async Task AReconnectedClientGetsTheRestOfARunningProgram()
+	{
+		await using var server = new WebTestServer();
+		await using var first = await server.ConnectAsync();
+		await first.RunAsync("disp(\"started\"); k = 0; while 1 do k = k + 1;", "loop");
+		Assert.Equal("started", Assert.Single((await first.NextAsync<OutputMessage>()).Entries).Text);
+
+		// The same session from a new connection, as after a lost connection or a reloaded page.
+		await using var second = await server.ConnectAsync(first.Welcome.SessionId);
+		Assert.True(second.Welcome.Running);
+		Assert.False(second.Welcome.NewSession);
+		await second.CancelAsync();
+		var stopped = await second.NextAsync<RunFinishedMessage>();
+		Assert.Equal(("loop", RunStatus.Cancelled), (stopped.Id, stopped.Status));
+	}
 }
 
 /// <summary>A clock that only moves when told to; timers still use real time.</summary>
