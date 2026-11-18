@@ -47,6 +47,9 @@ public interface IMLCalcClient
 	/// <summary>Console output from the running program, in batches.</summary>
 	Task Output(OutputMessage message);
 
+	/// <summary>What changed in the plot windows; see <see cref="FigureMessage"/>.</summary>
+	Task FigureChanged(FigureMessage message);
+
 	/// <summary>A program has finished, or did not start.</summary>
 	Task RunFinished(RunFinishedMessage message);
 
@@ -84,7 +87,8 @@ public sealed record RunRequest(string Id, string Source);
 /// <param name="Running">True when a program of this session is running (after a reconnect).</param>
 /// <param name="BuiltinNames">The names of all functions and commands, sorted.</param>
 /// <param name="Limits">What programs may do on this server.</param>
-public sealed record WelcomeMessage(string SessionId, bool NewSession, bool Running, IReadOnlyList<string> BuiltinNames, Limits Limits);
+/// <param name="Figure">All plot windows, whole.</param>
+public sealed record WelcomeMessage(string SessionId, bool NewSession, bool Running, IReadOnlyList<string> BuiltinNames, Limits Limits, FigureMessage Figure);
 
 /// <summary>The limits a program runs under.</summary>
 /// <param name="RunSeconds">How long a program may run before it is stopped.</param>

@@ -64,6 +64,7 @@ sealed class TestClient : IAsyncDisposable
 			.Build();
 		connection.On<WelcomeMessage>(nameof(IMLCalcClient.Welcome), Record);
 		connection.On<OutputMessage>(nameof(IMLCalcClient.Output), Record);
+		connection.On<FigureMessage>(nameof(IMLCalcClient.FigureChanged), Record);
 		connection.On<RunFinishedMessage>(nameof(IMLCalcClient.RunFinished), Record);
 		connection.On<DownloadMessage>(nameof(IMLCalcClient.Download), Record);
 		// A closed connection ends the messages, so that a test waiting for one fails at once.

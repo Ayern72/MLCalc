@@ -1,0 +1,22 @@
+@* The status bar: the state of the app, or what is under the mouse in a plot window. It redraws by
+   itself when the mouse moves, without redrawing the rest of the page. *@
+<footer class="status">
+	<span>@(mouse.Length > 0 ? mouse : Text)</span>
+</footer>
+
+@code {
+	string mouse = "";
+
+	/// <summary>The state of the app, shown when the mouse is not over a plot.</summary>
+	[Parameter]
+	public string Text { get; set; } = "";
+
+	/// <summary>Shows what is under the mouse; empty shows <see cref="Text"/> again.</summary>
+	public void ShowMouse(string text)
+	{
+		if (text == mouse)
+			return;
+		mouse = text;
+		StateHasChanged();
+	}
+}

@@ -44,7 +44,7 @@ sealed class MLCalcHub(SessionManager sessions) : Hub<IMLCalcClient>
 		var attached = sessions.Attach(requested, Context.ConnectionId)
 			?? throw new HubException("The server has too many users at the moment; please try again later.");
 		Context.Items[SessionKey] = attached.Session.Id;
-		await Clients.Caller.Welcome(attached.Session.CreateWelcome(attached.IsNew));
+		await attached.Session.SendWelcomeAsync(attached.IsNew);
 		return attached.Session;
 	}
 }

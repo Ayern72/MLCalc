@@ -32,6 +32,7 @@ sealed class MLCalcConnection(NavigationManager navigation, IJSRuntime js) : IAs
 
 	public event Action<WelcomeMessage>? Welcome;
 	public event Action<OutputMessage>? Output;
+	public event Action<FigureMessage>? FigureChanged;
 	public event Action<RunFinishedMessage>? RunFinished;
 	public event Action<DownloadMessage>? Download;
 	public event Action? StateChanged;
@@ -76,6 +77,7 @@ sealed class MLCalcConnection(NavigationManager navigation, IJSRuntime js) : IAs
 			Welcome?.Invoke(message);
 		});
 		hub.On<OutputMessage>(nameof(IMLCalcClient.Output), message => Output?.Invoke(message));
+		hub.On<FigureMessage>(nameof(IMLCalcClient.FigureChanged), message => FigureChanged?.Invoke(message));
 		hub.On<RunFinishedMessage>(nameof(IMLCalcClient.RunFinished), message => RunFinished?.Invoke(message));
 		hub.On<DownloadMessage>(nameof(IMLCalcClient.Download), message => Download?.Invoke(message));
 		hub.Closed += async _ =>

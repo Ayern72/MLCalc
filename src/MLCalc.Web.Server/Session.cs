@@ -24,6 +24,8 @@ sealed class Session : IConsoleOutput, IDisposable
 	readonly Lock gate = new();
 	readonly SemaphoreSlim sendLock = new(1, 1);
 	readonly CancellationTokenSource lifetime = new();
+	/// <summary>What the client has of the figure; used only under <see cref="sendLock"/>.</summary>
+	readonly FigureEncoder encoder = new();
 
 	string? connectionId;
 	Task running = Task.CompletedTask;
@@ -96,9 +98,14 @@ sealed class Session : IConsoleOutput, IDisposable
 		}
 	}
 
-	public WelcomeMessage CreateWelcome(bool isNew) => new(
+	/// <summary>
+	/// Sends <c>Welcome</c> with every plot window to the connection attached last; later figure
+	/// messages only send what changed since.
+	/// </summary>
+	public Task SendWelcomeAsync(bool isNew) => SendAsync(client => client.Welcome(new WelcomeMessage(
 		Id, isNew, IsRunning, [.. interpreter.BuiltinNames],
-		new Limits(options.RunSeconds, options.MaxMatrixElements, options.MaxPointsPerWindow, options.MaxOutputEntries, options.MaxSourceLength));
+		new Limits(options.RunSeconds, options.MaxMatrixElements, options.MaxPointsPerWindow, options.MaxOutputEntries, options.MaxSourceLength),
+		encoder.Full(Figure.Snapshot()))));
 
 	/// <summary>
 	/// Starts <paramref name="request"/>, or answers at once when it cannot run: another program is
@@ -236,18 +243,22 @@ sealed class Session : IConsoleOutput, IDisposable
 		}
 	}
 
-	/// <summary>Sends the output written since the last flush.</summary>
+	/// <summary>Sends the output written since the last flush, then what changed in the plots.</summary>
 	async Task FlushAsync()
 	{
 		List<OutputEntry> entries;
 		lock (gate)
 		{
-			if (pending.Count == 0)
-				return;
 			entries = pending;
 			pending = [];
 		}
-		await SendAsync(client => client.Output(new OutputMessage(entries)));
+		await SendAsync(async client =>
+		{
+			if (entries.Count > 0)
+				await client.Output(new OutputMessage(entries));
+			if (encoder.Changes(Figure.Snapshot()) is { } changes)
+				await client.FigureChanged(changes);
+		});
 	}
 
 	/// <summary>

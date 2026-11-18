@@ -24,8 +24,26 @@ public static class SvgWriter
 			for (int c = 0; c < figure.Columns; c++)
 			{
 				bool current = showCurrent && r == figure.CurrentRow && c == figure.CurrentColumn;
-				RenderAxes(svg, figure[r, c], PlotLayout.Cell(figure, r, c, width, height), current, r * figure.Columns + c);
+				RenderAxes(svg, figure[r, c], PlotLayout.Cell(figure, r, c, width, height), current, F($"clip{r * figure.Columns + c}"), preview: false);
 			}
+		svg.Append("</svg>\n");
+		return svg.ToString();
+	}
+
+	/// <summary>
+	/// One plot window as an SVG document of the given size in pixels, e.g. for a web page that
+	/// shows each window as its own element. <paramref name="id"/> starts the ids inside the SVG,
+	/// which must be unique on a page. <paramref name="preview"/> draws large 3D items thinned out,
+	/// for redrawing quickly while the camera moves (see <see cref="Scene3D.Preview"/>).
+	/// </summary>
+	public static string RenderWindow(Axes axes, double width, double height, string id = "w", bool isCurrent = false, bool preview = false)
+	{
+		if (!(width >= 1 && height >= 1 && width <= 16000 && height <= 16000))
+			throw new ArgumentOutOfRangeException(nameof(width), "The image size must be between 1 and 16000.");
+		var svg = new StringBuilder();
+		svg.Append(CultureInfo.InvariantCulture, $"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" viewBox=\"0 0 {width} {height}\" font-family=\"Segoe UI, Helvetica, Arial, sans-serif\">\n");
+		svg.Append(CultureInfo.InvariantCulture, $"<rect width=\"{width}\" height=\"{height}\" fill=\"white\"/>\n");
+		RenderAxes(svg, axes, new ScreenRect(0, 0, width, height), isCurrent, id + "-clip", preview);
 		svg.Append("</svg>\n");
 		return svg.ToString();
 	}
@@ -37,13 +55,12 @@ public static class SvgWriter
 	static string ColorOf(int pen) => "#" + Pens.ColorOf(pen).ToString("x6", CultureInfo.InvariantCulture);
 
 	/// <summary>A 3D window: the primitives from <see cref="Scene3D"/>, in order.</summary>
-	static void RenderSpace(StringBuilder svg, Axes axes, ScreenRect cell, bool isCurrent, int index)
+	static void RenderSpace(StringBuilder svg, Axes axes, ScreenRect cell, bool isCurrent, string clip, bool preview)
 	{
 		var bounds = cell;
-		string clip = $"clip{index}";
 		svg.Append(F($"<clipPath id=\"{clip}\"><rect x=\"{bounds.Left}\" y=\"{bounds.Top}\" width=\"{bounds.Width}\" height=\"{bounds.Height}\"/></clipPath>\n"));
 		svg.Append(F($"<g clip-path=\"url(#{clip})\">\n"));
-		foreach (var primitive in Scene3D.Build(axes, cell))
+		foreach (var primitive in Scene3D.Build(axes, cell, preview))
 			switch (primitive)
 			{
 				case ScenePolyline line:
@@ -87,11 +104,11 @@ public static class SvgWriter
 		return path.ToString();
 	}
 
-	static void RenderAxes(StringBuilder svg, Axes axes, ScreenRect cell, bool isCurrent, int index)
+	static void RenderAxes(StringBuilder svg, Axes axes, ScreenRect cell, bool isCurrent, string clip, bool preview)
 	{
 		if (axes.Kind == AxesKind.Space)
 		{
-			RenderSpace(svg, axes, cell, isCurrent, index);
+			RenderSpace(svg, axes, cell, isCurrent, clip, preview);
 			return;
 		}
 		var plot = PlotLayout.PlotArea(cell);
@@ -113,7 +130,6 @@ public static class SvgWriter
 		if (axes.YMin < 0 && axes.YMax > 0)
 			Line(svg, plot.Left, t.ToScreenY(0), plot.Right, t.ToScreenY(0), "#bbb", 1);
 
-		string clip = $"clip{index}";
 		svg.Append(F($"<clipPath id=\"{clip}\"><rect x=\"{plot.Left}\" y=\"{plot.Top}\" width=\"{plot.Width}\" height=\"{plot.Height}\"/></clipPath>\n"));
 		svg.Append(F($"<g clip-path=\"url(#{clip})\">\n"));
 		foreach (var item in axes.Items)

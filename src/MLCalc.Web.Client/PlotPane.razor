@@ -1,0 +1,64 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@* The grid of plot windows. It measures itself, so each window is drawn at its real size in pixels. *@
+<div class="plot-grid" @ref="element"
+	style="grid-template-rows: repeat(@Figure.Rows, 1fr); grid-template-columns: repeat(@Figure.Columns, 1fr);">
+	@if (width > 0 && height > 0)
+	{
+		for (int r = 0; r < Figure.Rows; r++)
+		{
+			for (int c = 0; c < Figure.Columns; c++)
+			{
+				int row = r, column = c;
+				<PlotWindowView Axes="Figure[row, column]" Row="row" Column="column"
+					GridLabel="@(Figure.Rows * Figure.Columns > 1 ? $"window ({row + 1},{column + 1})   " : "")"
+					IsCurrent="@(Figure.Rows * Figure.Columns > 1 && row == Figure.CurrentRow && column == Figure.CurrentColumn)"
+					Width="@(width / Figure.Columns)" Height="@(height / Figure.Rows)"
+					OnStatus="OnStatus" />
+			}
+		}
+	}
+</div>
+
+@code {
+	ElementReference element;
+	DotNetObjectReference<PlotPane>? self;
+	double width, height;
+
+	[Parameter, EditorRequired]
+	public FigureState Figure { get; set; } = null!;
+
+	/// <summary>Text for the status bar: coordinates under the mouse, or empty.</summary>
+	[Parameter]
+	public Action<string>? OnStatus { get; set; }
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!firstRender)
+			return;
+		self = DotNetObjectReference.Create(this);
+		await JS.InvokeVoidAsync("mlcalc.observeSize", element, self);
+	}
+
+	/// <summary>Called by the page's script when the pane gets a new size.</summary>
+	[JSInvokable]
+	public void SetSize(double newWidth, double newHeight)
+	{
+		width = Math.Floor(newWidth);
+		height = Math.Floor(newHeight);
+		StateHasChanged();
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		try
+		{
+			await JS.InvokeVoidAsync("mlcalc.unobserveSize", element);
+		}
+		catch (JSDisconnectedException)
+		{
+		}
+		self?.Dispose();
+	}
+}

@@ -1,0 +1,68 @@
+@using System.Globalization
+@using MLCalc.Plotting
+
+@* One plot window, drawn as SVG with the same code as the desktop app's SVG export. A transparent
+   layer on top takes the mouse, so that positions are measured from the window's corner. *@
+<div class="plot-window">
+	@svg
+	<div class="plot-mouse" @onmousemove="OnMouseMove" @onmouseleave="OnMouseLeave"></div>
+</div>
+
+@code {
+	MarkupString svg;
+	Axes? drawnAxes;
+	double drawnWidth, drawnHeight;
+	bool drawnCurrent;
+	bool redraw = true;
+
+	[Parameter, EditorRequired] public Axes Axes { get; set; } = null!;
+	[Parameter] public int Row { get; set; }
+	[Parameter] public int Column { get; set; }
+	[Parameter] public string GridLabel { get; set; } = "";
+	[Parameter] public bool IsCurrent { get; set; }
+	[Parameter] public double Width { get; set; }
+	[Parameter] public double Height { get; set; }
+	/// <summary>Gets the status bar text for the mouse; a plain delegate, so that moving the mouse redraws only the status bar.</summary>
+	[Parameter] public Action<string>? OnStatus { get; set; }
+
+	ScreenRect Cell => new(0, 0, Width, Height);
+
+	/// <summary>Draws again only when the window, its size or its frame changed.</summary>
+	protected override void OnParametersSet()
+	{
+		if (ReferenceEquals(Axes, drawnAxes) && Width == drawnWidth && Height == drawnHeight && IsCurrent == drawnCurrent)
+			return;
+		(drawnAxes, drawnWidth, drawnHeight, drawnCurrent) = (Axes, Width, Height, IsCurrent);
+		redraw = true;
+		svg = Width >= 1 && Height >= 1
+			? new MarkupString(SvgWriter.RenderWindow(Axes, Width, Height, $"w{Row}{Column}", IsCurrent))
+			: default;
+	}
+
+	/// <summary>Skips rendering when the drawing is unchanged, e.g. when only the console got new output.</summary>
+	protected override bool ShouldRender()
+	{
+		bool result = redraw;
+		redraw = false;
+		return result;
+	}
+
+	void OnMouseMove(MouseEventArgs e) => OnStatus?.Invoke(Describe(e.OffsetX, e.OffsetY));
+
+	void OnMouseLeave() => OnStatus?.Invoke("");
+
+	/// <summary>The status bar text for the mouse at (x, y) in the window, as in the desktop app.</summary>
+	string Describe(double x, double y)
+	{
+		if (Axes.Kind == AxesKind.Space)
+			// A point on the screen is a whole line of points in 3D; show the camera instead.
+			return GridLabel + CameraControl.Describe(Axes, Cell);
+		var plot = PlotLayout.PlotArea(Cell);
+		if (x < plot.Left || x > plot.Right || y < plot.Top || y > plot.Bottom)
+			return "";
+		var t = new PlotTransform(Axes, plot);
+		string worldX = t.ToWorldX(x).ToString("G5", CultureInfo.InvariantCulture);
+		string worldY = t.ToWorldY(y).ToString("G5", CultureInfo.InvariantCulture);
+		return Axes.Kind == AxesKind.Complex ? $"{GridLabel}Re = {worldX}   Im = {worldY}" : $"{GridLabel}x = {worldX}   y = {worldY}";
+	}
+}

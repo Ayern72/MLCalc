@@ -18,4 +18,24 @@ window.mlcalc = {
 	scrollToEnd(element) {
 		element.scrollTop = element.scrollHeight;
 	},
+
+	// Tells .NET the element's size when it changes, at most once per animation frame.
+	observeSize(element, dotnet) {
+		let pending = false;
+		const report = () => {
+			pending = false;
+			dotnet.invokeMethodAsync('SetSize', element.clientWidth, element.clientHeight);
+		};
+		element._mlcalcObserver = new ResizeObserver(() => {
+			if (!pending) {
+				pending = true;
+				requestAnimationFrame(report);
+			}
+		});
+		element._mlcalcObserver.observe(element);
+	},
+
+	unobserveSize(element) {
+		element?._mlcalcObserver?.disconnect();
+	},
 };

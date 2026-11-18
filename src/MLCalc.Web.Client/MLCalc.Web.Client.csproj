@@ -9,6 +9,11 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\MLCalc.Web.Protocol\MLCalc.Web.Protocol.csproj" />
+		<!-- The plot model and its SVG drawing, shared with the desktop app. -->
+		<ProjectReference Include="..\MLCalc.Plotting\MLCalc.Plotting.csproj" />
+		<ProjectReference Include="..\MLCalc.Mathematics\MLCalc.Mathematics.csproj" />
+		<ProjectReference Include="..\MLCalc.LinearAlgebra\MLCalc.LinearAlgebra.csproj" />
+		<ProjectReference Include="..\MLCalc.Language\MLCalc.Language.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<InternalsVisibleTo Include="MLCalc.Web.Tests" />

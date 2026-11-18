@@ -42,17 +42,17 @@
 		</section>
 
 		<section class="plots" aria-label="Plots">
-			<p class="placeholder">Plots appear here, e.g. after <code>fplot("x", "x*sin(x)")</code>.</p>
+			<PlotPane Figure="figure" OnStatus="text => statusBar?.ShowMouse(text)" />
 		</section>
 	</main>
 
-	<footer class="status">
-		<span>@StatusText</span>
-	</footer>
+	<StatusBar @ref="statusBar" Text="@StatusText" />
 </div>
 
 @code {
 	readonly ConsoleModel console = new();
+	readonly FigureState figure = new();
+	StatusBar? statusBar;
 	ElementReference outputElement;
 	ElementReference inputElement;
 	WelcomeMessage? welcome;
@@ -86,10 +86,12 @@
 			bool lost = welcome is not null && message.NewSession;
 			welcome = message;
 			running = message.Running;
+			figure.Apply(message.Figure);
 			if (lost)
 				console.AddInfo("The server started a new session: earlier variables and plots are gone.");
 		});
 		Connection.Output += message => Update(() => console.Apply(message));
+		Connection.FigureChanged += message => Update(() => figure.Apply(message));
 		Connection.RunFinished += message => Update(() =>
 		{
 			console.Apply(message, Limits);
