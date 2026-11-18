@@ -24,9 +24,10 @@ runs on .NET as a Windows desktop application and as a cross-platform command-li
 9. [Console commands and scripts](#9-console-commands-and-scripts)
 10. [The desktop application](#10-the-desktop-application)
 11. [The command-line tool](#11-the-command-line-tool)
-12. [Errors](#12-errors)
-13. [Differences from the original MLCalc](#13-differences-from-the-original-mlcalc)
-14. [Limitations](#14-limitations)
+12. [The web app](#12-the-web-app)
+13. [Errors](#13-errors)
+14. [Differences from the original MLCalc](#14-differences-from-the-original-mlcalc)
+15. [Limitations](#15-limitations)
 - [Appendix A: All functions and commands](#appendix-a-all-functions-and-commands)
 - [Appendix B: Keywords, operators and constants](#appendix-b-keywords-operators-and-constants)
 
@@ -1282,7 +1283,72 @@ input instead.
 
 ---
 
-## 12. Errors
+## 12. The web app
+
+MLCalc also runs in a web browser. The programs run on a server; the browser shows the console,
+reads the scripts you open, and draws the plots.
+
+It is available at <https://mlcalc-764948534857.europe-north1.run.app>. The first visit after a
+quiet period takes a few seconds while the server starts.
+
+To run the server on your own computer, use Docker in the repository's folder and open
+<http://localhost:8080>:
+
+```
+docker compose up --build
+```
+
+or, with the .NET 10 SDK, run `dotnet run --project src/MLCalc.Web.Server` and open
+<http://localhost:5080>.
+
+### The page
+
+- The console is on the left and the plots on the right (below each other on a narrow screen).
+- **Enter** runs the input, **Shift+Enter** starts a new line, **Up/Down** recall earlier input
+  and **Esc** stops a running program (or discards unfinished input). Unfinished input continues
+  with the `...` prompt, as in the desktop application. An error in one line of input is marked
+  with `^` under its place.
+- **Open script…** runs a `.m` file from your computer; **Stop** stops the running program;
+  **Clear** clears the console; **Functions** lists every function and command; **Manual** opens
+  this manual.
+- The status bar shows what MLCalc is doing, the coordinates under the mouse in a plot window,
+  and the camera of a 3D window as the command that sets it.
+- 3D windows turn and zoom with the mouse as in the desktop application ([8.6](#86-3d-plots)):
+  drag to turn, use the wheel to move closer or further away, and double-click to return to the
+  default view.
+- Each browser tab has its own workspace. Reloading the page, or a lost connection, keeps the
+  variables, the plots and a running program. A workspace that has not been used for 30 minutes
+  is removed; MLCalc then says so and starts a new one. On the public site, all workspaces also
+  end when the server stops after a quiet period.
+
+### Differences from the desktop application
+
+- **Scripts.** Open a script with **Open script…**: it runs as a whole. Programs cannot read
+  script files themselves, so `run("other.m")`, or typing a file name, gives *Script files cannot
+  be run here.*
+- **Saving plots.** `savefig("plot.svg")` sends the picture to the browser, which saves it with
+  your other downloads. Only SVG is possible.
+- **Limits.** A server is shared, so programs get less room than on your own computer. These are
+  the defaults; the server's operator can change them:
+
+  | Limit | Value |
+  |---|---|
+  | Running time of one program | 60 seconds; then it is stopped with *Stopped: a program may run for at most 60 seconds here.* |
+  | Elements in one matrix or range | 2 000 000 |
+  | Points in one plot window | 200 000 |
+  | Grid lines each way in an `fplot3d` surface | 100 |
+  | Points in an `fplot3d` curve | 20 000 |
+  | Console lines from one program | 5 000; the rest are left out, and MLCalc says so |
+  | Length of a program or script | 200 000 characters |
+
+- Output written while the connection is lost is not shown.
+
+How the browser and the server talk to each other is described in
+[web-protocol.md](web-protocol.md).
+
+---
+
+## 13. Errors
 
 When something goes wrong, MLCalc shows a message with the position of the problem as
 `line:column`, for example:
@@ -1318,16 +1384,16 @@ Common messages:
 | *In "y + x": Unknown function or variable 'y'* | an error inside a function given as text |
 | *'del' is a command and cannot be used in a function given as text* | commands are not allowed in `fplot`, `feval`, `solve` and similar functions |
 | *No root found near 0* | `solve` found no sign change |
-| *A 46341×46341 matrix would have 2147488281 elements; the limit is 25000000* | a matrix (or range) larger than the size limit, see [Limitations](#14-limitations) |
+| *A 46341×46341 matrix would have 2147488281 elements; the limit is 25000000* | a matrix (or range) larger than the size limit, see [Limitations](#15-limitations) |
 | *The program is nested too deeply (more than 256 levels …)* | too many nested parentheses, brackets, blocks, or operators in one chain |
 | *Scripts are nested too deeply (does a script run itself?)* | scripts running each other more than 32 levels deep |
-| *The plot window is full: it can hold at most 2000000 points* | too many dots or plots in one window; clear it first, see [Limitations](#14-limitations) |
+| *The plot window is full: it can hold at most 2000000 points* | too many dots or plots in one window; clear it first, see [Limitations](#15-limitations) |
 | *Internal error (…): …* | an unexpected problem in MLCalc itself; the program stops, but MLCalc keeps working |
 | *Strings can only be used as arguments to functions such as fplot or title* | strings are not values |
 
 ---
 
-## 13. Differences from the original MLCalc
+## 14. Differences from the original MLCalc
 
 Compared with the Amiga version from the 1990s:
 
@@ -1348,7 +1414,7 @@ Compared with the Amiga version from the 1990s:
 
 ---
 
-## 14. Limitations
+## 15. Limitations
 
 - Matrix powers (`A^p`) only for whole-number `p`; use `.^` for element-by-element powers.
 - At most two indices; `end` is not allowed in indices.
@@ -1358,7 +1424,7 @@ Compared with the Amiga version from the 1990s:
 - 3D plots: the projection is always perspective, and the mouse cannot move the camera's target
   (only commands can). A surface hides what is behind it, but curves and points are drawn in front
   of every surface.
-- `savefig` to PNG only in the desktop application; the command-line tool saves SVG.
+- `savefig` to PNG only in the desktop application; the command-line tool and the web app save SVG.
 
 To protect the computer running MLCalc, a few sizes are limited. Exceeding a limit gives an error
 message; nothing is changed.

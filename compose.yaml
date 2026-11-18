@@ -1,0 +1,22 @@
+# Runs the MLCalc web app locally:  docker compose up --build   then open http://localhost:8080
+# The limits are those of appsettings.json, spelled out here to show how a deployment sets them.
+services:
+  web:
+    build: .
+    image: mlcalc-web
+    ports:
+      - "8080:8080"
+    environment:
+      MLCalc__RunSeconds: "60"
+      MLCalc__MaxSessions: "200"
+      MLCalc__MaxMatrixElements: "2000000"
+      MLCalc__MaxPointsPerWindow: "200000"
+      MLCalc__MaxOutputEntries: "5000"
+      MLCalc__IdleTimeout: "00:30:00"
+    # The server writes no files: run it on a read-only file system, with /tmp for .NET's own use.
+    read_only: true
+    tmpfs:
+      - /tmp
+    # A program can use up to MaxMatrixElements × 16 bytes per matrix; keep the container bounded.
+    mem_limit: 1g
+    restart: unless-stopped

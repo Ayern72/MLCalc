@@ -1,0 +1,68 @@
+name: Deploy
+
+# Builds the web app's image from main and deploys it to Cloud Run (docs/deploy-gcp.md).
+# Started by hand from the Actions tab, after CI has passed on the commit.
+on:
+  workflow_dispatch:
+
+# id-token: write lets the job ask GitHub for an OIDC token, which Google exchanges for short-lived
+# credentials of the deployer service account (Workload Identity Federation): no keys are stored.
+permissions:
+  contents: read
+  id-token: write
+
+# One deploy at a time; a second one waits for the first.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Google only accepts tokens from main as well (the identity pool's attribute condition).
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      # The region is also in deploy/cloudrun.yaml. The project id, identity provider and service
+      # account are repository variables (Settings › Secrets and variables › Actions › Variables).
+      REGION: europe-north1
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      TAG: ${{ github.sha }}
+    steps:
+      # Actions are pinned to exact commits, as in ci.yml.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Build the image and push it to Artifact Registry
+        run: |
+          image="$REGION-docker.pkg.dev/$PROJECT_ID/mlcalc/web:$TAG"
+          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+          docker build -t "$image" .
+          docker push "$image"
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        run: |
+          envsubst '${PROJECT_ID} ${TAG}' < deploy/cloudrun.yaml > "$RUNNER_TEMP/cloudrun.yaml"
+          # Cloud Run has been seen to report a just-pushed image as not found; try again shortly.
+          for attempt in 1 2 3; do
+            if gcloud run services replace "$RUNNER_TEMP/cloudrun.yaml" --project "$PROJECT_ID" --region "$REGION" --quiet; then break; fi
+            if [ "$attempt" = 3 ]; then exit 1; fi
+            sleep 15
+          done
+          url=$(gcloud run services describe mlcalc --project "$PROJECT_ID" --region "$REGION" --format 'value(status.url)')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Check that the new version answers
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          curl -fsS "$URL/health"
+          echo
+          curl -fsS "$URL/" | grep -q "<title>MLCalc</title>"

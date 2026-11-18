@@ -82,6 +82,33 @@ mlcalc script.m -i                   run a script, then continue interactively
 The exit code is 0 on success, 1 when a program fails and 2 for invalid options, so `mlcalc` can be
 used from shell scripts and builds.
 
+## Web app
+
+MLCalc also runs in the browser: an ASP.NET Core server runs the programs, one workspace per
+browser tab, and a Blazor WebAssembly client shows the console and draws the plots, turning 3D
+windows locally. They talk over SignalR with plain JSON messages, described in
+[docs/web-protocol.md](docs/web-protocol.md), so that clients in other languages can be written
+against the same server.
+
+**Try it at https://mlcalc-764948534857.europe-north1.run.app** (the first visit after a quiet
+period takes a few seconds while the server starts). To run it yourself:
+
+```
+docker compose up --build                       # then open http://localhost:8080
+dotnet run --project src/MLCalc.Web.Server      # or without Docker: http://localhost:5080
+```
+
+The server reads and writes no files: scripts are opened in the browser and sent as text,
+`savefig` downloads SVG in the browser, and the container runs on a read-only file system. A
+program may run for 60 seconds and use matrices of up to 2 million elements; these and the other
+limits are set in `src/MLCalc.Web.Server/appsettings.json` or with environment variables such as
+`MLCalc__RunSeconds` (see `compose.yaml`). The [manual](docs/manual.md#12-the-web-app) describes
+the page and the differences from the desktop app.
+
+The public site runs on Google Cloud Run and is deployed by the **Deploy** workflow, which is
+started by hand and signs in to Google without stored keys. [docs/deploy-gcp.md](docs/deploy-gcp.md)
+describes the setup.
+
 ## Differences from the Amiga original
 
 - **Matrix operators.** `*`, `/`, `\` and `^` are matrix operations and `.*`, `./`, `.^`
@@ -102,6 +129,9 @@ used from shell scripts and builds.
 | `MLCalc.Plotting` | The plot commands, and a UI-independent plot model (figures, 2D and 3D windows, layout, camera) with SVG export |
 | `MLCalc.Wpf` | Windows desktop application |
 | `MLCalc.Cli` | Cross-platform command-line tool (`mlcalc`) |
+| `MLCalc.Web.Protocol` | The messages between the web server and its clients |
+| `MLCalc.Web.Server` | ASP.NET Core server of the web app: sessions, limits, the SignalR hub; serves the client |
+| `MLCalc.Web.Client` | Blazor WebAssembly client of the web app |
 
 The libraries target `net10.0` with no Windows dependencies, so they can be reused by other
 front-ends. Dependencies only point downward: `Mathematics` ← `LinearAlgebra` ← `Numerics` ←

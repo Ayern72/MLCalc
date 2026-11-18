@@ -12,7 +12,8 @@ the syntax.
 ## Conventions
 
 - **Indentation:** one tab per indentation step, never spaces, in all source files (C#, XAML,
-  Razor, project files, JSON, YAML, CSS, JavaScript). In Markdown, list continuations use spaces.
+  Razor, project files, JSON, CSS, JavaScript). YAML does not allow tabs, so the workflows and
+  `compose.yaml` use two spaces. In Markdown, list continuations use spaces.
 - **Line endings:** end lines with **CRLF** (`\r\n`), not LF, in files you create or edit.
 - **Libraries without Windows dependencies:** everything in `src/` except `MLCalc.Wpf` targets
   plain `net10.0` and must stay usable on Linux and in the browser.

@@ -60,3 +60,24 @@ jobs:
           name: mlcalc-cli-linux-x64
           path: publish/cli-linux-x64
           retention-days: 30
+
+  # The web app's Docker image builds (Linux containers, so on a Linux runner) and the server in it
+  # answers. The image is not pushed anywhere.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: docker build -t mlcalc-web .
+      - name: Start the container and check that it answers
+        run: |
+          docker run -d --name mlcalc-web -p 8080:8080 --read-only --tmpfs /tmp mlcalc-web
+          for i in $(seq 1 30); do
+            if curl -fs http://localhost:8080/health; then break; fi
+            sleep 1
+          done
+          curl -fs http://localhost:8080/health
+          curl -fs http://localhost:8080/ | grep -q "<title>MLCalc</title>"
+          curl -fs -o /dev/null http://localhost:8080/_framework/blazor.webassembly.js
+      - name: Show the server's log
+        if: always()
+        run: docker logs mlcalc-web

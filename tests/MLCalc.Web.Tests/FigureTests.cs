@@ -116,6 +116,26 @@ public class FigureTests
 		Assert.Equal("""{"index":2,"append":{"pen":4,"items":[],"lastDots":{"x":[1],"y":[2]}}}""", JsonSerializer.Serialize(update, Json));
 	}
 
+	/// <summary>The other messages, as docs/web-protocol.md shows them.</summary>
+	[Fact]
+	public void TheMessagesAreWrittenAsDocumented()
+	{
+		Assert.Equal("""{"entries":[{"kind":"value","text":"x = 3"},{"kind":"clear","text":""}]}""",
+			JsonSerializer.Serialize(new OutputMessage([new(OutputKind.Value, "x = 3"), new(OutputKind.Clear, "")]), Json));
+		Assert.Equal("""{"id":"1","status":"error","errors":[{"message":"Bad.","line":2,"column":9,"length":7}],"outputTruncated":false}""",
+			JsonSerializer.Serialize(new RunFinishedMessage("1", RunStatus.Error, [new RunError("Bad.", 2, 9, 7)]), Json));
+		Assert.Equal("""{"id":"2","status":"timeLimit","outputTruncated":true}""",
+			JsonSerializer.Serialize(new RunFinishedMessage("2", RunStatus.TimeLimit, OutputTruncated: true), Json));
+		// < and > are written as \u003C and \u003E and + as \u002B: any JSON parser reads them back as the characters themselves.
+		Assert.Equal("""{"fileName":"plot.svg","mediaType":"image/svg\u002Bxml","content":"\u003Csvg/\u003E"}""",
+			JsonSerializer.Serialize(new DownloadMessage("plot.svg", "image/svg+xml", "<svg/>"), Json));
+
+		// What a client sends.
+		Assert.Equal(new RunRequest("1", "x = 1 + 2"), JsonSerializer.Deserialize<RunRequest>("""{ "id": "1", "source": "x = 1 + 2" }""", Json));
+		var camera = JsonSerializer.Deserialize<CameraUpdate>("""{ "row": 0, "column": 1, "camera": { "azimuth": 20, "elevation": 10, "distance": 2.5 } }""", Json)!;
+		Assert.Equal((0, 1, 20.0, 10.0, (double?)2.5, (double[]?)null), (camera.Row, camera.Column, camera.Camera.Azimuth, camera.Camera.Elevation, camera.Camera.Distance, camera.Camera.Position));
+	}
+
 	[Fact]
 	public void OnlyWhatChangedIsSent()
 	{

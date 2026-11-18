@@ -20,7 +20,8 @@ var app = builder.Build();
 // The Blazor client: its framework files, the other static files, and index.html for any other path.
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
-app.MapHealthChecks("/healthz");
+// Not /healthz: Cloud Run keeps some paths that end in z for itself and answers them with 404.
+app.MapHealthChecks("/health");
 app.MapHub<MLCalcHub>(WebProtocol.Path);
 app.MapFallbackToFile("index.html");
 
