@@ -9,7 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace MLCalc.Web.Tests;
 
 /// <summary>The server in memory, with settings changed for a test.</summary>
-sealed class WebTestServer : WebApplicationFactory<Program>
+// Any type of the server assembly names it; Program would be ambiguous with the client's.
+sealed class WebTestServer : WebApplicationFactory<WebOptions>
 {
 	readonly Action<WebOptions>? configure;
 	readonly TimeProvider? clock;

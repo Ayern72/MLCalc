@@ -1,0 +1,247 @@
+:root {
+	--bg: #f6f7f9;
+	--panel: #ffffff;
+	--text: #1d2430;
+	--muted: #5f6b7a;
+	--border: #d9dee5;
+	--accent: #1f5fa8;
+	--accent-text: #ffffff;
+	--value: #1d2430;
+	--input: #1f5fa8;
+	--error: #b3261e;
+	--info: #5f6b7a;
+	--code-bg: #eef1f5;
+	color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #14181e;
+		--panel: #1b2028;
+		--text: #e3e7ed;
+		--muted: #9aa5b4;
+		--border: #2e3643;
+		--accent: #5b9bea;
+		--accent-text: #0d1117;
+		--value: #e3e7ed;
+		--input: #7fb3f0;
+		--error: #f28b82;
+		--info: #9aa5b4;
+		--code-bg: #252b35;
+		color-scheme: dark;
+	}
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html, body {
+	margin: 0;
+	height: 100%;
+	background: var(--bg);
+	color: var(--text);
+	font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	font-size: 15px;
+}
+
+.loading {
+	padding: 2rem;
+	color: var(--muted);
+}
+
+.page {
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+}
+
+/* ───────────── Toolbar ───────────── */
+
+.toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.5rem 1rem;
+	background: var(--panel);
+	border-bottom: 1px solid var(--border);
+}
+
+.brand {
+	font-weight: 600;
+	margin-right: 0.75rem;
+}
+
+.button {
+	position: relative;
+	padding: 0.3rem 0.8rem;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--panel);
+	color: var(--text);
+	font: inherit;
+	cursor: pointer;
+}
+
+.button:hover:not(:disabled):not(.disabled) {
+	border-color: var(--accent);
+}
+
+.button.active {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--accent-text);
+}
+
+.button:disabled, .button.disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+/* The file picker is hidden inside its label, which looks like a button. */
+.button input[type=file] {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+
+.help {
+	margin-left: auto;
+	color: var(--accent);
+}
+
+/* ───────────── Console and plots ───────────── */
+
+.panes {
+	flex: 1;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+	gap: 1rem;
+	padding: 1rem;
+	min-height: 0;
+}
+
+@media (max-width: 900px) {
+	.panes {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: minmax(16rem, 1fr) minmax(16rem, 1fr);
+		padding: 0.5rem 1rem;
+	}
+}
+
+.console, .plots {
+	background: var(--panel);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	min-height: 0;
+}
+
+.console {
+	display: flex;
+	flex-direction: column;
+}
+
+.functions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	max-height: 9rem;
+	overflow-y: auto;
+	padding: 0.6rem;
+	border-bottom: 1px solid var(--border);
+}
+
+.functions code, .placeholder code {
+	background: var(--code-bg);
+	border-radius: 4px;
+	padding: 0.05rem 0.35rem;
+	font-size: 0.85rem;
+}
+
+.output {
+	flex: 1;
+	overflow-y: auto;
+	padding: 0.6rem 0.8rem;
+}
+
+.line {
+	margin: 0 0 0.15rem;
+	font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+	font-size: 0.92rem;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.line.input {
+	color: var(--input);
+}
+
+.line.error {
+	color: var(--error);
+}
+
+.line.info {
+	color: var(--info);
+	font-style: italic;
+}
+
+.input-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.5rem;
+	padding: 0.5rem 0.8rem;
+	border-top: 1px solid var(--border);
+	font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+}
+
+.prompt {
+	color: var(--input);
+	padding-top: 0.25rem;
+}
+
+.input-row textarea {
+	flex: 1;
+	resize: none;
+	border: none;
+	outline: none;
+	background: transparent;
+	color: var(--text);
+	font: inherit;
+	font-size: 0.92rem;
+	padding: 0.25rem 0;
+}
+
+.plots {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+}
+
+.placeholder {
+	color: var(--muted);
+	text-align: center;
+}
+
+/* ───────────── Status bar ───────────── */
+
+.status {
+	padding: 0.3rem 1rem;
+	border-top: 1px solid var(--border);
+	background: var(--panel);
+	color: var(--muted);
+	font-size: 0.85rem;
+}
+
+#blazor-error-ui {
+	display: none;
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	padding: 0.6rem 1rem;
+	background: #fff3cd;
+	color: #3d3000;
+}

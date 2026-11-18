@@ -16,5 +16,6 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\MLCalc.Web.Server\MLCalc.Web.Server.csproj" />
 		<ProjectReference Include="..\..\src\MLCalc.Web.Protocol\MLCalc.Web.Protocol.csproj" />
+		<ProjectReference Include="..\..\src\MLCalc.Web.Client\MLCalc.Web.Client.csproj" />
 	</ItemGroup>
 </Project>

@@ -17,8 +17,12 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
+// The Blazor client: its framework files, the other static files, and index.html for any other path.
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
 app.MapHealthChecks("/healthz");
 app.MapHub<MLCalcHub>(WebProtocol.Path);
+app.MapFallbackToFile("index.html");
 
 app.Run();
 
