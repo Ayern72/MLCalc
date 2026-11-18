@@ -191,4 +191,33 @@ public class CameraControlTests
 			Assert.Same(axes.Items[k], preview[k]);
 		Assert.Equal(Scene3D.Build(axes, Cell).Length, Scene3D.Build(axes, Cell, preview: true).Length);
 	}
+
+	[Fact]
+	public void TurnAndZoomWorkOnAWindowOfTheirOwn()
+	{
+		// The same functions the figure uses, for a client that keeps its own copy of a window.
+		var figure = GridWith3DWindow();
+		var axes = figure.Snapshot()[0, 1];
+		Assert.True(figure.SetView(0, 1, 20, 10));
+		Assert.Equal(figure.Snapshot()[0, 1].Camera, CameraControl.Turn(axes, 20, 10).Camera);
+		Assert.True(figure.MoveCamera(0, 1, 0.5, Cell));
+		Assert.Equal(figure.Snapshot()[0, 1].Camera, CameraControl.Zoom(CameraControl.Turn(axes, 20, 10), 0.5, Cell).Camera);
+		Assert.Throws<ArgumentException>(() => CameraControl.Turn(axes, 0, 91));
+	}
+
+	[Fact]
+	public void SetCameraTakesAWholeCameraButOnlyAPossibleOne()
+	{
+		var figure = GridWith3DWindow();
+		var camera = new Camera(10, 20, 3, null, new Point3(1, 2, 3));
+		Assert.True(figure.SetCamera(0, 1, camera));
+		Assert.Equal(camera, figure.Snapshot()[0, 1].Camera);
+		Assert.False(figure.SetCamera(0, 0, camera));   // a 2D window
+		Assert.Throws<ArgumentException>(() => figure.SetCamera(0, 1, camera with { Elevation = 100 }));
+		Assert.Throws<ArgumentException>(() => figure.SetCamera(0, 1, camera with { Distance = 1000 }));
+		Assert.Throws<ArgumentException>(() => figure.SetCamera(0, 1, camera with { Position = new Point3(1, 1, 1) }));   // inside the box
+		Assert.Throws<ArgumentException>(() => figure.SetCamera(0, 1, camera with { Position = new Point3(30, 0, 0), Target = new Point3(30, 0, 0) }));
+		Assert.Throws<ArgumentException>(() => figure.SetCamera(0, 1, camera with { Target = new Point3(double.NaN, 0, 0) }));
+		Assert.Equal(camera, figure.Snapshot()[0, 1].Camera);
+	}
 }

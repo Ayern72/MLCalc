@@ -89,6 +89,8 @@ sealed class TestClient : IAsyncDisposable
 
 	public Task CancelAsync() => connection.InvokeAsync(ServerMethods.Cancel);
 
+	public Task SetCameraAsync(CameraUpdate update) => connection.InvokeAsync(ServerMethods.SetCamera, update);
+
 	/// <summary>The next message, which must be a <typeparamref name="T"/>.</summary>
 	public async Task<T> NextAsync<T>()
 	{

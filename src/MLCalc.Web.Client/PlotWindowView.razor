@@ -1,19 +1,39 @@
 @using System.Globalization
 @using MLCalc.Plotting
+@implements IDisposable
+@inject IJSRuntime JS
 
 @* One plot window, drawn as SVG with the same code as the desktop app's SVG export. A transparent
-   layer on top takes the mouse, so that positions are measured from the window's corner. *@
+   layer on top takes the mouse, so that positions are measured from the window's corner. In a 3D
+   window, dragging turns the camera and the wheel moves it closer or further away, as in the
+   desktop app; while it moves, large items are drawn thinned out. *@
 <div class="plot-window">
 	@svg
-	<div class="plot-mouse" @onmousemove="OnMouseMove" @onmouseleave="OnMouseLeave"></div>
+	<div class="plot-mouse @(Is3D ? "turnable" : "")" @ref="mouse"
+		@onpointerdown="OnPointerDownAsync" @onpointermove="OnPointerMove"
+		@onpointerup="OnPointerUpAsync" @onpointercancel="OnPointerUpAsync"
+		@onwheel="OnWheel" @onwheel:preventDefault="Is3D"
+		@ondblclick="OnDoubleClick" @onmouseleave="OnMouseLeave"></div>
 </div>
 
 @code {
+	/// <summary>How long after the last wheel turn the full view is drawn and sent.</summary>
+	static readonly TimeSpan WheelSettle = TimeSpan.FromMilliseconds(250);
+
+	ElementReference mouse;
 	MarkupString svg;
 	Axes? drawnAxes;
 	double drawnWidth, drawnHeight;
 	bool drawnCurrent;
 	bool redraw = true;
+
+	/// <summary>The window with the camera the user is turning; null when the window is as given.</summary>
+	Axes? turned;
+
+	/// <summary>A drag in progress: the angles and pointer position where it began.</summary>
+	(Axes Start, double Azimuth, double Elevation, double X, double Y, long Pointer)? drag;
+
+	CancellationTokenSource? wheelSettle;
 
 	[Parameter, EditorRequired] public Axes Axes { get; set; } = null!;
 	[Parameter] public int Row { get; set; }
@@ -22,8 +42,16 @@
 	[Parameter] public bool IsCurrent { get; set; }
 	[Parameter] public double Width { get; set; }
 	[Parameter] public double Height { get; set; }
+
 	/// <summary>Gets the status bar text for the mouse; a plain delegate, so that moving the mouse redraws only the status bar.</summary>
 	[Parameter] public Action<string>? OnStatus { get; set; }
+
+	/// <summary>Gets the camera (row, column, camera) after the user turned, zoomed or reset a 3D window.</summary>
+	[Parameter] public Action<int, int, Camera>? OnCamera { get; set; }
+
+	Axes Shown => turned ?? Axes;
+
+	bool Is3D => Axes.Kind == AxesKind.Space;
 
 	ScreenRect Cell => new(0, 0, Width, Height);
 
@@ -32,10 +60,23 @@
 	{
 		if (ReferenceEquals(Axes, drawnAxes) && Width == drawnWidth && Height == drawnHeight && IsCurrent == drawnCurrent)
 			return;
-		(drawnAxes, drawnWidth, drawnHeight, drawnCurrent) = (Axes, Width, Height, IsCurrent);
+		// The window as the user left it, now confirmed by the page: already drawn.
+		bool confirmed = turned is not null && drag is null && wheelSettle is null
+			&& Axes.Camera == turned.Camera && Axes.Items == turned.Items
+			&& Width == drawnWidth && Height == drawnHeight && IsCurrent == drawnCurrent;
+		turned = null;
+		drag = null;
+		drawnAxes = Axes;
+		if (!confirmed)
+			Draw(Axes, preview: false);
+	}
+
+	void Draw(Axes axes, bool preview)
+	{
+		(drawnWidth, drawnHeight, drawnCurrent) = (Width, Height, IsCurrent);
 		redraw = true;
 		svg = Width >= 1 && Height >= 1
-			? new MarkupString(SvgWriter.RenderWindow(Axes, Width, Height, $"w{Row}{Column}", IsCurrent))
+			? new MarkupString(SvgWriter.RenderWindow(axes, Width, Height, $"w{Row}{Column}", IsCurrent, preview))
 			: default;
 	}
 
@@ -47,16 +88,105 @@
 		return result;
 	}
 
-	void OnMouseMove(MouseEventArgs e) => OnStatus?.Invoke(Describe(e.OffsetX, e.OffsetY));
+	async Task OnPointerDownAsync(PointerEventArgs e)
+	{
+		if (!Is3D || e.Button != 0)
+			return;
+		var (azimuth, elevation) = Projection3D.ViewAngles(Shown);
+		drag = (Shown, azimuth, elevation, e.ClientX, e.ClientY, e.PointerId);
+		// Keep getting the pointer's moves when it leaves the window during the drag.
+		await JS.InvokeVoidAsync("mlcalc.capturePointer", mouse, e.PointerId);
+	}
 
-	void OnMouseLeave() => OnStatus?.Invoke("");
+	void OnPointerMove(PointerEventArgs e)
+	{
+		if (drag is not { } d)
+		{
+			OnStatus?.Invoke(Describe(e.OffsetX, e.OffsetY));
+			return;
+		}
+		var (azimuth, elevation) = CameraControl.Drag(d.Azimuth, d.Elevation, e.ClientX - d.X, e.ClientY - d.Y);
+		if (turned is not null && turned.Camera.Azimuth == azimuth && turned.Camera.Elevation == elevation)
+			return;
+		turned = CameraControl.Turn(d.Start, azimuth, elevation);
+		Draw(turned, preview: true);
+		OnStatus?.Invoke(GridLabel + CameraControl.Describe(turned, Cell));
+	}
+
+	async Task OnPointerUpAsync(PointerEventArgs e)
+	{
+		if (drag is not { } d)
+			return;
+		drag = null;
+		await JS.InvokeVoidAsync("mlcalc.releasePointer", mouse, d.Pointer);
+		if (turned is not null)
+			Commit();
+	}
+
+	void OnWheel(WheelEventArgs e)
+	{
+		if (!Is3D || drag is not null)
+			return;
+		// Browsers give pixels (about 100 per notch) or, with DeltaMode 1, lines (3 per notch); the
+		// desktop's wheel gives 120 per notch, positive away from the user.
+		double notches = e.DeltaMode == 1 ? e.DeltaY / 3 : e.DeltaY / 100;
+		if (notches == 0)
+			return;
+		turned = CameraControl.Zoom(Shown, CameraControl.WheelFactor((int)Math.Round(-notches * 120)), Cell);
+		Draw(turned, preview: true);
+		OnStatus?.Invoke(GridLabel + CameraControl.Describe(turned, Cell));
+		_ = SettleAsync();
+	}
+
+	/// <summary>Draws the full view and sends the camera once the wheel has been still for a moment.</summary>
+	async Task SettleAsync()
+	{
+		wheelSettle?.Cancel();
+		var settle = wheelSettle = new CancellationTokenSource();
+		try
+		{
+			await Task.Delay(WheelSettle, settle.Token);
+		}
+		catch (OperationCanceledException)
+		{
+			return;
+		}
+		wheelSettle = null;
+		if (turned is not null)
+		{
+			Commit();
+			StateHasChanged();
+		}
+	}
+
+	void OnDoubleClick()
+	{
+		if (!Is3D)
+			return;
+		turned = Shown with { Camera = Camera.Default };
+		Commit();
+		OnStatus?.Invoke(GridLabel + CameraControl.Describe(turned, Cell));
+	}
+
+	/// <summary>Draws the window in full with the new camera and hands the camera to the page.</summary>
+	void Commit()
+	{
+		Draw(turned!, preview: false);
+		OnCamera?.Invoke(Row, Column, turned!.Camera);
+	}
+
+	void OnMouseLeave()
+	{
+		if (drag is null)
+			OnStatus?.Invoke("");
+	}
 
 	/// <summary>The status bar text for the mouse at (x, y) in the window, as in the desktop app.</summary>
 	string Describe(double x, double y)
 	{
-		if (Axes.Kind == AxesKind.Space)
+		if (Is3D)
 			// A point on the screen is a whole line of points in 3D; show the camera instead.
-			return GridLabel + CameraControl.Describe(Axes, Cell);
+			return GridLabel + CameraControl.Describe(Shown, Cell);
 		var plot = PlotLayout.PlotArea(Cell);
 		if (x < plot.Left || x > plot.Right || y < plot.Top || y > plot.Bottom)
 			return "";
@@ -65,4 +195,6 @@
 		string worldY = t.ToWorldY(y).ToString("G5", CultureInfo.InvariantCulture);
 		return Axes.Kind == AxesKind.Complex ? $"{GridLabel}Re = {worldX}   Im = {worldY}" : $"{GridLabel}x = {worldX}   y = {worldY}";
 	}
+
+	public void Dispose() => wheelSettle?.Cancel();
 }

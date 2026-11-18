@@ -241,6 +241,17 @@ html, body {
 	position: absolute;
 	inset: 0;
 	cursor: crosshair;
+	user-select: none;
+}
+
+/* A 3D window turns when dragged; touch drags turn it instead of scrolling the page. */
+.plot-mouse.turnable {
+	cursor: grab;
+	touch-action: none;
+}
+
+.plot-mouse.turnable:active {
+	cursor: grabbing;
 }
 
 /* ───────────── Status bar ───────────── */

@@ -39,11 +39,25 @@ sealed class FigureEncoder
 	static FigureMessage Message(FigureSnapshot figure, IReadOnlyList<WindowUpdate> windows) =>
 		new(figure.Version, figure.Rows, figure.Columns, figure.CurrentRow, figure.CurrentColumn, windows);
 
+	/// <summary>
+	/// The client set the camera of window <paramref name="index"/> itself (<c>SetCamera</c>): from now
+	/// on it is counted as sent, so the window is not sent back for it.
+	/// </summary>
+	public void ClientHasCamera(int index, Camera camera)
+	{
+		if (sent is null || index < 0 || index >= sent.Axes.Length)
+			return;
+		sent = sent with { Axes = sent.Axes.SetItem(index, sent.Axes[index] with { Camera = camera }) };
+	}
+
 	static WindowUpdate? Diff(Axes before, Axes now, int index)
 	{
 		if (ReferenceEquals(before, now))
 			return null;
-		return Appended(before, now) is { } append
+		var append = Appended(before, now);
+		if (append is { Items.Count: 0, LastDots: null } && append.Pen == before.Pen)
+			return null;   // an equal window, e.g. after the client's own camera change
+		return append is not null
 			? new WindowUpdate(index, Append: append)
 			: new WindowUpdate(index, Replace: ToWindow(now));
 	}
@@ -93,6 +107,17 @@ sealed class FigureEncoder
 		axes.XMin, axes.XMax, axes.YMin, axes.YMax, axes.ZMin, axes.ZMax,
 		axes.Title, axes.XTitle, axes.YTitle, axes.ZTitle,
 		axes.ShowGrid, axes.Pen, ToCamera(axes.Camera), [.. axes.Items.Select(ToItem)]);
+
+	/// <summary>A camera from the client; throws <see cref="ArgumentException"/> for points that are not [x, y, z].</summary>
+	public static Camera ToCamera(CameraData camera) => new(
+		camera.Azimuth, camera.Elevation, camera.Distance, Point(camera.Position), Point(camera.Target));
+
+	static Point3? Point(double[]? p) => p switch
+	{
+		null => null,
+		[var x, var y, var z] => new Point3(x, y, z),
+		_ => throw new ArgumentException("A camera point must have three coordinates."),
+	};
 
 	static CameraData ToCamera(Camera camera) => new(
 		camera.Azimuth, camera.Elevation, camera.Distance,

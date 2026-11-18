@@ -166,7 +166,7 @@ public sealed class Figure
 	public void SetView(double azimuth, double elevation)
 	{
 		RequireAngles(azimuth, elevation);
-		ModifyCurrent(a => WithView(a, azimuth, elevation));
+		ModifyCurrent(a => CameraControl.Turn(a, azimuth, elevation));
 	}
 
 	/// <summary>Restores the default camera (<c>view(3)</c>).</summary>
@@ -180,7 +180,7 @@ public sealed class Figure
 	public bool SetView(int row, int column, double azimuth, double elevation)
 	{
 		RequireAngles(azimuth, elevation);
-		return ModifyWindow(row, column, a => WithView(a, azimuth, elevation));
+		return ModifyWindow(row, column, a => CameraControl.Turn(a, azimuth, elevation));
 	}
 
 	/// <summary><see cref="ResetView()"/> for the window at a zero-based grid position; see <see cref="SetView(int, int, double, double)"/>.</summary>
@@ -198,34 +198,44 @@ public sealed class Figure
 	{
 		if (!(factor > 0) || !double.IsFinite(factor))
 			throw new ArgumentOutOfRangeException(nameof(factor), "The factor must be a positive number.");
+		return ModifyWindow(row, column, a => CameraControl.Zoom(a, factor, cell));
+	}
+
+	/// <summary>
+	/// Sets the whole camera of the 3D window at a zero-based grid position, e.g. as turned and zoomed
+	/// in a web browser. The camera is checked as <c>view</c>, <c>camposition</c> and the mouse wheel
+	/// check it. Returns false as <see cref="SetView(int, int, double, double)"/> does.
+	/// </summary>
+	/// <exception cref="ArgumentException">The camera is not one these commands could have made.</exception>
+	public bool SetCamera(int row, int column, Camera camera)
+	{
+		ArgumentNullException.ThrowIfNull(camera);
+		RequireAngles(camera.Azimuth, camera.Elevation);
+		if (camera.Distance is { } distance && !(distance >= MinCameraDistance && distance <= MaxCameraDistance))
+			throw new ArgumentException(FormattableString.Invariant($"The camera distance must be between {MinCameraDistance} and {MaxCameraDistance}."));
+		if (camera.Target is { IsFinite: false } || camera.Position is { IsFinite: false })
+			throw new ArgumentException("The camera position and target must be finite numbers.");
 		return ModifyWindow(row, column, a =>
 		{
-			var view = new Projection3D(a, Scene3D.ViewArea(cell));
-			double distance = view.DistanceToTarget;
-			double moved = Math.Clamp(distance * factor, MinCameraDistance, MaxCameraDistance);
-			if (!view.IsPlaced)
-				return a with { Camera = a.Camera with { Distance = moved } };
-			var position = a.Camera.Position!.Value;
-			var target = view.TargetPosition;
-			double s = moved / distance;
-			return a with { Camera = a.Camera with { Position = new Point3(
-				target.X + (position.X - target.X) * s, target.Y + (position.Y - target.Y) * s, target.Z + (position.Z - target.Z) * s) } };
+			if (camera.Position is { } position)
+			{
+				var cube = Projection3D.ToCube(a, position);
+				if (Math.Abs(cube.X) <= 1 && Math.Abs(cube.Y) <= 1 && Math.Abs(cube.Z) <= 1)
+					throw new ArgumentException("The camera must be outside the box set by xrange, yrange and zrange.");
+				if (camera.Target == position)
+					throw new ArgumentException("The camera target must not be where the camera is.");
+			}
+			return a with { Camera = camera };
 		});
 	}
 
 	/// <summary>How close to and far from its target the mouse wheel moves a camera, in units of half the box.</summary>
 	public const double MinCameraDistance = 0.05, MaxCameraDistance = 100;
 
-	static void RequireAngles(double azimuth, double elevation)
+	internal static void RequireAngles(double azimuth, double elevation)
 	{
 		if (!double.IsFinite(azimuth) || !(elevation >= -90 && elevation <= 90))
 			throw new ArgumentException("The azimuth must be a number and the elevation between -90 and 90 degrees.");
-	}
-
-	static Axes WithView(Axes a, double azimuth, double elevation)
-	{
-		double? distance = a.Camera.Position is null ? a.Camera.Distance : Projection3D.CameraDistance(a);
-		return a with { Camera = a.Camera with { Azimuth = azimuth, Elevation = elevation, Distance = distance, Position = null } };
 	}
 
 	/// <summary>Puts the camera at a fixed point, in data coordinates, outside the box (<c>camposition</c>).</summary>

@@ -158,6 +158,30 @@ sealed class Session : IConsoleOutput, IDisposable
 			cancel?.Cancel();
 	}
 
+	/// <summary>
+	/// Takes a camera the user set in the client. The client has it already, so the encoder is told,
+	/// and the window is not sent back; changes a running program makes are still sent.
+	/// </summary>
+	public async Task SetCameraAsync(CameraUpdate update)
+	{
+		Touch();
+		await sendLock.WaitAsync();
+		try
+		{
+			var camera = FigureEncoder.ToCamera(update.Camera);
+			if (Figure.SetCamera(update.Row, update.Column, camera))
+				encoder.ClientHasCamera(update.Row * Figure.Snapshot().Columns + update.Column, camera);
+		}
+		catch (ArgumentException ex)
+		{
+			logger.LogInformation("Ignored a camera for session {Session}: {Message}", Id, ex.Message);
+		}
+		finally
+		{
+			sendLock.Release();
+		}
+	}
+
 	async Task RunAsync(RunRequest request, CancellationTokenSource userCancel)
 	{
 		using var timeLimit = new CancellationTokenSource(TimeSpan.FromSeconds(options.RunSeconds), time);

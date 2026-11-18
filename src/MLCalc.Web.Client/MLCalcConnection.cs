@@ -102,6 +102,9 @@ sealed class MLCalcConnection(NavigationManager navigation, IJSRuntime js) : IAs
 	public Task CancelAsync() =>
 		connection?.InvokeAsync(ServerMethods.Cancel) ?? Task.CompletedTask;
 
+	public Task SetCameraAsync(CameraUpdate update) =>
+		connection?.InvokeAsync(ServerMethods.SetCamera, update) ?? Task.CompletedTask;
+
 	public async ValueTask DisposeAsync()
 	{
 		disposed = true;

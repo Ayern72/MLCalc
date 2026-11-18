@@ -65,6 +65,9 @@ public static class ServerMethods
 
 	/// <summary><c>Cancel()</c>: stops the running program, if any.</summary>
 	public const string Cancel = "Cancel";
+
+	/// <summary><c>SetCamera(CameraUpdate)</c>: the user turned or zoomed a 3D window; see <see cref="CameraUpdate"/>.</summary>
+	public const string SetCamera = "SetCamera";
 }
 
 // ───────────── Client → server ─────────────
@@ -78,6 +81,17 @@ public static class ServerMethods
 /// <param name="Id">Chosen by the client; returned in <see cref="RunFinishedMessage.Id"/>.</param>
 /// <param name="Source">The program text.</param>
 public sealed record RunRequest(string Id, string Source);
+
+/// <summary>
+/// The camera of a 3D window after the user turned or zoomed it in the client, so that
+/// <c>savefig</c> and later commands see the same view. The server does not send the window back
+/// for it. A camera the commands could not have made (e.g. inside the box) is ignored, as is a
+/// window that is no longer 3D.
+/// </summary>
+/// <param name="Row">The window, zero-based.</param>
+/// <param name="Column">The window, zero-based.</param>
+/// <param name="Camera">The new camera.</param>
+public sealed record CameraUpdate(int Row, int Column, CameraData Camera);
 
 // ───────────── Server → client ─────────────
 

@@ -171,4 +171,46 @@ public class FigureTests
 		await using var again = await server.ConnectAsync(client.Welcome.SessionId);
 		Assert.Equal(ItemType.Function, Assert.Single(Assert.Single(again.Welcome.Figure.Windows).Replace!.Items).Type);
 	}
+
+	[Fact]
+	public void ACameraTheClientSetIsNotSentBack()
+	{
+		var plotter = new Plotter();
+		var encoder = new FigureEncoder();
+		plotter.Run("initdisplay(1, 2); currentwin(1, 2); fplot3d(\"x\", \"y\", \"x*y\", 5)");
+		encoder.Full(plotter.Figure.Snapshot());
+
+		var camera = new Camera(10, 20, 2, null, null);
+		Assert.True(plotter.Figure.SetCamera(0, 1, camera));
+		encoder.ClientHasCamera(1, camera);
+		Assert.Empty(encoder.Changes(plotter.Figure.Snapshot())!.Windows);
+
+		// What a program draws afterwards is still sent, without the window.
+		plotter.Run("dot3d(1, 1, 1)");
+		var append = Assert.Single(encoder.Changes(plotter.Figure.Snapshot())!.Windows).Append;
+		Assert.Single(append!.Items);
+	}
+
+	[Fact]
+	public async Task TheServerKeepsTheCameraTheUserSet()
+	{
+		await using var server = new WebTestServer();
+		await using var client = await server.ConnectAsync();
+		await client.RunToEndAsync("fplot3d(\"x\", \"y\", \"x*y\", 5)");
+		var camera = new CameraData(15, 25, 3);
+		await client.SetCameraAsync(new CameraUpdate(0, 0, camera));
+		// Ignored: not a camera the commands could make, and not a 3D window.
+		await client.SetCameraAsync(new CameraUpdate(0, 0, new CameraData(0, 120)));
+		await client.SetCameraAsync(new CameraUpdate(0, 0, new CameraData(0, 0, Position: [1, 2])));
+		await client.SetCameraAsync(new CameraUpdate(2, 2, camera));
+
+		// The next program's drawing comes as an addition: the window was not sent back.
+		await client.RunAsync("dot3d(1, 1, 1)");
+		var update = Assert.Single((await client.NextAsync<FigureMessage>()).Windows);
+		Assert.NotNull(update.Append);
+		await client.NextAsync<RunFinishedMessage>();
+
+		await using var again = await server.ConnectAsync(client.Welcome.SessionId);
+		Assert.Equal(camera, Assert.Single(again.Welcome.Figure.Windows).Replace!.Camera);
+	}
 }

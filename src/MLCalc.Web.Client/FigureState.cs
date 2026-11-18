@@ -24,6 +24,21 @@ public sealed class FigureState
 
 	public FigureSnapshot Snapshot => new(Rows, Columns, CurrentRow, CurrentColumn, [.. windows], Version);
 
+	/// <summary>The user changed the camera of a 3D window here; false when there is no such window.</summary>
+	public bool SetCamera(int row, int column, Camera camera)
+	{
+		if (row < 0 || column < 0 || row >= Rows || column >= Columns || this[row, column].Kind != AxesKind.Space)
+			return false;
+		windows[row * Columns + column] = this[row, column] with { Camera = camera };
+		return true;
+	}
+
+	/// <summary>A camera in the protocol's form.</summary>
+	public static CameraData ToCameraData(Camera camera) => new(
+		camera.Azimuth, camera.Elevation, camera.Distance,
+		camera.Position is { } p ? [p.X, p.Y, p.Z] : null,
+		camera.Target is { } t ? [t.X, t.Y, t.Z] : null);
+
 	public void Apply(FigureMessage message)
 	{
 		if (message.Rows != Rows || message.Columns != Columns)

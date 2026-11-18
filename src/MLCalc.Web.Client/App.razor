@@ -42,7 +42,7 @@
 		</section>
 
 		<section class="plots" aria-label="Plots">
-			<PlotPane Figure="figure" OnStatus="text => statusBar?.ShowMouse(text)" />
+			<PlotPane Figure="figure" OnStatus="text => statusBar?.ShowMouse(text)" OnCamera="OnCamera" />
 		</section>
 	</main>
 
@@ -50,6 +50,30 @@
 </div>
 
 @code {
+	/// <summary>
+	/// The user turned, zoomed or reset a 3D window: keep the camera, so that later changes from the
+	/// server apply to it, and tell the server, so that savefig and later commands see the same view.
+	/// </summary>
+	void OnCamera(int row, int column, MLCalc.Plotting.Camera camera)
+	{
+		if (!figure.SetCamera(row, column, camera))
+			return;
+		StateHasChanged();
+		_ = SendCameraAsync(new CameraUpdate(row, column, FigureState.ToCameraData(camera)));
+	}
+
+	async Task SendCameraAsync(CameraUpdate update)
+	{
+		try
+		{
+			await Connection.SetCameraAsync(update);
+		}
+		catch (Exception)
+		{
+			// Not connected: the server keeps its own camera, and sends it again on reconnecting.
+		}
+	}
+
 	readonly ConsoleModel console = new();
 	readonly FigureState figure = new();
 	StatusBar? statusBar;

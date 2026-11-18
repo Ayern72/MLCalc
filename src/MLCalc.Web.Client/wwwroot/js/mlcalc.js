@@ -19,6 +19,23 @@ window.mlcalc = {
 		element.scrollTop = element.scrollHeight;
 	},
 
+	// While a 3D window is turned, its pointer moves keep coming when the pointer leaves the window.
+	// A pointer the browser does not know (e.g. one already lifted) is ignored.
+	capturePointer(element, pointerId) {
+		try {
+			element.setPointerCapture(pointerId);
+		} catch {
+		}
+	},
+
+	releasePointer(element, pointerId) {
+		try {
+			if (element.hasPointerCapture(pointerId))
+				element.releasePointerCapture(pointerId);
+		} catch {
+		}
+	},
+
 	// Tells .NET the element's size when it changes, at most once per animation frame.
 	observeSize(element, dotnet) {
 		let pending = false;

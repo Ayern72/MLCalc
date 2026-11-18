@@ -31,6 +31,9 @@ sealed class MLCalcHub(SessionManager sessions) : Hub<IMLCalcClient>
 	/// <summary>Stops the running program, if any.</summary>
 	public async Task Cancel() => (await CurrentSessionAsync()).Cancel();
 
+	/// <summary>Takes the camera of a 3D window that the user turned or zoomed; see <see cref="CameraUpdate"/>.</summary>
+	public async Task SetCamera(CameraUpdate update) => await (await CurrentSessionAsync()).SetCameraAsync(update);
+
 	/// <summary>This connection's session; a new one, announced with <c>Welcome</c>, when it was removed after being idle.</summary>
 	async Task<Session> CurrentSessionAsync()
 	{

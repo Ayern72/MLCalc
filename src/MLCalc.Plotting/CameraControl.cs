@@ -38,6 +38,44 @@ public static class CameraControl
 	public static double WheelFactor(int delta) => Math.Pow(WheelStep, delta / 120.0);
 
 	/// <summary>
+	/// <paramref name="axes"/> with the camera turned to <paramref name="azimuth"/> and
+	/// <paramref name="elevation"/> (degrees) around its target, as <c>view(az, el)</c> does. The
+	/// camera is then placed relative to the box; a camera set with <c>camposition</c> keeps its
+	/// distance to the target.
+	/// </summary>
+	/// <exception cref="ArgumentException">The azimuth is not a number or the elevation is outside −90 to 90.</exception>
+	public static Axes Turn(Axes axes, double azimuth, double elevation)
+	{
+		Figure.RequireAngles(azimuth, elevation);
+		double? distance = axes.Camera.Position is null ? axes.Camera.Distance : Projection3D.CameraDistance(axes);
+		return axes with { Camera = axes.Camera with { Azimuth = azimuth, Elevation = elevation, Distance = distance, Position = null } };
+	}
+
+	/// <summary>
+	/// <paramref name="axes"/> with the camera moved towards its target (<paramref name="factor"/>
+	/// below 1) or away from it (above 1), keeping its direction, between
+	/// <see cref="Figure.MinCameraDistance"/> and <see cref="Figure.MaxCameraDistance"/> (the mouse
+	/// wheel). <paramref name="cell"/> is the window's rectangle on the screen, as given to
+	/// <see cref="Scene3D.Build"/>: the default camera's distance depends on it. A camera set with
+	/// <c>camposition</c> stays a fixed point, moved along the line to the target.
+	/// </summary>
+	public static Axes Zoom(Axes axes, double factor, ScreenRect cell)
+	{
+		if (!(factor > 0) || !double.IsFinite(factor))
+			throw new ArgumentOutOfRangeException(nameof(factor), "The factor must be a positive number.");
+		var view = new Projection3D(axes, Scene3D.ViewArea(cell));
+		double distance = view.DistanceToTarget;
+		double moved = Math.Clamp(distance * factor, Figure.MinCameraDistance, Figure.MaxCameraDistance);
+		if (!view.IsPlaced)
+			return axes with { Camera = axes.Camera with { Distance = moved } };
+		var position = axes.Camera.Position!.Value;
+		var target = view.TargetPosition;
+		double s = moved / distance;
+		return axes with { Camera = axes.Camera with { Position = new Point3(
+			target.X + (position.X - target.X) * s, target.Y + (position.Y - target.Y) * s, target.Z + (position.Z - target.Z) * s) } };
+	}
+
+	/// <summary>
 	/// The camera as a command that sets it, for the status bar: <c>view(az, el)</c> while the
 	/// camera is placed relative to the box at the default distance, otherwise
 	/// <c>camposition(x, y, z)</c>. <paramref name="cell"/> is the window's rectangle on the screen.
