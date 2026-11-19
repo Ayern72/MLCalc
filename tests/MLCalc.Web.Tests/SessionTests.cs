@@ -15,6 +15,7 @@ public class SessionTests
 		var welcome = client.Welcome;
 		Assert.True(welcome.NewSession);
 		Assert.False(welcome.Running);
+		Assert.Equal(WebProtocol.BuildVersion, welcome.Version);
 		Assert.Equal(32, welcome.SessionId.Length);
 		Assert.Contains("sin", welcome.BuiltinNames);
 		Assert.Contains("fplot3d", welcome.BuiltinNames);

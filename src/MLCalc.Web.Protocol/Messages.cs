@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -24,6 +25,14 @@ public static class WebProtocol
 		options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 		options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 	}
+
+	/// <summary>
+	/// The version of this build: the version number and, when the build knew it, the commit, e.g.
+	/// <c>0.1.0+2074ec35…</c>. A server and the Blazor client it serves come from the same build, so a
+	/// client that gets another version in <see cref="WelcomeMessage"/> is an old page left open.
+	/// </summary>
+	public static string BuildVersion { get; } =
+		typeof(WebProtocol).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
 
 	/// <summary>New JSON settings for the protocol, e.g. for tests.</summary>
 	public static JsonSerializerOptions CreateJsonOptions()
@@ -99,10 +108,15 @@ public sealed record CameraUpdate(int Row, int Column, CameraData Camera);
 /// <param name="SessionId">The session: pass it as <c>?session=</c> when reconnecting to keep the variables and plots.</param>
 /// <param name="NewSession">True when a new session was started, also when the one asked for no longer existed.</param>
 /// <param name="Running">True when a program of this session is running (after a reconnect).</param>
+/// <param name="Version">
+/// The server's build (<see cref="WebProtocol.BuildVersion"/>). A client served by this server can
+/// compare it with its own: when they differ, the page was loaded before the server was updated,
+/// and should be reloaded.
+/// </param>
 /// <param name="BuiltinNames">The names of all functions and commands, sorted.</param>
 /// <param name="Limits">What programs may do on this server.</param>
 /// <param name="Figure">All plot windows, whole.</param>
-public sealed record WelcomeMessage(string SessionId, bool NewSession, bool Running, IReadOnlyList<string> BuiltinNames, Limits Limits, FigureMessage Figure);
+public sealed record WelcomeMessage(string SessionId, bool NewSession, bool Running, string Version, IReadOnlyList<string> BuiltinNames, Limits Limits, FigureMessage Figure);
 
 /// <summary>The limits a program runs under.</summary>
 /// <param name="RunSeconds">How long a program may run before it is stopped.</param>

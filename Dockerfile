@@ -22,7 +22,12 @@ RUN dotnet restore src/MLCalc.Web.Server/MLCalc.Web.Server.csproj
 
 COPY src/ src/
 COPY packaging/ packaging/
-RUN dotnet publish src/MLCalc.Web.Server/MLCalc.Web.Server.csproj -c Release --no-restore -o /app
+# The commit being built (the image has no .git to read it from), for the build's version: a page
+# left open across a deploy then sees that the server is newer. The Deploy workflow passes it:
+#   docker build --build-arg SOURCE_REVISION=$(git rev-parse HEAD) …
+ARG SOURCE_REVISION=""
+RUN dotnet publish src/MLCalc.Web.Server/MLCalc.Web.Server.csproj -c Release --no-restore -o /app \
+	${SOURCE_REVISION:+-p:SourceRevisionId=$SOURCE_REVISION}
 
 # ───────────── Run ─────────────
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime

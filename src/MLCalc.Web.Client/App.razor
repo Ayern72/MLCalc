@@ -1,10 +1,11 @@
 @implements IAsyncDisposable
 @inject MLCalcConnection Connection
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 
 <div class="page">
 	<header class="toolbar">
-		<span class="brand">MLCalc</span>
+		<span class="brand" title="MLCalc @WebProtocol.BuildVersion">MLCalc</span>
 		<label class="button @(CanRun ? "" : "disabled")" title="Run a .m script from your computer">
 			Open script…
 			<InputFile OnChange="OpenScriptAsync" accept=".m,.txt" disabled="@(!CanRun)" />
@@ -14,6 +15,14 @@
 		<button class="button @(showFunctions ? "active" : "")" @onclick="() => showFunctions = !showFunctions" title="List all functions and commands">Functions</button>
 		<a class="help" href="https://github.com/Ayern72/MLCalc/blob/main/docs/manual.md" target="_blank" rel="noopener">Manual</a>
 	</header>
+
+	@if (outdated)
+	{
+		<div class="update-bar" role="status">
+			MLCalc has been updated since this page was loaded.
+			<button class="button" @onclick="() => Navigation.Refresh(forceReload: true)">Reload</button>
+		</div>
+	}
 
 	<main class="panes">
 		<section class="console" aria-label="Console">
@@ -82,6 +91,7 @@
 	WelcomeMessage? welcome;
 	string input = "";
 	bool running;
+	bool outdated;
 	bool showFunctions;
 	bool scrollPending;
 	int runCounter;
@@ -110,6 +120,10 @@
 			bool reconnected = welcome is not null;
 			welcome = message;
 			running = message.Running;
+			// The server comes from another build than this page: it was updated while the page was
+			// open (or the browser kept old files). Offer a reload rather than reloading at once,
+			// which would lose the console.
+			outdated = message.Version != WebProtocol.BuildVersion;
 			figure.Apply(message.Figure);
 			if (reconnected && message.NewSession)
 				console.AddInfo("The server started a new session: earlier variables and plots are gone.");

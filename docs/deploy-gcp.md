@@ -26,6 +26,11 @@ new versions are deployed.
 - **CPU only during requests.** Cloud Run gives the instance CPU only while a request is open; an
   open page's WebSocket counts. A program that keeps running after its page has closed is slowed
   down until a page connects again.
+- **New versions reach open pages.** The page, its stylesheet and script are sent with
+  `Cache-Control: no-cache`, so every load checks for a new version; files with a hash in their
+  name are cached for a year. The image is built with the commit (`SOURCE_REVISION`), which
+  becomes part of the version; a page left open across a deploy sees another version when it
+  reconnects and offers to reload.
 - **Health.** The startup and liveness probes call `GET /health`. The conventional `/healthz` is
   not used: Cloud Run keeps some paths ending in `z` for itself and answers them with its own 404.
 - **Logs** go to Cloud Logging, one line per entry:
@@ -59,7 +64,7 @@ To deploy by hand instead (from the repository root, signed in with `gcloud auth
 
 ```powershell
 $tag = git rev-parse HEAD
-docker build -t europe-north1-docker.pkg.dev/silixsoft-mlcalc/mlcalc/web:$tag .
+docker build --build-arg SOURCE_REVISION=$tag -t europe-north1-docker.pkg.dev/silixsoft-mlcalc/mlcalc/web:$tag .
 docker push europe-north1-docker.pkg.dev/silixsoft-mlcalc/mlcalc/web:$tag
 (Get-Content -Raw deploy/cloudrun.yaml).Replace('${PROJECT_ID}', 'silixsoft-mlcalc').Replace('${TAG}', $tag) |
 	Set-Content -Encoding ascii $env:TEMP/cloudrun.yaml

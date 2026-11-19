@@ -45,7 +45,7 @@ jobs:
           gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
           # No attestations: Artifact Registry would count each as a version of its own, and the cleanup
           # policy (deploy/artifact-cleanup.json) keeps a number of versions.
-          docker build --provenance=false --sbom=false -t "$image" .
+          docker build --provenance=false --sbom=false --build-arg SOURCE_REVISION="$TAG" -t "$image" .
           docker push "$image"
 
       - name: Deploy to Cloud Run

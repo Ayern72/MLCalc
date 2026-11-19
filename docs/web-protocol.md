@@ -112,6 +112,7 @@ server sends what it has gathered every 50 ms: first `Output`, then `FigureChang
 	"sessionId": "3f2a9c0e5b7d4e61a8c2f0b9d7e6a1c4",
 	"newSession": true,
 	"running": false,
+	"version": "0.1.0+2074ec35c4a3ab48e0360eaa53e6d4ae199b5fd8",
 	"builtinNames": ["abs", "acos", "…"],
 	"limits": {
 		"runSeconds": 60,
@@ -129,6 +130,7 @@ server sends what it has gathered every 50 ms: first `Output`, then `FigureChang
 | `sessionId` | 32 hexadecimal digits; pass it as `?session=` to reconnect |
 | `newSession` | True for a new session, also when the one asked for no longer existed |
 | `running` | True when a program of this session is running (after a reconnect) |
+| `version` | The server's build: version number, `+` and the commit when the build knew it |
 | `builtinNames` | All functions and commands, sorted |
 | `limits.runSeconds` | How long a program may run, waiting for a free slot included |
 | `limits.maxMatrixElements` | The largest matrix or range |
@@ -136,6 +138,11 @@ server sends what it has gathered every 50 ms: first `Output`, then `FigureChang
 | `limits.maxOutputEntries` | The most console entries one run may write; the rest are left out |
 | `limits.maxSourceLength` | The longest program text accepted |
 | `figure` | Every plot window, each as `replace` |
+
+A client that the server itself serves, such as the Blazor client, is built together with it and
+knows its own version. When `version` differs, the server has been updated since the page was
+loaded (a reconnect after a deploy): the client offers to reload the page. A client built and served
+separately has no version of its own to compare and can ignore the field.
 
 ### `Output`
 

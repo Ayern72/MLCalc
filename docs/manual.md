@@ -1320,6 +1320,8 @@ or, with the .NET 10 SDK, run `dotnet run --project src/MLCalc.Web.Server` and o
   variables, the plots and a running program. A workspace that has not been used for 30 minutes
   is removed; MLCalc then says so and starts a new one. On the public site, all workspaces also
   end when the server stops after a quiet period.
+- When MLCalc has been updated while the page is open, a bar under the toolbar offers to reload
+  the page. Hovering over the name MLCalc shows the version.
 
 ### Differences from the desktop application
 

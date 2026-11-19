@@ -17,13 +17,19 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-// The Blazor client: its framework files, the other static files, and index.html for any other path.
-app.UseBlazorFrameworkFiles();
-app.UseStaticFiles();
+// The Blazor client's files, from the list the build makes of them (with a hash of each). Files with
+// the hash in their name are cached for good; the others, such as index.html and app.css, are
+// checked on every load, so that a new version reaches browsers at once. Compressed versions are
+// sent to browsers that accept them.
+app.MapStaticAssets();
 // Not /healthz: Cloud Run keeps some paths that end in z for itself and answers them with 404.
 app.MapHealthChecks("/health");
 app.MapHub<MLCalcHub>(WebProtocol.Path);
-app.MapFallbackToFile("index.html");
+// index.html for any other path, such as / itself; checked on every load like the file itself.
+app.MapFallbackToFile("index.html", new StaticFileOptions
+{
+	OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache",
+});
 
 app.Run();
 

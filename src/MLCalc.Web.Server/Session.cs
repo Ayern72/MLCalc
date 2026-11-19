@@ -113,7 +113,7 @@ sealed class Session : IConsoleOutput, IDisposable
 	/// messages only send what changed since.
 	/// </summary>
 	public Task SendWelcomeAsync(bool isNew) => SendAsync(client => client.Welcome(new WelcomeMessage(
-		Id, isNew, IsRunning, [.. interpreter.BuiltinNames],
+		Id, isNew, IsRunning, WebProtocol.BuildVersion, [.. interpreter.BuiltinNames],
 		new Limits(options.RunSeconds, options.MaxMatrixElements, options.MaxPointsPerWindow, options.MaxOutputEntries, options.MaxSourceLength),
 		encoder.Full(Figure.Snapshot()))));
 
