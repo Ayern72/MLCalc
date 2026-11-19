@@ -43,7 +43,9 @@ jobs:
         run: |
           image="$REGION-docker.pkg.dev/$PROJECT_ID/mlcalc/web:$TAG"
           gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
-          docker build -t "$image" .
+          # No attestations: Artifact Registry would count each as a version of its own, and the cleanup
+          # policy (deploy/artifact-cleanup.json) keeps a number of versions.
+          docker build --provenance=false --sbom=false -t "$image" .
           docker push "$image"
 
       - name: Deploy to Cloud Run

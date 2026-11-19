@@ -73,16 +73,18 @@ gcloud run services update-traffic mlcalc --region europe-north1 --to-revisions 
 ```
 
 Traffic stays pinned to that revision until the next deploy, which sends it to the newest one again.
-Artifact Registry keeps the three newest images
+Artifact Registry keeps the five newest image versions
 ([deploy/artifact-cleanup.json](../deploy/artifact-cleanup.json)), so only recent revisions can be
-rolled back to.
+rolled back to; an older revision whose image is gone reports *Container import failed*. The
+workflow builds without attestations (`--provenance=false --sbom=false`): each would be a version
+of its own, and one push would then use up several of the five.
 
 ## Costs
 
 The organisation's billing account has a budget of 10 USD a month, with e-mail alerts at 50, 90 and
 100 %. A budget only warns; the limit of one instance is what bounds the cost. Cloud Run's free tier
 covers 180 000 vCPU-seconds, 360 000 GiB-seconds and 2 million requests a month, and Artifact
-Registry stores 0.5 GB free; three images of about 110 MB each fit. Network traffic out of Google
+Registry stores 0.5 GB free; the images are about 110 MB each but share most of their layers. Network traffic out of Google
 is charged; a first visit downloads a few megabytes.
 
 ## The one-time setup
@@ -103,7 +105,7 @@ gcloud services enable run.googleapis.com artifactregistry.googleapis.com iam.go
 	iamcredentials.googleapis.com sts.googleapis.com
 $number = gcloud projects describe $project --format='value(projectNumber)'
 
-# Image repository, keeping the three newest images
+# Image repository, keeping the five newest image versions
 gcloud artifacts repositories create mlcalc --location=$region --repository-format=docker
 gcloud artifacts repositories set-cleanup-policies mlcalc --location=$region `
 	--policy=deploy/artifact-cleanup.json --no-dry-run
