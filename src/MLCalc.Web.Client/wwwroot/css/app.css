@@ -54,6 +54,9 @@ html, body {
 	display: flex;
 	flex-direction: column;
 	height: 100vh;
+	/* The height actually visible: on phones and tablets, 100vh is the height with the browser's
+	   address bar hidden, which would push the input and the status bar below the screen. */
+	height: 100dvh;
 }
 
 /* ───────────── Toolbar ───────────── */
@@ -123,11 +126,18 @@ html, body {
 	min-height: 0;
 }
 
-@media (max-width: 900px) {
+/* Portrait (a phone or tablet held upright, or a tall window): the plots on top, the console
+   below them, with the input at the bottom of the screen. */
+@media (orientation: portrait) {
 	.panes {
 		grid-template-columns: minmax(0, 1fr);
-		grid-template-rows: minmax(16rem, 1fr) minmax(16rem, 1fr);
-		padding: 0.5rem 1rem;
+		grid-template-rows: minmax(0, 1.2fr) minmax(0, 1fr);
+		gap: 0.5rem;
+		padding: 0.5rem;
+	}
+
+	.plots {
+		order: -1;
 	}
 }
 
