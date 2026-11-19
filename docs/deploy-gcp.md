@@ -64,18 +64,24 @@ docker push europe-north1-docker.pkg.dev/silixsoft-mlcalc/mlcalc/web:$tag
 gcloud run services replace $env:TEMP/cloudrun.yaml --region europe-north1
 ```
 
-**Rolling back.** Every deploy creates a new revision; the old ones stay. To list them and to send
-all traffic back to an earlier one:
+**Rolling back.** Deploy the earlier image again; images are tagged with their commit:
 
 ```
-gcloud run revisions list --service mlcalc --region europe-north1
-gcloud run services update-traffic mlcalc --region europe-north1 --to-revisions <revision>=100
+gcloud artifacts docker images list europe-north1-docker.pkg.dev/silixsoft-mlcalc/mlcalc --include-tags
+gcloud run services update mlcalc --region europe-north1 `
+	--image europe-north1-docker.pkg.dev/silixsoft-mlcalc/mlcalc/web:<commit>
 ```
 
-Traffic stays pinned to that revision until the next deploy, which sends it to the newest one again.
+This makes a new revision with the old image and the current settings, which serves within
+seconds; the next run of the workflow deploys `main` again. Moving traffic back to an existing
+older revision (`gcloud run services update-traffic --to-revisions`) is the usual Cloud Run way, but
+not with this service: with at most one instance, a revision that has just been replaced still
+holds its instance while it shuts down, and in a test it answered every request with 429 *no
+available instance* from when it was replaced until at least nine minutes later.
+
 Artifact Registry keeps the five newest image versions
-([deploy/artifact-cleanup.json](../deploy/artifact-cleanup.json)), so only recent revisions can be
-rolled back to; an older revision whose image is gone reports *Container import failed*. The
+([deploy/artifact-cleanup.json](../deploy/artifact-cleanup.json)), so only recent versions can be
+rolled back to; a revision whose image is gone reports *Container import failed*. The
 workflow builds without attestations (`--provenance=false --sbom=false`): each would be a version
 of its own, and one push would then use up several of the five.
 
