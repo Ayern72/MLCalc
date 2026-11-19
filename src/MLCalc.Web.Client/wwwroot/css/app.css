@@ -128,13 +128,26 @@ html, body {
 
 /* ───────────── Console and plots ───────────── */
 
+/* The console and the plots with the divider between them. Dragging the divider sets the shares
+   (--console-landscape and so on, in fr) on this element; mlcalc.js remembers them per orientation. */
 .panes {
 	flex: 1;
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-	gap: 1rem;
+	grid-template-columns: minmax(0, var(--console-landscape, 1fr)) 1rem minmax(0, var(--plots-landscape, 1.4fr));
 	padding: 1rem;
 	min-height: 0;
+}
+
+.console {
+	order: 1;
+}
+
+.divider {
+	order: 2;
+}
+
+.plots {
+	order: 3;
 }
 
 /* Portrait (a phone or tablet held upright, or a tall window): the plots on top, the console
@@ -142,13 +155,62 @@ html, body {
 @media (orientation: portrait) {
 	.panes {
 		grid-template-columns: minmax(0, 1fr);
-		grid-template-rows: minmax(0, 1.2fr) minmax(0, 1fr);
-		gap: 0.5rem;
+		grid-template-rows: minmax(0, var(--plots-portrait, 1.2fr)) 0.75rem minmax(0, var(--console-portrait, 1fr));
 		padding: 0.5rem;
 	}
 
 	.plots {
-		order: -1;
+		order: 1;
+	}
+
+	.console {
+		order: 3;
+	}
+}
+
+/* The divider: a thin grip in the middle of the gap. The area that takes the pointer reaches
+   further than the gap, so that a finger finds it easily. */
+.divider {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: col-resize;
+	touch-action: none;
+	user-select: none;
+	outline: none;
+}
+
+.divider::before {
+	content: "";
+	position: absolute;
+	inset: 0 -0.5rem;
+}
+
+.divider::after {
+	content: "";
+	width: 4px;
+	height: 2.5rem;
+	border-radius: 2px;
+	background: var(--border);
+}
+
+.divider:hover::after, .divider:focus-visible::after, .divider.dragging::after {
+	background: var(--accent);
+}
+
+@media (orientation: portrait) {
+	.divider {
+		cursor: row-resize;
+	}
+
+	.divider::before {
+		inset: -0.5rem 0;
+	}
+
+	.divider::after {
+		width: 2.5rem;
+		height: 4px;
 	}
 }
 

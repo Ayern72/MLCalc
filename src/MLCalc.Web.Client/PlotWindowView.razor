@@ -6,7 +6,8 @@
 @* One plot window, drawn as SVG with the same code as the desktop app's SVG export. A transparent
    layer on top takes the mouse, so that positions are measured from the window's corner. In a 3D
    window, dragging turns the camera and the wheel moves it closer or further away, as in the
-   desktop app; while it moves, large items are drawn thinned out. *@
+   desktop app; on a touch screen, one finger turns and two fingers pinch to move closer or further
+   away. While it moves, large items are drawn thinned out. *@
 <div class="plot-window">
 	@svg
 	<div class="plot-mouse @(Is3D ? "turnable" : "")" @ref="mouse"
@@ -32,6 +33,12 @@
 
 	/// <summary>A drag in progress: the angles and pointer position where it began.</summary>
 	(Axes Start, double Azimuth, double Elevation, double X, double Y, long Pointer)? drag;
+
+	/// <summary>The fingers on a 3D window, by pointer id, where they are now.</summary>
+	readonly Dictionary<long, (double X, double Y)> touches = [];
+
+	/// <summary>A pinch in progress: the window and the distance between the two fingers when it began.</summary>
+	(Axes Start, double Distance)? pinch;
 
 	CancellationTokenSource? wheelSettle;
 
@@ -61,11 +68,12 @@
 		if (ReferenceEquals(Axes, drawnAxes) && Width == drawnWidth && Height == drawnHeight && IsCurrent == drawnCurrent)
 			return;
 		// The window as the user left it, now confirmed by the page: already drawn.
-		bool confirmed = turned is not null && drag is null && wheelSettle is null
+		bool confirmed = turned is not null && drag is null && pinch is null && wheelSettle is null
 			&& Axes.Camera == turned.Camera && Axes.Items == turned.Items
 			&& Width == drawnWidth && Height == drawnHeight && IsCurrent == drawnCurrent;
 		turned = null;
 		drag = null;
+		pinch = null;
 		drawnAxes = Axes;
 		if (!confirmed)
 			Draw(Axes, preview: false);
@@ -92,19 +100,53 @@
 	{
 		if (!Is3D || e.Button != 0)
 			return;
+		// Keep getting the pointer's moves when it leaves the window during the drag or pinch.
+		await JS.InvokeVoidAsync("mlcalc.capturePointer", mouse, e.PointerId);
+		if (e.PointerType == "touch")
+		{
+			touches[e.PointerId] = (e.ClientX, e.ClientY);
+			if (touches.Count == 2)
+			{
+				// A second finger: the turn becomes a pinch, from the view as it is now.
+				drag = null;
+				pinch = (Shown, FingerDistance());
+				return;
+			}
+			if (touches.Count > 2 || pinch is not null)
+				return;
+		}
 		var (azimuth, elevation) = Projection3D.ViewAngles(Shown);
 		drag = (Shown, azimuth, elevation, e.ClientX, e.ClientY, e.PointerId);
-		// Keep getting the pointer's moves when it leaves the window during the drag.
-		await JS.InvokeVoidAsync("mlcalc.capturePointer", mouse, e.PointerId);
+	}
+
+	/// <summary>The distance between the first two fingers on the window, in pixels.</summary>
+	double FingerDistance()
+	{
+		var fingers = touches.Values.Take(2).ToArray();
+		return Math.Max(1, Math.Sqrt(Math.Pow(fingers[0].X - fingers[1].X, 2) + Math.Pow(fingers[0].Y - fingers[1].Y, 2)));
 	}
 
 	void OnPointerMove(PointerEventArgs e)
 	{
+		if (touches.ContainsKey(e.PointerId))
+			touches[e.PointerId] = (e.ClientX, e.ClientY);
+		if (pinch is { } p)
+		{
+			if (touches.Count < 2)
+				return;
+			// Fingers apart: closer. Measured from the start, so that the steps do not add up errors.
+			turned = CameraControl.Zoom(p.Start, p.Distance / FingerDistance(), Cell);
+			Draw(turned, preview: true);
+			OnStatus?.Invoke(GridLabel + CameraControl.Describe(turned, Cell));
+			return;
+		}
 		if (drag is not { } d)
 		{
 			OnStatus?.Invoke(Describe(e.OffsetX, e.OffsetY));
 			return;
 		}
+		if (e.PointerId != d.Pointer)
+			return;
 		var (azimuth, elevation) = CameraControl.Drag(d.Azimuth, d.Elevation, e.ClientX - d.X, e.ClientY - d.Y);
 		if (turned is not null && turned.Camera.Azimuth == azimuth && turned.Camera.Elevation == elevation)
 			return;
@@ -115,8 +157,23 @@
 
 	async Task OnPointerUpAsync(PointerEventArgs e)
 	{
-		if (drag is not { } d)
+		bool wasTouch = touches.Remove(e.PointerId);
+		if (pinch is not null)
+		{
+			await JS.InvokeVoidAsync("mlcalc.releasePointer", mouse, e.PointerId);
+			// The pinch ends when a finger is lifted; the finger left on the window does not turn
+			// the view, which would jump from where the pinch began.
+			pinch = null;
+			if (turned is not null)
+				Commit();
 			return;
+		}
+		if (drag is not { } d || d.Pointer != e.PointerId)
+		{
+			if (wasTouch)
+				await JS.InvokeVoidAsync("mlcalc.releasePointer", mouse, e.PointerId);
+			return;
+		}
 		drag = null;
 		await JS.InvokeVoidAsync("mlcalc.releasePointer", mouse, d.Pointer);
 		if (turned is not null)

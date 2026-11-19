@@ -24,7 +24,7 @@
 		</div>
 	}
 
-	<main class="panes">
+	<main class="panes" @ref="panesElement">
 		<section class="console" aria-label="Console">
 			@if (showFunctions)
 			{
@@ -49,6 +49,10 @@
 					disabled="@(!Connected)" readonly="@running"></textarea>
 			</div>
 		</section>
+
+		@* Moved by mlcalc.js (setupDivider), which also handles the arrow keys and double-click. *@
+		<div class="divider" @ref="dividerElement" role="separator" tabindex="0"
+			aria-label="Divider between the console and the plots" title="Drag to resize; double-click to reset"></div>
 
 		<section class="plots" aria-label="Plots">
 			<PlotPane Figure="figure" OnStatus="text => statusBar?.ShowMouse(text)" OnCamera="OnCamera" />
@@ -88,6 +92,8 @@
 	StatusBar? statusBar;
 	ElementReference outputElement;
 	ElementReference inputElement;
+	ElementReference panesElement;
+	ElementReference dividerElement;
 	WelcomeMessage? welcome;
 	string input = "";
 	bool running;
@@ -151,7 +157,10 @@
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
 		if (firstRender)
+		{
 			await JS.InvokeVoidAsync("mlcalc.setupInput", inputElement);
+			await JS.InvokeVoidAsync("mlcalc.setupDivider", dividerElement, panesElement);
+		}
 		if (scrollPending)
 		{
 			scrollPending = false;

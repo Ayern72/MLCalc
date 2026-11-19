@@ -1303,7 +1303,11 @@ or, with the .NET 10 SDK, run `dotnet run --project src/MLCalc.Web.Server` and o
 
 ### The page
 
-- The console is on the left and the plots on the right (below each other on a narrow screen).
+- The console is on the left and the plots on the right. On a screen that is taller than it is
+  wide, such as a phone held upright, the plots are on top and the console below them.
+- Drag the divider between the console and the plots to give either more room (with the keyboard:
+  select it with Tab and use the arrow keys). Double-click it to return to the usual split. The
+  browser remembers the split, separately for upright and wide screens.
 - **Enter** runs the input, **Shift+Enter** starts a new line, **Up/Down** recall earlier input
   and **Esc** stops a running program (or discards unfinished input). Unfinished input continues
   with the `...` prompt, as in the desktop application. An error in one line of input is marked
@@ -1315,7 +1319,8 @@ or, with the .NET 10 SDK, run `dotnet run --project src/MLCalc.Web.Server` and o
   and the camera of a 3D window as the command that sets it.
 - 3D windows turn and zoom with the mouse as in the desktop application ([8.6](#86-3d-plots)):
   drag to turn, use the wheel to move closer or further away, and double-click to return to the
-  default view.
+  default view. On a touch screen, drag with one finger to turn, and pinch with two to move closer
+  (fingers apart) or further away (fingers together).
 - Each browser tab has its own workspace. Reloading the page, or a lost connection, keeps the
   variables, the plots and a running program. A workspace that has not been used for 30 minutes
   is removed; MLCalc then says so and starts a new one. On the public site, all workspaces also
