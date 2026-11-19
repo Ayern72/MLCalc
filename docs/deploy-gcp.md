@@ -14,8 +14,10 @@ new versions are deployed.
   memory, so every connection of a tab must reach the same instance; with more than one instance
   that would need shared session state. One instance also caps the cost.
 - **Scale to zero.** No instance runs while nobody visits, so the service costs next to nothing.
-  The first visit after a quiet period waits a few seconds for the instance to start. When the
-  instance stops, its workspaces end; the page says so and starts a new one.
+  An instance stops after 15 minutes without requests (an open page counts); the next visit
+  starts one in about 1.2 seconds (measured from request to passing startup probe), plus the
+  page's own loading. When the instance stops, its workspaces end; the page says so and starts a
+  new one.
 - **The configuration is in the repository**: [deploy/cloudrun.yaml](../deploy/cloudrun.yaml)
   holds the instance limits, CPU and memory, probes and the MLCalc limits. Every deploy applies the
   whole file with `gcloud run services replace`, so what runs is what the file says.
@@ -76,8 +78,8 @@ This makes a new revision with the old image and the current settings, which ser
 seconds; the next run of the workflow deploys `main` again. Moving traffic back to an existing
 older revision (`gcloud run services update-traffic --to-revisions`) is the usual Cloud Run way, but
 not with this service: with at most one instance, a revision that has just been replaced still
-holds its instance while it shuts down, and in a test it answered every request with 429 *no
-available instance* from when it was replaced until at least nine minutes later.
+holds its instance while it shuts down. In a test, the replaced revision's instance took 25 minutes
+to stop, and until then the revision answered every request with 429 *no available instance*.
 
 Artifact Registry keeps the five newest image versions
 ([deploy/artifact-cleanup.json](../deploy/artifact-cleanup.json)), so only recent versions can be
