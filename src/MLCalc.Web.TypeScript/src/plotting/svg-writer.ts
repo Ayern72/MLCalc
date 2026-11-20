@@ -3,17 +3,47 @@
 import { formatFixed2 as f2, formatRoundTrip as r, roundTo } from './format';
 import { axisTicks, bottom, clamp, formatTick, plotArea, PlotTransform, right, segments, type ScreenRect } from './layout';
 import { penColor, type Axes, type PlotItem, type PlotPoint } from './model';
+import type { ScreenPoint } from './projection3d';
+import { buildScene } from './scene3d';
 
 const markerSize = 3.5, dotSize = 2.2;
 
-/** An item drawn in a 3D window; set by the 3D module, which needs the projection (milestone 3). */
-export type SpaceRenderer = (svg: string[], axes: Axes, cell: ScreenRect, isCurrent: boolean, clip: string, preview: boolean) => void;
+/** A 3D window: the scene's primitives in order, clipped to the cell. */
+function renderSpace(svg: string[], axes: Axes, cell: ScreenRect, isCurrent: boolean, clip: string, preview: boolean): void {
+	svg.push(`<clipPath id="${clip}"><rect x="${r(cell.left)}" y="${r(cell.top)}" width="${r(cell.width)}" height="${r(cell.height)}"/></clipPath>\n`);
+	svg.push(`<g clip-path="url(#${clip})">\n`);
+	for (const primitive of buildScene(axes, cell, preview)) {
+		switch (primitive.kind) {
+			case 'polyline': {
+				const [color, width, extra] = primitive.stroke === 'grid' ? ['#e2e2e2', 1, ' stroke-dasharray="4 3"']
+					: primitive.stroke === 'frame' || primitive.stroke === 'tick' ? ['#999', 1, '']
+					: [penColor(primitive.pen), 1.5, ' stroke-linejoin="round"'];
+				svg.push(`<path d="${pathData(primitive.points, false)}" fill="none" stroke="${color}" stroke-width="${r(width)}"${extra}/>\n`);
+				break;
+			}
+			case 'polygon':
+				svg.push(`<path d="${pathData(primitive.points, true)}" fill="white" stroke="${penColor(primitive.pen)}" stroke-width="1" stroke-linejoin="round"/>\n`);
+				break;
+			case 'markers':
+				if (primitive.style === 'dot')
+					dotPath(svg, primitive.points.map(p => [roundTo(p.x, 2), roundTo(p.y, 2)] as const), penColor(primitive.pen));
+				else
+					markerPath(svg, primitive.points.map(p => [p.x, p.y] as const), penColor(primitive.pen), primitive.style === 'star');
+				break;
+			case 'text':
+				text(svg, primitive.text, primitive.at.x, primitive.at.y + primitive.size * 0.35, primitive.size, primitive.align,
+					primitive.bold ? ' font-weight="600"' : '');
+				break;
+		}
+	}
+	svg.push('</g>\n');
+	if (isCurrent)
+		svg.push(`<rect x="${r(cell.left + 3)}" y="${r(cell.top + 3)}" width="${r(cell.width - 6)}" height="${r(cell.height - 6)}" fill="none" stroke="#1f77b4" stroke-width="2"/>\n`);
+}
 
-let renderSpace: SpaceRenderer = () => {
-};
-
-export function setSpaceRenderer(renderer: SpaceRenderer): void {
-	renderSpace = renderer;
+function pathData(points: readonly ScreenPoint[], close: boolean): string {
+	const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${f2(p.x)} ${f2(p.y)}`).join('');
+	return close ? path + 'Z' : path;
 }
 
 /**

@@ -1,7 +1,8 @@
 import { ConsoleModel } from '../console-model';
 import { MLCalcConnection, type ConnectionState } from '../connection';
 import type { Limits, WelcomeMessage } from '../protocol';
-import { FigureState } from '../figure-state';
+import { FigureState, toCameraData } from '../figure-state';
+import type { Camera } from '../plotting/model';
 import { ConsoleView } from './console-view';
 import { element } from './dom';
 import { download } from './download';
@@ -79,7 +80,10 @@ export class App {
 		root.replaceChildren(page);
 
 		this.#consoleView = new ConsoleView(this.#output, this.#console);
-		this.#plotPane = new PlotPane(this.#figure, { status: text => this.showMouseStatus(text) });
+		this.#plotPane = new PlotPane(this.#figure, {
+			status: text => this.showMouseStatus(text),
+			camera: (row, column, camera) => this.#onCamera(row, column, camera),
+		});
 		this.plots.append(this.#plotPane.element);
 		this.#openInput.addEventListener('change', () => void this.#openScript());
 		this.#stopButton.addEventListener('click', () => void this.#cancel());
@@ -154,6 +158,19 @@ export class App {
 		}
 	}
 
+	/**
+	 * The user turned, zoomed or reset a 3D window: keep the camera, so that later changes from the
+	 * server apply to it, and tell the server, so that savefig and later commands see the same view.
+	 */
+	#onCamera(row: number, column: number, camera: Camera): void {
+		if (!this.#figure.setCamera(row, column, camera))
+			return;
+		this.#plotPane.update();
+		this.#connection.setCamera({ row, column, camera: toCameraData(camera) }).catch(() => {
+			// Not connected: the server keeps its own camera, and sends it again on reconnecting.
+		});
+	}
+
 	#onWelcome(message: WelcomeMessage): void {
 		const reconnected = this.#welcome !== null;
 		this.#welcome = message;
@@ -162,7 +179,7 @@ export class App {
 		// open (or the browser kept old files). Offer a reload rather than reloading at once,
 		// which would lose the console.
 		this.#updateBar.hidden = message.version === buildVersion;
-		this.#functions.replaceChildren(...message.builtinNames.map(name => element('code', {}, name)));
+		this.#functions.replaceChildren(...message.builtinNames.map(name => element('code', {}, name)));
 		this.#figure.apply(message.figure);
 		this.#plotPane.update();
 		if (reconnected && message.newSession)

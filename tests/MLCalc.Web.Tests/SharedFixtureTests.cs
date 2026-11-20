@@ -52,6 +52,20 @@ public class SharedFixtureTests
 		new("huge-and-tiny-ticks", "xrange(1e-7, 3e-7); yrange(-2e20, 5e20); plot([1.5e-7 2.5e-7], [0 1e20])"),
 		new("gaps", "x = 0:0.25:4; y = sqrt(x - 2); plot(x, real(y)); fplot(\"x\", \"1/(x - 1)\")"),
 		new("polynomial", "xrange(-3, 3); yrange(-10, 10); polyplot([1 0 -4 1])", Width: 640, Height: 480),
+		// 3D windows
+		new("surface", "fplot3d(\"x\", \"y\", \"sin(x)*cos(y)\", 20)"),
+		new("surface-grid-titles", "xrange(-3, 3); yrange(-3, 3); zrange(-1, 2); grid; title(\"Bump & <dip>\"); xlabel(\"east\"); ylabel(\"north\"); zlabel(\"height\"); fplot3d(\"x\", \"y\", \"exp(-(x^2 + y^2)) - 0.3*exp(-((x-1)^2 + y^2)*4)\", 25)", Width: 520, Height: 400),
+		new("surface-from-behind", "view(150, 25); fplot3d(\"x\", \"y\", \"x*y/10\", 12)"),
+		new("surface-from-below", "view(-30, -35); zrange(-20, 20); fplot3d(\"x\", \"y\", \"x^2 - y^2\", 15)"),
+		new("from-above", "view(2); fplot3d(\"x\", \"y\", \"sin(x/2) + cos(y/3)\", 10)"),
+		new("surface-with-holes", "fplot3d(\"x\", \"y\", \"sqrt(25 - x^2 - y^2)\", 18)"),
+		new("camera-placed", "camposition(25, -18, 12); camtarget(2, 0, -1); fplot3d(\"x\", \"y\", \"cos(x)*sin(y)\", 16)"),
+		new("camera-close", "camposition(14, -12, 9); fplot3d(\"x\", \"y\", \"sin(x + y)\", 16)", Width: 450, Height: 350),
+		new("curve-and-markers", "t = 0:0.25:30; plot3d(cos(t) * 8, sin(t) * 8, t - 15); plot3d([0 5 -5], [0 5 5], [0 2 4], +); plot3d([3 -3], [-3 3], [1 -1], *); for k = 1:30 do dot3d(k/3 - 5, 5 - k/3, sin(k))"),
+		new("curve-leaving-the-box", "zrange(-2, 2); t = -12:0.5:12; plot3d(t, t / 2, sin(t) * 3); x = [1 2 3 4 5]; plot3d(x, -x, [0 50 1 1 -40])"),
+		new("large-surface-preview", "fplot3d(\"x\", \"y\", \"sin(x/2)*sin(y/3)\", 61)", Preview: true),
+		new("current-3d-window", "initdisplay(1, 2); currentwin(1, 2); fplot3d(\"x\", \"y\", \"x + y\", 6)", IsCurrent: true),
+		new("small-3d-window", "title(\"tiny\"); fplot3d(\"x\", \"y\", \"x\", 5)", Width: 100, Height: 90),
 	];
 
 	[Theory]
@@ -65,7 +79,8 @@ public class SharedFixtureTests
 
 		// As a client gets it: through the protocol and its JSON (single precision), and back.
 		var window = JsonSerializer.Deserialize<PlotWindow>(JsonSerializer.Serialize(FigureEncoder.ToWindow(axes), Json), Json)!;
-		string svg = SvgWriter.RenderWindow(FigureState.ToAxes(window), drawing.Width, drawing.Height, "w", drawing.IsCurrent, drawing.Preview);
+		var received = FigureState.ToAxes(window);
+		string svg = SvgWriter.RenderWindow(received, drawing.Width, drawing.Height, "w", drawing.IsCurrent, drawing.Preview);
 
 		var fixture = new JsonObject
 		{
@@ -79,6 +94,19 @@ public class SharedFixtureTests
 			// One string per line, so that a change shows up as a readable diff.
 			["svg"] = new JsonArray([.. svg.TrimEnd('\n').Split('\n').Select(line => (JsonNode)line)]),
 		};
+		if (received.Kind == AxesKind.Space)
+		{
+			// The status bar's camera, as the window shows it, after two notches of the wheel, and after a drag.
+			var cell = new ScreenRect(0, 0, drawing.Width, drawing.Height);
+			var (azimuth, elevation) = Projection3D.ViewAngles(received);
+			var dragged = CameraControl.Drag(azimuth, elevation, 37, -23);
+			fixture["camera"] = new JsonObject
+			{
+				["describe"] = CameraControl.Describe(received, cell),
+				["zoomed"] = CameraControl.Describe(CameraControl.Zoom(received, CameraControl.WheelFactor(240), cell), cell),
+				["dragged"] = CameraControl.Describe(CameraControl.Turn(received, dragged.Azimuth, dragged.Elevation), cell),
+			};
+		}
 		Check(Path.Combine("drawings", drawing.Name + ".json"), fixture);
 	}
 

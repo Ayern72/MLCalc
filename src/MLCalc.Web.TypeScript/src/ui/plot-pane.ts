@@ -49,11 +49,10 @@ export class PlotPane {
 		for (let row = 0; row < figure.rows; row++)
 			for (let column = 0; column < figure.columns; column++)
 				this.#views[row * figure.columns + column]!.update(
-					figure.window(row, column),
+					figure.window(row, column), row, column,
 					this.#width / figure.columns,
 					this.#height / figure.rows,
 					several && row === figure.currentRow && column === figure.currentColumn,
-					`w${row}${column}`,
 					several ? `window (${row + 1},${column + 1})   ` : '');
 	}
 }
