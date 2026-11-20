@@ -31,6 +31,18 @@ window.mlcalc = {
 		element.scrollTop = element.scrollHeight;
 	},
 
+	// Keeps the console at its end when it gets smaller (a phone's keyboard opening, the divider), as
+	// long as it was at the end: otherwise the latest output would slide out of view.
+	keepAtEnd(element) {
+		const atEnd = () => element.scrollTop + element.clientHeight >= element.scrollHeight - 4;
+		let wasAtEnd = true;
+		element.addEventListener('scroll', () => wasAtEnd = atEnd(), { passive: true });
+		new ResizeObserver(() => {
+			if (wasAtEnd)
+				element.scrollTop = element.scrollHeight;
+		}).observe(element);
+	},
+
 	// While a 3D window is turned, its pointer moves keep coming when the pointer leaves the window.
 	// A pointer the browser does not know (e.g. one already lifted) is ignored.
 	capturePointer(element, pointerId) {

@@ -68,7 +68,7 @@ export class App {
 		this.#functions = element('div', { class: 'functions', hidden: '' });
 		this.#output = element('div', { class: 'output' });
 		this.#prompt = element('span', { class: 'prompt' }, '>>');
-		this.#input = element('textarea', { rows: '1', spellcheck: 'false', autocomplete: 'off', 'aria-label': 'Input' });
+		this.#input = element('textarea', { rows: '1', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off', 'aria-label': 'Input' });
 		const consoleSection = element('section', { class: 'console', 'aria-label': 'Console' },
 			this.#functions, this.#output, element('div', { class: 'input-row' }, this.#prompt, this.#input));
 		this.divider = element('div', {

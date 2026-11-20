@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+	<!--
+		The MLCalc app: the web client's page (MLCalc.Web.Ui) in a BlazorWebView, with programs running
+		in the app itself (MLCalc.Hosting), as in the desktop app. Android only for now; nothing here
+		ties it to Android, so iOS can be added to TargetFrameworks (net10.0-ios, built on a Mac).
+		Needs the MAUI workload: dotnet workload install maui-android. Not part of MLCalc.slnx.
+	-->
+	<PropertyGroup>
+		<TargetFramework></TargetFramework>
+		<TargetFrameworks>net10.0-android</TargetFrameworks>
+		<OutputType>Exe</OutputType>
+		<RootNamespace>MLCalc.Maui</RootNamespace>
+		<UseMaui>true</UseMaui>
+		<SingleProject>true</SingleProject>
+		<!-- The page's stylesheet is the web client's, handled by Blazor rather than MAUI. -->
+		<EnableDefaultCssItems>false</EnableDefaultCssItems>
+		<IsPackable>false</IsPackable>
+
+		<ApplicationTitle>MLCalc</ApplicationTitle>
+		<ApplicationId>com.silixsoft.mlcalc</ApplicationId>
+		<ApplicationDisplayVersion>$(VersionPrefix)</ApplicationDisplayVersion>
+		<ApplicationVersion>1</ApplicationVersion>
+
+		<!--
+			The page can be inspected (chrome://inspect, or the DevTools protocol through adb forward) in
+			Debug builds, and in a Release build with -p:WebViewDebugging=true, to measure its speed.
+		-->
+		<DefineConstants Condition="'$(Configuration)' == 'Debug' or '$(WebViewDebugging)' == 'true'">$(DefineConstants);WEBVIEW_DEBUGGING</DefineConstants>
+
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">26.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- The web app's icon, as an Android adaptive icon: the drawing on the icon's blue. -->
+		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#1f3a5f" />
+		<MauiSplashScreen Include="Resources\AppIcon\splash.svg" Color="#1f3a5f" BaseSize="128,128" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Maui.Controls" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\MLCalc.Web.Protocol\MLCalc.Web.Protocol.csproj" />
+		<ProjectReference Include="..\MLCalc.Web.Ui\MLCalc.Web.Ui.csproj" />
+		<ProjectReference Include="..\MLCalc.Hosting\MLCalc.Hosting.csproj" />
+		<ProjectReference Include="..\MLCalc.Interpreter\MLCalc.Interpreter.csproj" />
+		<ProjectReference Include="..\MLCalc.Plotting\MLCalc.Plotting.csproj" />
+		<ProjectReference Include="..\MLCalc.Mathematics\MLCalc.Mathematics.csproj" />
+		<ProjectReference Include="..\MLCalc.LinearAlgebra\MLCalc.LinearAlgebra.csproj" />
+		<ProjectReference Include="..\MLCalc.Language\MLCalc.Language.csproj" />
+	</ItemGroup>
+</Project>

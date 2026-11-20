@@ -34,7 +34,7 @@ public static class SvgWriter
 	/// One plot window as an SVG document of the given size in pixels, e.g. for a web page that
 	/// shows each window as its own element. <paramref name="id"/> starts the ids inside the SVG,
 	/// which must be unique on a page. <paramref name="preview"/> draws large 3D items thinned out,
-	/// for redrawing quickly while the camera moves (see <see cref="Scene3D.Preview"/>).
+	/// for redrawing quickly while the camera moves (see <see cref="Scene3D.Preview(Axes)"/>).
 	/// </summary>
 	public static string RenderWindow(Axes axes, double width, double height, string id = "w", bool isCurrent = false, bool preview = false)
 	{

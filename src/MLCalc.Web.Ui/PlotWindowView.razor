@@ -56,6 +56,9 @@
 	/// <summary>Gets the camera (row, column, camera) after the user turned, zoomed or reset a 3D window.</summary>
 	[Parameter] public Action<int, int, Camera>? OnCamera { get; set; }
 
+	/// <summary>How far a 3D window is thinned out while it is turned; null for the plot model's own limits.</summary>
+	[Parameter] public PreviewLimits? Preview { get; set; }
+
 	Axes Shown => turned ?? Axes;
 
 	bool Is3D => Axes.Kind == AxesKind.Space;
@@ -84,7 +87,8 @@
 		(drawnWidth, drawnHeight, drawnCurrent) = (Width, Height, IsCurrent);
 		redraw = true;
 		svg = Width >= 1 && Height >= 1
-			? new MarkupString(SvgWriter.RenderWindow(axes, Width, Height, $"w{Row}{Column}", IsCurrent, preview))
+			? new MarkupString(SvgWriter.RenderWindow(preview && Preview is { } limits ? Scene3D.Preview(axes, limits.GridLines, limits.Points) : axes,
+				Width, Height, $"w{Row}{Column}", IsCurrent, preview))
 			: default;
 	}
 

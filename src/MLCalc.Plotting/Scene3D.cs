@@ -231,31 +231,43 @@ public static class Scene3D
 	/// curve or cloud at most about <see cref="PreviewPoints"/> of its points. A curve keeps its
 	/// non-finite points, so that its gaps stay gaps.
 	/// </summary>
-	public static Axes Preview(Axes axes) => axes with { Items = [.. axes.Items.Select(PreviewItem)] };
+	public static Axes Preview(Axes axes) => Preview(axes, PreviewGridLines, PreviewPoints);
 
-	static PlotItem PreviewItem(PlotItem item)
+	/// <summary>
+	/// <see cref="Preview(Axes)"/> with other limits: at most <paramref name="gridLines"/> grid lines each
+	/// way (at least 2) and about <paramref name="maxPoints"/> points. A front-end where each preview
+	/// costs more to show, such as the app, thins out further.
+	/// </summary>
+	public static Axes Preview(Axes axes, int gridLines, int maxPoints)
+	{
+		ArgumentOutOfRangeException.ThrowIfLessThan(gridLines, 2);
+		ArgumentOutOfRangeException.ThrowIfLessThan(maxPoints, 1);
+		return axes with { Items = [.. axes.Items.Select(item => PreviewItem(item, gridLines, maxPoints))] };
+	}
+
+	static PlotItem PreviewItem(PlotItem item, int gridLines, int maxPoints)
 	{
 		switch (item)
 		{
-			case Surface s when s.XCount > PreviewGridLines || s.YCount > PreviewGridLines:
+			case Surface s when s.XCount > gridLines || s.YCount > gridLines:
 			{
-				var xs = Lines(s.XCount, PreviewGridLines);
-				var ys = Lines(s.YCount, PreviewGridLines);
+				var xs = Lines(s.XCount, gridLines);
+				var ys = Lines(s.YCount, gridLines);
 				var points = ImmutableArray.CreateBuilder<Point3>(xs.Count * ys.Count);
 				foreach (int j in ys)
 					foreach (int i in xs)
 						points.Add(s[i, j]);
 				return s with { XCount = xs.Count, YCount = ys.Count, Points = points.MoveToImmutable() };
 			}
-			case PointSeries3D s when s.Points.Length > PreviewPoints:
+			case PointSeries3D s when s.Points.Length > maxPoints:
 			{
-				int step = Step(s.Points.Length);
+				int step = Step(s.Points.Length, maxPoints);
 				var points = s.Points;
 				return s with { Points = [.. points.Where((p, k) => k % step == 0 || k == points.Length - 1 || !p.IsFinite)] };
 			}
-			case DotCloud3D c when c.Points.Count > PreviewPoints:
+			case DotCloud3D c when c.Points.Count > maxPoints:
 			{
-				int step = Step(c.Points.Count);
+				int step = Step(c.Points.Count, maxPoints);
 				return c with { Points = [.. c.Points.Where((_, k) => k % step == 0)] };
 			}
 			default:
@@ -263,7 +275,7 @@ public static class Scene3D
 		}
 	}
 
-	static int Step(int count) => (count + PreviewPoints - 1) / PreviewPoints;
+	static int Step(int count, int maxPoints) => (count + maxPoints - 1) / maxPoints;
 
 	/// <summary>At most <paramref name="max"/> evenly spread indices from 0 to <paramref name="count"/> − 1, both included.</summary>
 	static List<int> Lines(int count, int max)

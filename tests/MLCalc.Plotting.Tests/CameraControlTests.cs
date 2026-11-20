@@ -193,6 +193,20 @@ public class CameraControlTests
 	}
 
 	[Fact]
+	public void APreviewCanThinOutFurther()
+	{
+		var figure = new Figure();
+		figure.AddSurface("f", (x, y) => x * y, Scene3D.PreviewGridLines);
+		figure.AddSeries3D([.. Enumerable.Range(0, 10_001).Select(k => new Point3(k, 0, 0))], PlotStyle.Line);
+		var preview = Scene3D.Preview(figure.Current, gridLines: 20, maxPoints: 1000);
+		var surface = (Surface)preview.Items[0];
+		Assert.InRange(surface.XCount, 2, 20);
+		Assert.Equal(new Point3(10, 10, 100), surface[surface.XCount - 1, surface.YCount - 1]);
+		Assert.InRange(((PointSeries3D)preview.Items[1]).Points.Length, 2, 1002);
+		Assert.Throws<ArgumentOutOfRangeException>(() => Scene3D.Preview(figure.Current, 1, 1000));
+	}
+
+	[Fact]
 	public void TurnAndZoomWorkOnAWindowOfTheirOwn()
 	{
 		// The same functions the figure uses, for a client that keeps its own copy of a window.

@@ -15,7 +15,7 @@
 					GridLabel="@(Figure.Rows * Figure.Columns > 1 ? $"window ({row + 1},{column + 1})   " : "")"
 					IsCurrent="@(Figure.Rows * Figure.Columns > 1 && row == Figure.CurrentRow && column == Figure.CurrentColumn)"
 					Width="@(width / Figure.Columns)" Height="@(height / Figure.Rows)"
-					OnStatus="OnStatus" OnCamera="OnCamera" />
+					OnStatus="OnStatus" OnCamera="OnCamera" Preview="Preview" />
 			}
 		}
 	}
@@ -36,6 +36,10 @@
 	/// <summary>Gets the camera (row, column, camera) after the user turned, zoomed or reset a 3D window.</summary>
 	[Parameter]
 	public Action<int, int, MLCalc.Plotting.Camera>? OnCamera { get; set; }
+
+	/// <summary>How far 3D windows are thinned out while they are turned; null for the plot model's own limits.</summary>
+	[Parameter]
+	public PreviewLimits? Preview { get; set; }
 
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{

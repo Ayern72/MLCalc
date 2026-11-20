@@ -14,6 +14,16 @@ export class ConsoleView {
 	constructor(output: HTMLElement, model: ConsoleModel) {
 		this.#output = output;
 		this.#model = model;
+		// Keeps the console at its end when it gets smaller (a phone's keyboard opening, the
+		// divider), as long as it was at the end: otherwise the latest output would slide out of view.
+		let wasAtEnd = true;
+		output.addEventListener('scroll', () => {
+			wasAtEnd = output.scrollTop + output.clientHeight >= output.scrollHeight - 4;
+		}, { passive: true });
+		new ResizeObserver(() => {
+			if (wasAtEnd)
+				output.scrollTop = output.scrollHeight;
+		}).observe(output);
 	}
 
 	sync(): void {

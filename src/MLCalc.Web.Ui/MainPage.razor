@@ -43,7 +43,7 @@
 			</div>
 			<div class="input-row">
 				<span class="prompt">@console.Prompt</span>
-				<textarea @ref="inputElement" rows="@InputRows" spellcheck="false" autocomplete="off"
+				<textarea @ref="inputElement" rows="@InputRows" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"
 					aria-label="Input" placeholder="@(console.IsContinuing ? "" : "Type an expression, e.g. [1 2; 3 4] * [1; 1]")"
 					@bind="input" @bind:event="oninput" @onkeydown="OnKeyDownAsync"
 					disabled="@(!Connected)" readonly="@running"></textarea>
@@ -55,7 +55,7 @@
 			aria-label="Divider between the console and the plots" title="Drag to resize; double-click to reset"></div>
 
 		<section class="plots" aria-label="Plots">
-			<PlotPane Figure="figure" OnStatus="text => statusBar?.ShowMouse(text)" OnCamera="OnCamera" />
+			<PlotPane Figure="figure" OnStatus="text => statusBar?.ShowMouse(text)" OnCamera="OnCamera" Preview="Preview" />
 		</section>
 	</main>
 
@@ -66,6 +66,10 @@
 	/// <summary>Links at the end of the toolbar, such as to the manual; they differ between the web and the app.</summary>
 	[Parameter]
 	public RenderFragment? Links { get; set; }
+
+	/// <summary>How far 3D windows are thinned out while they are turned; null for the plot model's own limits.</summary>
+	[Parameter]
+	public PreviewLimits? Preview { get; set; }
 
 	/// <summary>
 	/// The user turned, zoomed or reset a 3D window: keep the camera, so that later changes from the
@@ -163,6 +167,7 @@
 		if (firstRender)
 		{
 			await JS.InvokeVoidAsync("mlcalc.setupInput", inputElement);
+			await JS.InvokeVoidAsync("mlcalc.keepAtEnd", outputElement);
 			await JS.InvokeVoidAsync("mlcalc.setupDivider", dividerElement, panesElement);
 		}
 		if (scrollPending)

@@ -1,0 +1,14 @@
+@* The app's page: the web client's page, with programs running in the app (LocalSession). *@
+<MLCalc.Web.Ui.MainPage Preview="preview">
+	<Links>
+		<a class="help" href="https://github.com/Ayern72/MLCalc/blob/main/docs/manual.md" target="_blank" rel="noopener">Manual</a>
+	</Links>
+</MLCalc.Web.Ui.MainPage>
+
+@code {
+	/// <summary>
+	/// Coarser than on the web while a 3D window turns: each drawing crosses from .NET to the web
+	/// view as text, and a smaller one keeps up with the finger.
+	/// </summary>
+	static readonly MLCalc.Web.Ui.PreviewLimits preview = new(GridLines: 20, Points: 5_000);
+}

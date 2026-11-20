@@ -181,35 +181,39 @@ function line(scene: ScenePrimitive[], view: Projection3D, stroke: SceneStroke, 
  * The window with large items thinned out for a quick preview: a surface keeps at most
  * previewGridLines of its grid lines each way (always the first and the last), a curve or cloud at
  * most about previewPoints of its points. A curve keeps its non-finite points, so that its gaps stay gaps.
+ * Other limits (gridLines at least 2) thin out further, for a front-end where each preview costs more
+ * to show, such as the app.
  */
-export function previewOf(axes: Axes): Axes {
-	return { ...axes, items: axes.items.map(previewItem) };
+export function previewOf(axes: Axes, gridLines = previewGridLines, maxPoints = previewPoints): Axes {
+	if (gridLines < 2 || maxPoints < 1)
+		throw new RangeError('A preview needs at least 2 grid lines and 1 point.');
+	return { ...axes, items: axes.items.map(item => previewItem(item, gridLines, maxPoints)) };
 }
 
-function previewItem(item: PlotItem): PlotItem {
-	if (item.type === 'surface' && (item.xCount > previewGridLines || item.yCount > previewGridLines)) {
-		const xs = lines(item.xCount, previewGridLines);
-		const ys = lines(item.yCount, previewGridLines);
+function previewItem(item: PlotItem, gridLines: number, maxPoints: number): PlotItem {
+	if (item.type === 'surface' && (item.xCount > gridLines || item.yCount > gridLines)) {
+		const xs = lines(item.xCount, gridLines);
+		const ys = lines(item.yCount, gridLines);
 		const points: Point3[] = [];
 		for (const j of ys)
 			for (const i of xs)
 				points.push(item.points[j * item.xCount + i]!);
 		return { ...item, xCount: xs.length, yCount: ys.length, points };
 	}
-	if (item.type === 'series3d' && item.points.length > previewPoints) {
-		const step = previewStep(item.points.length);
+	if (item.type === 'series3d' && item.points.length > maxPoints) {
+		const step = previewStep(item.points.length, maxPoints);
 		const points = item.points;
 		return { ...item, points: points.filter((p, k) => k % step === 0 || k === points.length - 1 || !isFinite3(p)) };
 	}
-	if (item.type === 'dots3d' && item.points.length > previewPoints) {
-		const step = previewStep(item.points.length);
+	if (item.type === 'dots3d' && item.points.length > maxPoints) {
+		const step = previewStep(item.points.length, maxPoints);
 		return { ...item, points: item.points.filter((_, k) => k % step === 0) };
 	}
 	return item;
 }
 
-function previewStep(count: number): number {
-	return Math.trunc((count + previewPoints - 1) / previewPoints);
+function previewStep(count: number, maxPoints: number): number {
+	return Math.trunc((count + maxPoints - 1) / maxPoints);
 }
 
 /** At most max evenly spread indices from 0 to count − 1, both included. */

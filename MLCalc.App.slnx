@@ -1,0 +1,15 @@
+<Solution>
+  <!-- The Android app and the projects it uses; it needs the MAUI workload, so it is not in MLCalc.slnx. -->
+  <Folder Name="/src/">
+    <Project Path="src/MLCalc.Hosting/MLCalc.Hosting.csproj" />
+    <Project Path="src/MLCalc.Interpreter/MLCalc.Interpreter.csproj" />
+    <Project Path="src/MLCalc.Language/MLCalc.Language.csproj" />
+    <Project Path="src/MLCalc.LinearAlgebra/MLCalc.LinearAlgebra.csproj" />
+    <Project Path="src/MLCalc.Mathematics/MLCalc.Mathematics.csproj" />
+    <Project Path="src/MLCalc.Maui/MLCalc.Maui.csproj" />
+    <Project Path="src/MLCalc.Numerics/MLCalc.Numerics.csproj" />
+    <Project Path="src/MLCalc.Plotting/MLCalc.Plotting.csproj" />
+    <Project Path="src/MLCalc.Web.Protocol/MLCalc.Web.Protocol.csproj" />
+    <Project Path="src/MLCalc.Web.Ui/MLCalc.Web.Ui.csproj" />
+  </Folder>
+</Solution>
