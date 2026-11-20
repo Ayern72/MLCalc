@@ -1358,6 +1358,31 @@ or, with the .NET 10 SDK, run `dotnet run --project src/MLCalc.Web.Server` and o
 How the browser and the server talk to each other is described in
 [web-protocol.md](web-protocol.md).
 
+### The Android app
+
+The Android app has the web app's page, but the programs run on the phone, as in the desktop
+application: it works without a network, and none of the web app's limits apply. It is installed
+from an APK file, not from Google Play (see the README).
+
+- **The scripts folder.** Programs run in a folder of the app's own, which starts with the sample
+  scripts of the Amiga original, such as `FEIGENBA.m`. Type a script's name, or use `run("name.m")`,
+  to run it, as in the desktop application; upper and lower case do not matter. Scripts can run
+  each other, and `savefig("plot.png")` or `savefig("plot.svg")` saves into the folder.
+- **Scripts** lists the folder: tap a name to run it; **Share** sends it to another app, such as
+  mail or a file manager; **Delete** asks once more before deleting.
+- **Open script…** opens the phone's file picker; the script is copied into the scripts folder and
+  run. Run it again later from **Scripts**, or by its name.
+- **⋯** (the button after Functions) has **Export plot as PNG** and **Export plot as SVG**, which
+  send the plots, at the size they have on the screen (PNG at twice that), to another app or to
+  your files; **Copy output**, which copies the console's text; and **Reset plots**, which runs
+  `initdisplay(1, 1)`.
+- **▲ ▼** next to the input box recall earlier input, as Up/Down do on a computer.
+- While a 3D window is turned or zoomed, a surface is drawn with fewer grid lines than on the web,
+  so that it follows the finger; it is drawn in full when you let go.
+- **Back** puts the app in the background, like Home: the console, variables and plots are still
+  there when you return. They are lost when Android closes the app, as when the desktop
+  application's window is closed.
+
 ---
 
 ## 13. Errors

@@ -483,3 +483,7 @@ $RECYCLE.BIN/
 
 # The TypeScript client, built next to the server (npm run build in src/MLCalc.Web.TypeScript)
 src/MLCalc.Web.Server/ts-client/
+
+# Android signing keys: kept out of the repository (CI gets the release key from secrets).
+*.keystore
+*.jks

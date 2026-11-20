@@ -9,6 +9,10 @@ this document alone. There are two:
   `src/protocol.ts` has the messages as TypeScript types. It is the example to follow for a client
   outside .NET.
 
+The Android app (`src/MLCalc.Maui`) uses the same messages without a network: its page is the
+Blazor client's, and its programs run in the app, in the same `Workspace` (`src/MLCalc.Hosting`)
+as on the server, which hands the messages straight to the page.
+
 A client that draws the plots the way the C# code does can check itself against the test cases
 in `tests/fixtures` (see [Drawing the plots](#drawing-the-plots)).
 

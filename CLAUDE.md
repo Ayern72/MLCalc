@@ -26,6 +26,12 @@ the syntax.
   `src/plotting` is a line-by-line port of `src/MLCalc.Plotting`: change both together, keeping the
   arithmetic in the same order, then rewrite the shared test cases (below) and check that both
   pass.
+- **One page, three hosts:** `src/MLCalc.Web.Ui` is the page of the Blazor web client and of the
+  Android app (`src/MLCalc.Maui`); the TypeScript client copies its look and behaviour. A change to
+  the page is a change to both web clients (keep them alike) and to the app. What only the app has
+  (scripts folder, files, clipboard) goes through `IAppHost`, which the web does not register.
+- **Android app:** keep platform code in `src/MLCalc.Maui/Platforms/Android` and use MAUI's
+  cross-platform APIs elsewhere, so that an iOS version stays possible.
 
 ## Build and test
 
@@ -44,6 +50,17 @@ npm ci
 npm run check && npm test && npm run build    # build goes to src/MLCalc.Web.Server/ts-client
 ```
 
+The Android app (MAUI workload `maui-android`, JDK 21, Android SDK; `JAVA_HOME` and `ANDROID_HOME`
+set), not in `MLCalc.slnx`. `-t:Run` installs and starts it on a phone connected over USB:
+
+```
+dotnet build src/MLCalc.Maui -f net10.0-android                    # or MLCalc.App.slnx
+dotnet build src/MLCalc.Maui -t:Run -f net10.0-android -c Release
+```
+
+Debug builds are interpreted and noticeably slower; measure speed in Release
+(`-p:WebViewDebugging=true` lets `chrome://inspect` or `adb forward` reach the page).
+
 `tests/fixtures` holds test cases shared by C# and TypeScript (drawings and .NET number formatting),
 written by `tests/MLCalc.Web.Tests/SharedFixtureTests.cs`. After a deliberate drawing change, run
 the .NET tests with `MLCALC_UPDATE_FIXTURES=1` to write them anew.
@@ -56,7 +73,9 @@ Dependabot (`.github/dependabot.yml`) opens weekly pull requests for NuGet (cent
 `Directory.Packages.props`), npm (`src/MLCalc.Web.TypeScript`, exact versions), GitHub Actions
 (pinned to commits, with the version in a comment) and the Docker base images. When asked to look
 at one: CI must pass, including the shared drawing test cases; an update of TypeScript, Vite or
-Vitest may need code changes, not only a new lock file.
+Vitest may need code changes, not only a new lock file. An update of the MAUI packages
+(`Microsoft.Maui.Controls`, `Microsoft.AspNetCore.Components.WebView.Maui`) may need a newer MAUI
+workload locally: `dotnet workload update` in the repository's folder.
 
 ## Commits
 

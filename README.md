@@ -10,8 +10,8 @@ MLCalc is a scientific calculator and plotting program with its own small script
 It began in high school as a simple graph-drawing program for the Amiga, written in C. When its
 author started studying computer science, the courses used MATLAB, which was not available for the
 Amiga, so MLCalc grew matrices and a similar syntax to make the same work possible at home. This
-repository is a modern C#/.NET re-implementation, with a WPF desktop application and a
-cross-platform command-line tool.
+repository is a modern C#/.NET re-implementation, with a WPF desktop application, a
+cross-platform command-line tool, a web app and an Android app.
 
 Every value in MLCalc is a complex matrix: scalars are 1×1 matrices and real numbers are complex
 numbers with a zero imaginary part.
@@ -121,6 +121,26 @@ The public site runs on Google Cloud Run and is deployed by the **Deploy** workf
 started by hand and signs in to Google without stored keys. [docs/deploy-gcp.md](docs/deploy-gcp.md)
 describes the setup.
 
+## Android app
+
+The Android app does what the desktop app does, with the web app's page: the same layout (the plots
+above the console on a phone held upright, with a divider between them), the same touch gestures,
+and the same Blazor components (`src/MLCalc.Web.Ui`), shown in a web view by .NET MAUI. The programs
+run on the phone itself, so the app works offline and without the web app's limits, and it reads
+and writes files in a scripts folder of its own:
+
+- **Scripts** lists the folder, which starts with the Amiga samples; a script runs when you tap its
+  name or type it, and scripts can `run` each other. **Open script…** copies a file from the phone
+  (or Drive and the like) into the folder and runs it.
+- `savefig("plot.png")` and `savefig("plot.svg")` save into the folder; **⋯ › Export plot** and
+  **Share** send pictures and scripts to other apps.
+- **▲ ▼** recall earlier input, as the arrow keys do on a computer.
+
+The app is not on Google Play. CI builds an APK (`MLCalc-android` under **Artifacts**, see
+[Downloads](#downloads)); to install it, open it on the phone and allow your browser or file manager
+to install apps. Nothing in the app is specific to Android except a few lines in
+`src/MLCalc.Maui/Platforms/Android`, so an iOS version needs mainly a Mac to build it on.
+
 ## Differences from the Amiga original
 
 - **Matrix operators.** `*`, `/`, `\` and `^` are matrix operations and `.*`, `./`, `.^`
@@ -143,10 +163,11 @@ describes the setup.
 | `MLCalc.Cli` | Cross-platform command-line tool (`mlcalc`) |
 | `MLCalc.Web.Protocol` | The messages between the web server and its clients |
 | `MLCalc.Web.Server` | ASP.NET Core server of the web app: sessions, limits, the SignalR hub; serves both clients |
-| `MLCalc.Hosting` | Runs programs in a workspace and reports them as the web protocol's messages; used by the web server, and by the Android app to come |
-| `MLCalc.Web.Ui` | The page (console, plots, toolbar) as Blazor components, shared by the web client and the Android app to come |
+| `MLCalc.Hosting` | Runs programs in a workspace and reports them as the web protocol's messages; used by the web server and the Android app |
+| `MLCalc.Web.Ui` | The page (console, plots, toolbar) as Blazor components, shared by the web client and the Android app |
 | `MLCalc.Web.Client` | Blazor WebAssembly client of the web app: the page, with programs running on the server |
 | `MLCalc.Web.TypeScript` | TypeScript client of the web app (Vite; not part of the .NET solution) |
+| `MLCalc.Maui` | Android app (.NET MAUI Blazor Hybrid): the page, with programs running on the phone (not part of `MLCalc.slnx`; see `MLCalc.App.slnx`) |
 
 The libraries target `net10.0` with no Windows dependencies, so they can be reused by other
 front-ends. Dependencies only point downward: `Mathematics` ← `LinearAlgebra` ← `Numerics` ←
@@ -165,8 +186,15 @@ while a program draws into it.
 Every CI run builds the applications. Open a run under **Actions › CI** and download them from
 **Artifacts**: `MLCalc-desktop-win-x64` (the desktop app), `mlcalc-cli-win-x64` and
 `mlcalc-cli-linux-x64` (the command-line tool). Each is a zip file with one self-contained program
-that needs no .NET installation. On Linux, make it executable first: `chmod +x mlcalc`. GitHub
-keeps the files for 30 days, and downloading them requires a GitHub account.
+that needs no .NET installation. On Linux, make it executable first: `chmod +x mlcalc`.
+`MLCalc-android` holds the Android app, `MLCalc.apk`. GitHub keeps the files for 30 days, and
+downloading them requires a GitHub account.
+
+The APK from a push to `main` is signed with the repository's release key (the secrets
+`ANDROID_KEYSTORE_BASE64` and `ANDROID_KEYSTORE_PASSWORD`, key alias `mlcalc`), so that each one
+installs as an update of the one before. Other runs sign with a throwaway key; Android then asks
+for the installed app to be removed first. The same goes for an app installed from Visual Studio
+or `dotnet build -t:Run`, which signs with a key of its own.
 
 ## Building
 
@@ -189,6 +217,19 @@ npm test         # its tests, including the drawings shared with C#
 npm run build    # into src/MLCalc.Web.Server/ts-client, which the server serves at /ts/
 npm run dev      # with hot reload at http://localhost:5173/ts/; start the server too
 ```
+
+The Android app needs the MAUI workload (`dotnet workload install maui-android`, run in the
+repository's folder so that it goes into the SDK that `global.json` picks), JDK 21 and the Android
+SDK; set `JAVA_HOME` and `ANDROID_HOME`. With a phone connected over USB, with USB debugging on:
+
+```
+dotnet build src/MLCalc.Maui -t:Run -f net10.0-android          # Debug: quick to build, slower to run
+dotnet build src/MLCalc.Maui -t:Run -f net10.0-android -c Release
+```
+
+A Debug build runs .NET code in an interpreter, so turning 3D plots is noticeably slower than in a
+Release build. In both, `chrome://inspect` on the computer shows the app's page while the phone is
+connected (in Release only when built with `-p:WebViewDebugging=true`).
 
 The shared test cases in `tests/fixtures` are written by the C# tests. After a deliberate change
 to the drawing, run `dotnet test` with the environment variable `MLCALC_UPDATE_FIXTURES=1` to write
