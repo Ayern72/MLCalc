@@ -28,7 +28,9 @@ static class TypeScriptClient
 		{
 			if (context.Request.Path.Value == Path)
 			{
-				context.Response.Redirect(Path + "/" + context.Request.QueryString);
+				// Always to the fixed address: nothing from the request goes into a redirect.
+				// (The page takes no query parameters; the session is kept in the browser tab.)
+				context.Response.Redirect(Path + "/");
 				return Task.CompletedTask;
 			}
 			return next(context);

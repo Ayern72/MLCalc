@@ -70,12 +70,16 @@ public sealed class ClientFilesTests : IDisposable
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
 
-	[Fact]
-	public async Task TheTypeScriptPathWithoutASlashIsRedirected()
+	/// <summary>Always to /ts/ itself: nothing from the request, such as a query string, goes into the redirect.</summary>
+	[Theory]
+	[InlineData("/ts")]
+	[InlineData("/ts?next=//attacker.example/")]
+	[InlineData("/ts?%0d%0aLocation:%20https://attacker.example/")]
+	public async Task TheTypeScriptPathWithoutASlashIsRedirected(string path)
 	{
 		await using var server = ServerWithTypeScriptClient();
 		var client = server.CreateClient(new() { AllowAutoRedirect = false });
-		using var response = await client.GetAsync("/ts");
+		using var response = await client.GetAsync(path);
 		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 		Assert.Equal("/ts/", response.Headers.Location?.OriginalString);
 	}
