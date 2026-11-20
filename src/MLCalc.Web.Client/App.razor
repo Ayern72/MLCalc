@@ -13,6 +13,8 @@
 		<button class="button" @onclick="CancelAsync" disabled="@(!running)" title="Stop the running program (Esc)">Stop</button>
 		<button class="button" @onclick="ClearConsole" title="Clear the console">Clear</button>
 		<button class="button @(showFunctions ? "active" : "")" @onclick="() => showFunctions = !showFunctions" title="List all functions and commands">Functions</button>
+		@* The same page in the other client, with the same workspace (the tab's session is shared). *@
+		<a class="help" href="ts/" title="The same app written in TypeScript, without a framework">TypeScript version</a>
 		<a class="help" href="https://github.com/Ayern72/MLCalc/blob/main/docs/manual.md" target="_blank" rel="noopener">Manual</a>
 	</header>
 

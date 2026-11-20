@@ -5,6 +5,7 @@ import { FigureState, toCameraData } from '../figure-state';
 import type { Camera } from '../plotting/model';
 import { ConsoleView } from './console-view';
 import { element } from './dom';
+import { setupDivider } from './divider';
 import { download } from './download';
 import { PlotPane } from './plot-pane';
 
@@ -55,6 +56,8 @@ export class App {
 		const toolbar = element('header', { class: 'toolbar' },
 			element('span', { class: 'brand', title: `MLCalc ${buildVersion} (TypeScript client)` }, 'MLCalc'),
 			this.#openLabel, this.#stopButton, clearButton, this.#functionsButton,
+			// The same page in the other client, with the same workspace (the tab's session is shared).
+			element('a', { class: 'help', href: '../', title: 'The same app written in C# with Blazor WebAssembly' }, 'Blazor version'),
 			element('a', { class: 'help', href: manualUrl, target: '_blank', rel: 'noopener' }, 'Manual'));
 
 		const reload = element('button', { class: 'button' }, 'Reload');
@@ -78,6 +81,7 @@ export class App {
 		this.#status = element('span');
 		const page = element('div', { class: 'page' }, toolbar, this.#updateBar, this.panes, element('footer', { class: 'status' }, this.#status));
 		root.replaceChildren(page);
+		setupDivider(this.divider, this.panes);
 
 		this.#consoleView = new ConsoleView(this.#output, this.#console);
 		this.#plotPane = new PlotPane(this.#figure, {

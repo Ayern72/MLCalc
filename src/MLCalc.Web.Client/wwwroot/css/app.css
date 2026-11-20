@@ -121,6 +121,11 @@ html, body {
 	color: var(--accent);
 }
 
+/* The links on the right: the other client, and the manual. */
+.help + .help {
+	margin-left: 0.75rem;
+}
+
 /* Shown when the server has been updated since the page was loaded. */
 .update-bar {
 	display: flex;
