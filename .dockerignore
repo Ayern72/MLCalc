@@ -1,6 +1,8 @@
 # Only what the web app's build needs goes into the Docker build context.
 **/bin/
 **/obj/
+**/node_modules/
+src/MLCalc.Web.Server/ts-client/
 .git/
 .github/
 .vs/

@@ -1,0 +1,22 @@
+{
+	"name": "mlcalc-web-typescript",
+	"private": true,
+	"description": "The TypeScript client of the MLCalc web app: a second client of the same server, written against docs/web-protocol.md.",
+	"license": "MIT",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "npm run check && vite build",
+		"check": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@microsoft/signalr": "11.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "26.6.6",
+		"typescript": "7.0.2",
+		"vite": "8.3.8",
+		"vitest": "5.1.1"
+	}
+}

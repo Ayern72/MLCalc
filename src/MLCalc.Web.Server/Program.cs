@@ -22,6 +22,8 @@ var app = builder.Build();
 // checked on every load, so that a new version reaches browsers at once. Compressed versions are
 // sent to browsers that accept them.
 app.MapStaticAssets();
+// The TypeScript client, a second client of the same hub, at /ts/.
+app.MapTypeScriptClient();
 // Not /healthz: Cloud Run keeps some paths that end in z for itself and answers them with 404.
 app.MapHealthChecks("/health");
 app.MapHub<MLCalcHub>(WebProtocol.Path);

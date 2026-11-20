@@ -44,4 +44,11 @@ public sealed class WebOptions
 
 	/// <summary>How often idle sessions are looked for.</summary>
 	public TimeSpan CleanupInterval { get; set; } = TimeSpan.FromMinutes(1);
+
+	/// <summary>
+	/// The folder with the built TypeScript client (served at <c>/ts/</c>), relative to the content
+	/// root. The Docker image has it; a server run from the source has it only after
+	/// <c>npm run build</c> in src/MLCalc.Web.TypeScript, which writes it here.
+	/// </summary>
+	public string TypeScriptClient { get; set; } = "ts-client";
 }

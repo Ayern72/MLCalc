@@ -1,9 +1,31 @@
-# The MLCalc web app: the ASP.NET Core server with the Blazor WebAssembly client it serves.
+# The MLCalc web app: the ASP.NET Core server with the two clients it serves, Blazor WebAssembly
+# at / and TypeScript at /ts/.
 #   docker build -t mlcalc-web .
 #   docker run --rm -p 8080:8080 mlcalc-web        then open http://localhost:8080
 # compose.yaml does the same with the limits spelled out.
 
-# ───────────── Build ─────────────
+# The commit being built (the image has no .git to read it from), for the build's version: a page
+# left open across a deploy then sees that the server is newer. The Deploy workflow passes it:
+#   docker build --build-arg SOURCE_REVISION=$(git rev-parse HEAD) …
+ARG SOURCE_REVISION=""
+
+# ───────────── Build the TypeScript client ─────────────
+FROM node:26-slim AS typescript
+WORKDIR /src/src/MLCalc.Web.TypeScript
+
+# The package list first, so that the install layer is reused while only code changes.
+COPY src/MLCalc.Web.TypeScript/package.json src/MLCalc.Web.TypeScript/package-lock.json ./
+RUN npm ci
+
+# The client, the version prefix, and the Blazor client's stylesheet and icon, which it shares.
+COPY Directory.Build.props /src/
+COPY src/MLCalc.Web.Client/wwwroot/css/ /src/src/MLCalc.Web.Client/wwwroot/css/
+COPY src/MLCalc.Web.Client/wwwroot/icon.svg /src/src/MLCalc.Web.Client/wwwroot/
+COPY src/MLCalc.Web.TypeScript/ ./
+ARG SOURCE_REVISION
+RUN SOURCE_REVISION=$SOURCE_REVISION npm run build
+
+# ───────────── Build the server and the Blazor client ─────────────
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
@@ -22,10 +44,7 @@ RUN dotnet restore src/MLCalc.Web.Server/MLCalc.Web.Server.csproj
 
 COPY src/ src/
 COPY packaging/ packaging/
-# The commit being built (the image has no .git to read it from), for the build's version: a page
-# left open across a deploy then sees that the server is newer. The Deploy workflow passes it:
-#   docker build --build-arg SOURCE_REVISION=$(git rev-parse HEAD) …
-ARG SOURCE_REVISION=""
+ARG SOURCE_REVISION
 RUN dotnet publish src/MLCalc.Web.Server/MLCalc.Web.Server.csproj -c Release --no-restore -o /app \
 	${SOURCE_REVISION:+-p:SourceRevisionId=$SOURCE_REVISION}
 
@@ -33,6 +52,7 @@ RUN dotnet publish src/MLCalc.Web.Server/MLCalc.Web.Server.csproj -c Release --n
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app .
+COPY --from=typescript /src/src/MLCalc.Web.Server/ts-client ./ts-client
 
 # The image's own unprivileged user; the server listens on port 8080 (ASPNETCORE_HTTP_PORTS).
 USER app

@@ -36,6 +36,12 @@
 	box-sizing: border-box;
 }
 
+/* Hidden elements stay hidden even where a rule below sets display (the TypeScript client hides
+   the update bar and the function list this way). */
+[hidden] {
+	display: none !important;
+}
+
 html, body {
 	margin: 0;
 	height: 100%;

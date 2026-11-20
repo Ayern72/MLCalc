@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# The TypeScript client, built next to the server (npm run build in src/MLCalc.Web.TypeScript)
+src/MLCalc.Web.Server/ts-client/
