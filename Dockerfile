@@ -49,7 +49,7 @@ RUN dotnet publish src/MLCalc.Web.Server/MLCalc.Web.Server.csproj -c Release --n
 	${SOURCE_REVISION:+-p:SourceRevisionId=$SOURCE_REVISION}
 
 # ───────────── Run ─────────────
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS runtime
 WORKDIR /app
 COPY --from=build /app .
 COPY --from=typescript /src/src/MLCalc.Web.Server/ts-client ./ts-client
