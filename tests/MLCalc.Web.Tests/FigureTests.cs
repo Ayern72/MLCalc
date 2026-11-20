@@ -1,8 +1,9 @@
 using System.Text.Json;
 using MLCalc.Interpreter;
 using MLCalc.Plotting;
-using MLCalc.Web.Client;
+using MLCalc.Web.Ui;
 using MLCalc.Web.Protocol;
+using MLCalc.Hosting;
 using MLCalc.Web.Server;
 
 namespace MLCalc.Web.Tests;

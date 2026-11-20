@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using MLCalc.Plotting;
 using MLCalc.Web.Protocol;
 
-namespace MLCalc.Web.Client;
+namespace MLCalc.Web.Ui;
 
 /// <summary>
 /// The plot windows as the client has them, in the plot model's own types, so that the client draws

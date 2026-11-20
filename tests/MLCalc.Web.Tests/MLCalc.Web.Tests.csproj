@@ -17,5 +17,7 @@
 		<ProjectReference Include="..\..\src\MLCalc.Web.Server\MLCalc.Web.Server.csproj" />
 		<ProjectReference Include="..\..\src\MLCalc.Web.Protocol\MLCalc.Web.Protocol.csproj" />
 		<ProjectReference Include="..\..\src\MLCalc.Web.Client\MLCalc.Web.Client.csproj" />
+		<ProjectReference Include="..\..\src\MLCalc.Web.Ui\MLCalc.Web.Ui.csproj" />
+		<ProjectReference Include="..\..\src\MLCalc.Hosting\MLCalc.Hosting.csproj" />
 	</ItemGroup>
 </Project>

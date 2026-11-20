@@ -1,25 +1,17 @@
 using MLCalc.Web.Protocol;
+using MLCalc.Web.Ui;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.JSInterop;
 
 namespace MLCalc.Web.Client;
 
-/// <summary>The state of the connection to the server, for the status bar.</summary>
-enum ConnectionState
-{
-	Connecting,
-	Connected,
-	Reconnecting,
-	Failed,
-}
-
 /// <summary>
 /// The connection to the server. It keeps the session id in the browser tab's sessionStorage, so
 /// that a reconnect, or reloading the page, continues the same session. When the connection drops
 /// it connects again with that id, waiting a little longer each time.
 /// </summary>
-sealed class MLCalcConnection(NavigationManager navigation, IJSRuntime js) : IAsyncDisposable
+sealed class MLCalcConnection(NavigationManager navigation, IJSRuntime js) : IMLCalcSession
 {
 	const string SessionKey = "mlcalc-session";
 	static readonly TimeSpan[] RetryDelays = [TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10)];

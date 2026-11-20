@@ -5,6 +5,8 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\MLCalc.Web.Protocol\MLCalc.Web.Protocol.csproj" />
+		<!-- Runs the programs: shared with the app. -->
+		<ProjectReference Include="..\MLCalc.Hosting\MLCalc.Hosting.csproj" />
 		<!-- The Blazor client: its files are published with the server and served by it. -->
 		<ProjectReference Include="..\MLCalc.Web.Client\MLCalc.Web.Client.csproj" />
 		<ProjectReference Include="..\MLCalc.Interpreter\MLCalc.Interpreter.csproj" />

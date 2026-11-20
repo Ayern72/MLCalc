@@ -1,15 +1,15 @@
 using MLCalc.Plotting;
 using MLCalc.Web.Protocol;
 
-namespace MLCalc.Web.Server;
+namespace MLCalc.Hosting;
 
 /// <summary>
 /// Turns figure snapshots into messages, sending only what changed since the last one: windows
 /// that are the same object as before are left out; a window that only gained items, or points in
 /// its last dot cloud, is sent as an <see cref="WindowAppend"/>; any other change sends the window
-/// whole. Not thread-safe: the session uses it under its send lock.
+/// whole. Not thread-safe: the workspace uses it under its send lock.
 /// </summary>
-sealed class FigureEncoder
+public sealed class FigureEncoder
 {
 	FigureSnapshot? sent;
 
@@ -97,6 +97,7 @@ sealed class FigureEncoder
 
 	// ───────────── Plot model → protocol ─────────────
 
+	/// <summary>A plot window as a message, with all its items.</summary>
 	public static PlotWindow ToWindow(Axes axes) => new(
 		axes.Kind switch
 		{
@@ -124,6 +125,7 @@ sealed class FigureEncoder
 		camera.Position is { } p ? [p.X, p.Y, p.Z] : null,
 		camera.Target is { } t ? [t.X, t.Y, t.Z] : null);
 
+	/// <summary>One plot item as a message.</summary>
 	public static PlotItemData ToItem(PlotItem item) => item switch
 	{
 		PointSeries s => With(Points(s.Points), ItemType.Series, s.Pen, style: s.Style),

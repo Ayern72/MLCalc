@@ -143,7 +143,9 @@ describes the setup.
 | `MLCalc.Cli` | Cross-platform command-line tool (`mlcalc`) |
 | `MLCalc.Web.Protocol` | The messages between the web server and its clients |
 | `MLCalc.Web.Server` | ASP.NET Core server of the web app: sessions, limits, the SignalR hub; serves both clients |
-| `MLCalc.Web.Client` | Blazor WebAssembly client of the web app |
+| `MLCalc.Hosting` | Runs programs in a workspace and reports them as the web protocol's messages; used by the web server, and by the Android app to come |
+| `MLCalc.Web.Ui` | The page (console, plots, toolbar) as Blazor components, shared by the web client and the Android app to come |
+| `MLCalc.Web.Client` | Blazor WebAssembly client of the web app: the page, with programs running on the server |
 | `MLCalc.Web.TypeScript` | TypeScript client of the web app (Vite; not part of the .NET solution) |
 
 The libraries target `net10.0` with no Windows dependencies, so they can be reused by other

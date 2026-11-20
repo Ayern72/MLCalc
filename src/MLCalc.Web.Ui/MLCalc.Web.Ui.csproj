@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+	<PropertyGroup>
+		<Description>The MLCalc page: console, plots and toolbar, shared by the Blazor web client and the app.</Description>
+		<IsPackable>false</IsPackable>
+		<RootNamespace>MLCalc.Web.Ui</RootNamespace>
+	</PropertyGroup>
+	<ItemGroup>
+		<SupportedPlatform Include="browser" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Components.Web" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\MLCalc.Web.Protocol\MLCalc.Web.Protocol.csproj" />
+		<!-- The plot model and its SVG drawing, shared with the desktop app. -->
+		<ProjectReference Include="..\MLCalc.Plotting\MLCalc.Plotting.csproj" />
+		<ProjectReference Include="..\MLCalc.Mathematics\MLCalc.Mathematics.csproj" />
+		<ProjectReference Include="..\MLCalc.LinearAlgebra\MLCalc.LinearAlgebra.csproj" />
+		<ProjectReference Include="..\MLCalc.Language\MLCalc.Language.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="MLCalc.Web.Tests" />
+	</ItemGroup>
+</Project>

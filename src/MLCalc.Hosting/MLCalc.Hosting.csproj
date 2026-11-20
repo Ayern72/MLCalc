@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Runs MLCalc programs for a front-end that shows them with the web protocol's messages: the web server and the app.</Description>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\MLCalc.Web.Protocol\MLCalc.Web.Protocol.csproj" />
+		<ProjectReference Include="..\MLCalc.Interpreter\MLCalc.Interpreter.csproj" />
+		<ProjectReference Include="..\MLCalc.Plotting\MLCalc.Plotting.csproj" />
+		<ProjectReference Include="..\MLCalc.Mathematics\MLCalc.Mathematics.csproj" />
+		<ProjectReference Include="..\MLCalc.LinearAlgebra\MLCalc.LinearAlgebra.csproj" />
+		<ProjectReference Include="..\MLCalc.Language\MLCalc.Language.csproj" />
+	</ItemGroup>
+</Project>

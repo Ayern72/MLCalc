@@ -2,8 +2,8 @@
 
 The second client of the MLCalc web app, written in TypeScript without a UI framework, against the
 protocol in [docs/web-protocol.md](../../docs/web-protocol.md) alone. It looks and behaves like the
-Blazor client (`src/MLCalc.Web.Client`), whose stylesheet and icon it uses, and the server serves it
-at `/ts/`.
+Blazor client, whose page (`src/MLCalc.Web.Ui`) gives it its stylesheet and icon, and the server
+serves it at `/ts/`.
 
 ## Commands
 
@@ -30,7 +30,7 @@ own (see the Dockerfile).
 | `src/console-model.ts` | Console lines, history, unfinished input, error markers | `ConsoleModel.cs` |
 | `src/figure-state.ts` | The plot windows from the figure messages | `FigureState.cs` |
 | `src/plotting/` | The plot model, axis ticks, layout, 3D projection and scene, camera control, SVG writer, and .NET-style number formatting | `src/MLCalc.Plotting` |
-| `src/ui/` | The page: toolbar, console, plot windows (turning, zooming, pinching), divider, downloads | `App.razor`, `PlotWindowView.razor`, `mlcalc.js` |
+| `src/ui/` | The page: toolbar, console, plot windows (turning, zooming, pinching), divider, downloads | `MainPage.razor`, `PlotWindowView.razor`, `mlcalc.js` (in `src/MLCalc.Web.Ui`) |
 
 The only runtime dependency is `@microsoft/signalr`. The page is built from DOM elements with the
 Blazor client's structure and CSS classes; plot windows are drawn as SVG text.

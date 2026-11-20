@@ -28,8 +28,8 @@ public sealed class ClientFilesTests : IDisposable
 	[InlineData("/")]
 	[InlineData("/some/other/path")]
 	[InlineData("/index.html")]
-	[InlineData("/css/app.css")]
-	[InlineData("/js/mlcalc.js")]
+	[InlineData("/_content/MLCalc.Web.Ui/css/app.css")]
+	[InlineData("/_content/MLCalc.Web.Ui/js/mlcalc.js")]
 	[InlineData("/_framework/blazor.webassembly.js")]
 	public async Task FilesWithoutAHashAreCheckedOnEveryLoad(string path)
 	{

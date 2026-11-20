@@ -14,12 +14,13 @@
 
 	<!--
 		The libraries in src/ ship in the packages, so every public type and member must have an XML
-		comment (CS1591). The applications (desktop, command line, web server and web client), tests
-		and tools are exempt. The applications are matched by folder, because the WPF build also
+		comment (CS1591). The applications (desktop, command line, web server and web client), the
+		page they share with the app (MLCalc.Web.Ui), tests and tools are exempt. The applications
+		are matched by folder, because the WPF build also
 		compiles a temporary project with another name. Decided here rather than in
 		Directory.Build.targets: MSBuild reads NoWarn while evaluating the props.
 	-->
-	<PropertyGroup Condition="!$(MSBuildProjectDirectory.Replace('\', '/').Contains('/src/')) or $(MSBuildProjectDirectory.EndsWith('MLCalc.Cli')) or $(MSBuildProjectDirectory.EndsWith('MLCalc.Wpf')) or $(MSBuildProjectDirectory.EndsWith('MLCalc.Web.Server')) or $(MSBuildProjectDirectory.EndsWith('MLCalc.Web.Client'))">
+	<PropertyGroup Condition="!$(MSBuildProjectDirectory.Replace('\', '/').Contains('/src/')) or $(MSBuildProjectDirectory.EndsWith('MLCalc.Cli')) or $(MSBuildProjectDirectory.EndsWith('MLCalc.Wpf')) or $(MSBuildProjectDirectory.EndsWith('MLCalc.Web.Server')) or $(MSBuildProjectDirectory.EndsWith('MLCalc.Web.Client')) or $(MSBuildProjectDirectory.EndsWith('MLCalc.Web.Ui'))">
 		<NoWarn>$(NoWarn);CS1591</NoWarn>
 	</PropertyGroup>
 

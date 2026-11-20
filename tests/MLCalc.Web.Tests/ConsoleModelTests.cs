@@ -1,4 +1,4 @@
-using MLCalc.Web.Client;
+using MLCalc.Web.Ui;
 using MLCalc.Web.Protocol;
 
 namespace MLCalc.Web.Tests;

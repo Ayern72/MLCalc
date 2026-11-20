@@ -3,8 +3,8 @@
 How a browser client talks to the MLCalc web server. A client in any language can be written from
 this document alone. There are two:
 
-- The Blazor client in `src/MLCalc.Web.Client` uses the C# types in `src/MLCalc.Web.Protocol`,
-  which serialise to exactly the JSON shown here.
+- The Blazor client in `src/MLCalc.Web.Client`, with its page in `src/MLCalc.Web.Ui`, uses the C#
+  types in `src/MLCalc.Web.Protocol`, which serialise to exactly the JSON shown here.
 - The TypeScript client in `src/MLCalc.Web.TypeScript` was written from this document; its
   `src/protocol.ts` has the messages as TypeScript types. It is the example to follow for a client
   outside .NET.

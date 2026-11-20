@@ -18,7 +18,7 @@ const manualUrl = 'https://github.com/Ayern72/MLCalc/blob/main/docs/manual.md';
 
 /**
  * The page: toolbar, console, plots and status bar, with the same structure and CSS classes as the
- * Blazor client (src/MLCalc.Web.Client/App.razor), whose stylesheet it uses.
+ * Blazor client (src/MLCalc.Web.Ui/MainPage.razor), whose stylesheet it uses.
  */
 export class App {
 	readonly #console = new ConsoleModel();

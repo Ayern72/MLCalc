@@ -1,6 +1,6 @@
 using MLCalc.Web.Protocol;
 
-namespace MLCalc.Web.Client;
+namespace MLCalc.Web.Ui;
 
 /// <summary>What a console line is, for its style.</summary>
 enum ConsoleLineKind

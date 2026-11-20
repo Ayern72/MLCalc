@@ -17,10 +17,10 @@ WORKDIR /src/src/MLCalc.Web.TypeScript
 COPY src/MLCalc.Web.TypeScript/package.json src/MLCalc.Web.TypeScript/package-lock.json ./
 RUN npm ci
 
-# The client, the version prefix, and the Blazor client's stylesheet and icon, which it shares.
+# The client, the version prefix, and the stylesheet and icon of the Blazor client's page, which it shares.
 COPY Directory.Build.props /src/
-COPY src/MLCalc.Web.Client/wwwroot/css/ /src/src/MLCalc.Web.Client/wwwroot/css/
-COPY src/MLCalc.Web.Client/wwwroot/icon.svg /src/src/MLCalc.Web.Client/wwwroot/
+COPY src/MLCalc.Web.Ui/wwwroot/css/ /src/src/MLCalc.Web.Ui/wwwroot/css/
+COPY src/MLCalc.Web.Ui/wwwroot/icon.svg /src/src/MLCalc.Web.Ui/wwwroot/
 COPY src/MLCalc.Web.TypeScript/ ./
 ARG SOURCE_REVISION
 RUN SOURCE_REVISION=$SOURCE_REVISION npm run build
@@ -38,6 +38,8 @@ COPY src/MLCalc.Language/MLCalc.Language.csproj src/MLCalc.Language/
 COPY src/MLCalc.Interpreter/MLCalc.Interpreter.csproj src/MLCalc.Interpreter/
 COPY src/MLCalc.Plotting/MLCalc.Plotting.csproj src/MLCalc.Plotting/
 COPY src/MLCalc.Web.Protocol/MLCalc.Web.Protocol.csproj src/MLCalc.Web.Protocol/
+COPY src/MLCalc.Hosting/MLCalc.Hosting.csproj src/MLCalc.Hosting/
+COPY src/MLCalc.Web.Ui/MLCalc.Web.Ui.csproj src/MLCalc.Web.Ui/
 COPY src/MLCalc.Web.Client/MLCalc.Web.Client.csproj src/MLCalc.Web.Client/
 COPY src/MLCalc.Web.Server/MLCalc.Web.Server.csproj src/MLCalc.Web.Server/
 RUN dotnet restore src/MLCalc.Web.Server/MLCalc.Web.Server.csproj
