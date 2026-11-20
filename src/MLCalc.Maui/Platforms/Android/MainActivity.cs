@@ -1,5 +1,6 @@
 using Android.App;
 using Android.Content.PM;
+using Android.Content.Res;
 using Android.OS;
 using AndroidX.Core.View;
 
@@ -15,11 +16,26 @@ public class MainActivity : MauiAppCompatActivity
 	protected override void OnCreate(Bundle? savedInstanceState)
 	{
 		base.OnCreate(savedInstanceState);
-		// The page is white, also in dark mode, so the system bars need dark icons to be seen.
+		SetBarIcons(Resources?.Configuration);
+	}
+
+	public override void OnConfigurationChanged(Configuration newConfig)
+	{
+		base.OnConfigurationChanged(newConfig);
+		SetBarIcons(newConfig);
+	}
+
+	/// <summary>
+	/// Dark icons on the light page, light ones in dark mode, where the page is dark too (it follows
+	/// the system's setting, as in a browser).
+	/// </summary>
+	void SetBarIcons(Configuration? configuration)
+	{
+		bool dark = configuration is not null && (configuration.UiMode & UiMode.NightMask) == UiMode.NightYes;
 		if (Window is { } window && WindowCompat.GetInsetsController(window, window.DecorView) is { } bars)
 		{
-			bars.AppearanceLightStatusBars = true;
-			bars.AppearanceLightNavigationBars = true;
+			bars.AppearanceLightStatusBars = !dark;
+			bars.AppearanceLightNavigationBars = !dark;
 		}
 	}
 }

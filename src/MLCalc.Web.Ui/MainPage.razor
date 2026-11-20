@@ -2,17 +2,43 @@
 @inject IMLCalcSession Session
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+@inject IServiceProvider Services
 
 <div class="page">
 	<header class="toolbar">
 		<span class="brand" title="MLCalc @WebProtocol.BuildVersion">MLCalc</span>
-		<label class="button @(CanRun ? "" : "disabled")" title="Run a .m script from your computer">
-			Open script…
-			<InputFile OnChange="OpenScriptAsync" accept=".m,.txt" disabled="@(!CanRun)" />
-		</label>
+		@if (app is null)
+		{
+			<label class="button @(CanRun ? "" : "disabled")" title="Run a .m script from your computer">
+				Open script…
+				<InputFile OnChange="OpenScriptAsync" accept=".m,.txt" disabled="@(!CanRun)" />
+			</label>
+		}
+		else
+		{
+			<button class="button" @onclick="ImportScriptAsync" disabled="@(!CanRun)" title="Copy a script into the scripts folder and run it">Open script…</button>
+			<button class="button @(showScripts ? "active" : "")" @onclick="ToggleScripts" title="The scripts folder">Scripts</button>
+		}
 		<button class="button" @onclick="CancelAsync" disabled="@(!running)" title="Stop the running program (Esc)">Stop</button>
 		<button class="button" @onclick="ClearConsole" title="Clear the console">Clear</button>
 		<button class="button @(showFunctions ? "active" : "")" @onclick="() => showFunctions = !showFunctions" title="List all functions and commands">Functions</button>
+		@if (app is not null)
+		{
+			<div class="menu-anchor">
+				<button class="button @(showMenu ? "active" : "")" @onclick="() => showMenu = !showMenu" aria-haspopup="menu" aria-expanded="@showMenu" title="More">⋯</button>
+				@if (showMenu)
+				{
+					@* A tap anywhere else closes the menu. *@
+					<div class="menu-backdrop" @onclick="() => showMenu = false"></div>
+					<div class="menu" role="menu">
+						<button role="menuitem" @onclick="() => ExportAsync(png: true)">Export plot as PNG</button>
+						<button role="menuitem" @onclick="() => ExportAsync(png: false)">Export plot as SVG</button>
+						<button role="menuitem" @onclick="CopyOutputAsync">Copy output</button>
+						<button role="menuitem" @onclick="ResetPlotsAsync" disabled="@(!CanRun)">Reset plots</button>
+					</div>
+				}
+			</div>
+		}
 		@Links
 	</header>
 
@@ -35,6 +61,23 @@
 					}
 				</div>
 			}
+			@if (showScripts && app is not null)
+			{
+				<div class="scripts" aria-label="Scripts">
+					@foreach (var name in scripts)
+					{
+						<div class="script">
+							<button class="script-name" @onclick="() => RunScriptAsync(name)" disabled="@(!CanRun)" title="Run @name">@name</button>
+							<button class="button small" @onclick="() => ShareScriptAsync(name)">Share</button>
+							<button class="button small @(deleting == name ? "danger" : "")" @onclick="() => DeleteScript(name)">@(deleting == name ? "Delete?" : "Delete")</button>
+						</div>
+					}
+					@if (scripts.Count == 0)
+					{
+						<p class="hint">No scripts here: Open script… copies one in.</p>
+					}
+				</div>
+			}
 			<div class="output" @ref="outputElement">
 				@foreach (var line in console.Lines)
 				{
@@ -47,6 +90,14 @@
 					aria-label="Input" placeholder="@(console.IsContinuing ? "" : "Type an expression, e.g. [1 2; 3 4] * [1; 1]")"
 					@bind="input" @bind:event="oninput" @onkeydown="OnKeyDownAsync"
 					disabled="@(!Connected)" readonly="@running"></textarea>
+				@if (app is not null)
+				{
+					@* A phone's keyboard has no arrow keys. *@
+					<div class="recall">
+						<button class="button small" @onclick="() => RecallAsync(-1)" disabled="@running" aria-label="Earlier input">▲</button>
+						<button class="button small" @onclick="() => RecallAsync(1)" disabled="@running" aria-label="Later input">▼</button>
+					</div>
+				}
 			</div>
 		</section>
 
@@ -54,7 +105,7 @@
 		<div class="divider" @ref="dividerElement" role="separator" tabindex="0"
 			aria-label="Divider between the console and the plots" title="Drag to resize; double-click to reset"></div>
 
-		<section class="plots" aria-label="Plots">
+		<section class="plots" aria-label="Plots" @ref="plotsElement">
 			<PlotPane Figure="figure" OnStatus="text => statusBar?.ShowMouse(text)" OnCamera="OnCamera" Preview="Preview" />
 		</section>
 	</main>
@@ -97,16 +148,24 @@
 
 	readonly ConsoleModel console = new();
 	readonly FigureState figure = new();
+	/// <summary>The app's additions (scripts folder, files, clipboard); null on the web.</summary>
+	IAppHost? app;
 	StatusBar? statusBar;
 	ElementReference outputElement;
 	ElementReference inputElement;
 	ElementReference panesElement;
 	ElementReference dividerElement;
+	ElementReference plotsElement;
 	WelcomeMessage? welcome;
+	IReadOnlyList<string> scripts = [];
+	/// <summary>The script whose Delete was tapped once; a second tap deletes it.</summary>
+	string? deleting;
 	string input = "";
 	bool running;
 	bool outdated;
 	bool showFunctions;
+	bool showScripts;
+	bool showMenu;
 	bool scrollPending;
 	int runCounter;
 
@@ -129,6 +188,7 @@
 
 	protected override async Task OnInitializedAsync()
 	{
+		app = Services.GetService(typeof(IAppHost)) as IAppHost;
 		Session.Welcome += message => Update(() =>
 		{
 			bool reconnected = welcome is not null;
@@ -144,13 +204,16 @@
 			else if (reconnected && message.Running)
 				console.AddInfo("Reconnected; the program is still running. Output written while the connection was lost is not shown.");
 		});
-		Session.Download += message => _ = InvokeAsync(() => JS.InvokeVoidAsync("mlcalc.download", message.FileName, message.MediaType, message.Content).AsTask());
+		Session.Download += message => _ = InvokeAsync(() => SaveDownloadAsync(message));
 		Session.Output += message => Update(() => console.Apply(message));
 		Session.FigureChanged += message => Update(() => figure.Apply(message));
 		Session.RunFinished += message => Update(() =>
 		{
 			console.Apply(message, Limits);
 			running = false;
+			// A program may have saved files in the scripts folder.
+			if (showScripts)
+				scripts = app?.Scripts() ?? [];
 		});
 		Session.StateChanged += () => Update(() =>
 		{
@@ -158,7 +221,9 @@
 				running = false;
 		});
 		console.AddInfo("MLCalc — try  [1 2; 3 4] * [1; 1]   or   fplot(\"x\", \"sin(x)*x\")");
-		console.AddInfo("Up/Down recall earlier input, Shift+Enter starts a new line, Esc stops a running program.");
+		console.AddInfo(app is null
+			? "Up/Down recall earlier input, Shift+Enter starts a new line, Esc stops a running program."
+			: "▲ ▼ recall earlier input; Scripts lists the scripts you can run by name, such as FEIGENBA.m.");
 		await Session.StartAsync();
 	}
 
@@ -215,11 +280,30 @@
 		}
 	}
 
+	async Task RecallAsync(int step)
+	{
+		if (console.Recall(step) is { } recalled)
+			input = recalled;
+		await JS.InvokeVoidAsync("mlcalc.focus", inputElement);
+	}
+
 	async Task SubmitAsync()
 	{
 		if (!CanRun)
 			return;
 		string line = input.TrimEnd('\r', '\n');
+		input = "";
+		scrollPending = true;
+		if (console.Submit(line) is { } source)
+			await RunAsync(source);
+	}
+
+	/// <summary>Runs <paramref name="line"/> as if it was typed, so that the console shows what ran.</summary>
+	async Task RunAsTypedAsync(string line)
+	{
+		if (!CanRun)
+			return;
+		console.DiscardUnfinished();
 		input = "";
 		scrollPending = true;
 		if (console.Submit(line) is { } source)
@@ -265,6 +349,128 @@
 	}
 
 	void ClearConsole() => console.Apply(new OutputMessage([new OutputEntry(OutputKind.Clear, "")]));
+
+	/// <summary>
+	/// A file from <c>savefig</c>. The browser saves it as a download. The app writes it into the
+	/// scripts folder, at the full path the message names; a PNG comes as SVG, drawn here.
+	/// </summary>
+	async Task SaveDownloadAsync(DownloadMessage file)
+	{
+		if (app is null)
+		{
+			await JS.InvokeVoidAsync("mlcalc.download", file.FileName, file.MediaType, file.Content);
+			return;
+		}
+		await TryAsync($"save {Path.GetFileName(file.FileName)}", async () =>
+		{
+			byte[] content = file.MediaType == "image/png"
+				? await PngAsync(file.Content, scale: 1)
+				: System.Text.Encoding.UTF8.GetBytes(file.Content);
+			await app.SaveFileAsync(file.FileName, content);
+		});
+	}
+
+	async Task<byte[]> PngAsync(string svg, double scale) =>
+		Convert.FromBase64String(await JS.InvokeAsync<string>("mlcalc.svgToPng", svg, scale));
+
+	/// <summary>Runs a host action, telling the console when it fails.</summary>
+	async Task TryAsync(string what, Func<Task> action)
+	{
+		try
+		{
+			await action();
+		}
+		catch (Exception ex)
+		{
+			console.AddInfo($"Could not {what}: {ex.Message}");
+			scrollPending = true;
+			StateHasChanged();
+		}
+	}
+
+	// ───────────── The app's additions ─────────────
+
+	async Task ImportScriptAsync()
+	{
+		if (app is null || !CanRun)
+			return;
+		string? name = null;
+		await TryAsync("open the script", async () => name = await app.ImportScriptAsync());
+		if (name is null)
+			return;
+		scripts = app.Scripts();
+		await RunScriptAsync(name);
+	}
+
+	void ToggleScripts()
+	{
+		showScripts = !showScripts;
+		deleting = null;
+		if (showScripts && app is not null)
+			scripts = app.Scripts();
+	}
+
+	/// <summary>Runs a script from the scripts folder by name, as if <c>run("name")</c> was typed.</summary>
+	async Task RunScriptAsync(string name)
+	{
+		deleting = null;
+		if (name.Contains('"'))
+		{
+			console.AddInfo($"{name} cannot be run by name: its name has a \" in it.");
+			return;
+		}
+		await RunAsTypedAsync($"run(\"{name}\")");
+	}
+
+	async Task ShareScriptAsync(string name)
+	{
+		deleting = null;
+		await TryAsync($"share {name}", () => app!.ShareScriptAsync(name));
+	}
+
+	async Task DeleteScript(string name)
+	{
+		if (deleting != name)
+		{
+			deleting = name;
+			return;
+		}
+		deleting = null;
+		await TryAsync($"delete {name}", () =>
+		{
+			app!.DeleteScript(name);
+			return Task.CompletedTask;
+		});
+		scripts = app!.Scripts();
+	}
+
+	/// <summary>Saves the plots at the size they have on the screen, as SVG or as PNG at twice that size, as in the desktop app.</summary>
+	async Task ExportAsync(bool png)
+	{
+		showMenu = false;
+		await TryAsync("export the plot", async () =>
+		{
+			var size = await JS.InvokeAsync<double[]>("mlcalc.size", plotsElement);
+			string svg = MLCalc.Plotting.SvgWriter.Render(figure.Snapshot, Math.Clamp(size[0], 50, 16000), Math.Clamp(size[1], 50, 16000));
+			if (png)
+				await app!.ShareFileAsync("plot.png", "image/png", await PngAsync(svg, scale: 2));
+			else
+				await app!.ShareFileAsync("plot.svg", "image/svg+xml", System.Text.Encoding.UTF8.GetBytes(svg));
+		});
+	}
+
+	async Task CopyOutputAsync()
+	{
+		showMenu = false;
+		await TryAsync("copy the output", () => app!.CopyTextAsync(string.Join("\n", console.Lines.Select(line => line.Text))));
+	}
+
+	/// <summary>One plot window again, empty, as the desktop app's View › Reset Plots.</summary>
+	async Task ResetPlotsAsync()
+	{
+		showMenu = false;
+		await RunAsTypedAsync("initdisplay(1, 1)");
+	}
 
 	public async ValueTask DisposeAsync() => await Session.DisposeAsync();
 }

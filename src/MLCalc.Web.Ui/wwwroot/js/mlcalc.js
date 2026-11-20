@@ -27,6 +27,35 @@ window.mlcalc = {
 		element.setSelectionRange(element.value.length, element.value.length);
 	},
 
+	// The size of an element in CSS pixels, for exporting the plots at the size they have on the screen.
+	size(element) {
+		const box = element.getBoundingClientRect();
+		return [box.width, box.height];
+	},
+
+	// An SVG drawing as PNG, scale times its own size, in base64: for the app, which saves it.
+	async svgToPng(svg, scale) {
+		const root = new DOMParser().parseFromString(svg, 'image/svg+xml').documentElement;
+		const width = Math.round(parseFloat(root.getAttribute('width')) * scale);
+		const height = Math.round(parseFloat(root.getAttribute('height')) * scale);
+		const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+		try {
+			const image = new Image();
+			image.src = url;
+			await image.decode();
+			const canvas = document.createElement('canvas');
+			canvas.width = width;
+			canvas.height = height;
+			const context = canvas.getContext('2d');
+			context.fillStyle = 'white';
+			context.fillRect(0, 0, width, height);
+			context.drawImage(image, 0, 0, width, height);
+			return canvas.toDataURL('image/png').split(',')[1];
+		} finally {
+			URL.revokeObjectURL(url);
+		}
+	},
+
 	scrollToEnd(element) {
 		element.scrollTop = element.scrollHeight;
 	},

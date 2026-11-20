@@ -17,6 +17,8 @@ public static class MauiProgram
 		// anew) has its own session in it.
 		builder.Services.AddSingleton<LocalWorkspace>();
 		builder.Services.AddScoped<IMLCalcSession, LocalSession>();
+		// The scripts folder, files and clipboard, which the page shows only in the app.
+		builder.Services.AddSingleton<IAppHost, AppHost>();
 		return builder.Build();
 	}
 }

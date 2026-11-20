@@ -1,4 +1,5 @@
 using MLCalc.Hosting;
+using MLCalc.Plotting;
 using MLCalc.Web.Protocol;
 
 namespace MLCalc.Maui;
@@ -15,8 +16,27 @@ public sealed class LocalWorkspace : IDisposable
 
 	public LocalWorkspace()
 	{
-		Workspace = new Workspace(new WorkspaceOptions(), () => Volatile.Read(ref client));
-		Workspace.Interpreter.WorkingDirectory = FileSystem.AppDataDirectory;
+		ScriptsFolder.Create();
+		Workspace = new Workspace(new WorkspaceOptions
+		{
+			// Scripts from the scripts folder, by name or with run("file.m"), as in the desktop app.
+			Interpreter = new() { Scripts = new CaseInsensitiveScripts() },
+		}, () => Volatile.Read(ref client));
+		Workspace.Interpreter.WorkingDirectory = ScriptsFolder.Path;
+		// savefig("plot.svg") writes into the scripts folder (relative to the working directory),
+		// and says so without the long path of the app's storage.
+		Workspace.Plotting.RegisterFigureFormat(".svg", (snapshot, path, width, height) =>
+		{
+			File.WriteAllText(path, SvgWriter.Render(snapshot, width, height));
+			return $"Saved {Path.GetFileName(path)}.";
+		});
+		// savefig("plot.png"): the page draws the PNG from SVG, as only the web view can, and
+		// writes it at the path given here.
+		Workspace.Plotting.RegisterFigureFormat(".png", (snapshot, path, width, height) =>
+		{
+			Workspace.Download(new DownloadMessage(path, "image/png", SvgWriter.Render(snapshot, width, height)));
+			return $"Saved {Path.GetFileName(path)}.";
+		});
 	}
 
 	public Workspace Workspace { get; }

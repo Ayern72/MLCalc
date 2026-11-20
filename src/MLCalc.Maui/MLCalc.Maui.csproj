@@ -38,6 +38,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<!-- The sample scripts of the Amiga original, copied into the scripts folder on the first start (ScriptsFolder). -->
+		<EmbeddedResource Include="..\..\samples\*.m" LogicalName="samples/%(Filename)%(Extension)" Visible="false" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
 	</ItemGroup>
