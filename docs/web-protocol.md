@@ -1,8 +1,16 @@
 # The MLCalc web protocol
 
-How a browser client talks to the MLCalc web server. The Blazor client in `src/MLCalc.Web.Client`
-uses it, and a client in any other language can be written from this document alone. The C#
-types are in `src/MLCalc.Web.Protocol`; they serialise to exactly the JSON shown here.
+How a browser client talks to the MLCalc web server. A client in any language can be written from
+this document alone. There are two:
+
+- The Blazor client in `src/MLCalc.Web.Client` uses the C# types in `src/MLCalc.Web.Protocol`,
+  which serialise to exactly the JSON shown here.
+- The TypeScript client in `src/MLCalc.Web.TypeScript` was written from this document; its
+  `src/protocol.ts` has the messages as TypeScript types. It is the example to follow for a client
+  outside .NET.
+
+A client that draws the plots the way the C# code does can check itself against the test cases
+in `tests/fixtures` (see [Drawing the plots](#drawing-the-plots)).
 
 The server runs the programs, with one workspace per user (a *session*). The client shows the
 console, sends what the user types or the text of a script the user opens, and draws the plots
@@ -41,8 +49,9 @@ JSON rules for every message:
 
 - The first message on every connection is `Welcome`. It carries the session id.
 - To continue the same session after a lost connection or a reloaded page, connect with
-  `/hub?session=<id>`. The variables, the plots and a running program are kept. The Blazor client
-  keeps the id in the browser tab's `sessionStorage`, so each tab has its own session.
+  `/hub?session=<id>`. The variables, the plots and a running program are kept. Both clients
+  keep the id in the browser tab's `sessionStorage` under `mlcalc-session`, so each tab has its own
+  session, and switching between the clients in a tab keeps it.
 - An unknown or expired id gives a new session; `Welcome.newSession` is then `true`.
 - A session without activity for 30 minutes (the server's `IdleTimeout`) is removed. If the
   client is still connected, its next call gets a new `Welcome` with `newSession: true` before
@@ -139,8 +148,9 @@ server sends what it has gathered every 50 ms: first `Output`, then `FigureChang
 | `limits.maxSourceLength` | The longest program text accepted |
 | `figure` | Every plot window, each as `replace` |
 
-A client that the server itself serves, such as the Blazor client, is built together with it and
-knows its own version. When `version` differs, the server has been updated since the page was
+A client that the server itself serves, such as the Blazor and TypeScript clients, is built
+together with it and knows its own version (the TypeScript build reads the version number from
+`Directory.Build.props` and adds the commit, as the .NET build does). When `version` differs, the server has been updated since the page was
 loaded (a reconnect after a deploy): the client offers to reload the page. A client built and served
 separately has no version of its own to compare and can ignore the field.
 
@@ -287,12 +297,37 @@ breaks a line. Coordinates are sent in single precision.
 | 4 | `#ff7f0e` | 9 | `#bcbd22` | 14 | `#8c6d31` |
 | 5 | `#9467bd` | 10 | `#7f7f7f` | 15 | `#7b4173` |
 
-**Drawing.** To draw like the desktop app and the SVG export, follow the C# code in
-`src/MLCalc.Plotting`: `PlotLayout` (margins and the plot area), `AxisTicks` (tick values),
-`PlotTransform` (data to screen), `SvgWriter` (lines, markers, dots and titles), and for 3D
-`Scene3D` and `Projection3D` (the box, the perspective projection and the order of surface
-patches) and `CameraControl` (turning with the mouse: 0.5° per pixel; the wheel moves the camera
-by a factor 0.85 per notch towards its target).
+## Drawing the plots
+
+To draw like the desktop app and the SVG export, follow the C# code in `src/MLCalc.Plotting`:
+`PlotLayout` (margins and the plot area), `AxisTicks` (tick values), `PlotTransform` (data to
+screen), `SvgWriter` (lines, markers, dots and titles), and for 3D `Scene3D` and `Projection3D`
+(the box, the perspective projection and the order of surface patches) and `CameraControl`
+(turning with the mouse: 0.5° per pixel; the wheel moves the camera by a factor 0.85 per notch
+towards its target). The TypeScript client's `src/plotting` is a line-by-line port.
+
+**Test cases.** `tests/fixtures` holds what the C# code makes, for a client to compare with:
+
+- `drawings/*.json`: a window as this protocol sends it (`window`), a size, and the SVG text the
+  C# code draws for it (`svg`, one string per line); for 3D windows also the camera as the status
+  bar describes it, after two notches of the wheel, and after a drag (`camera`).
+- `number-format.json`: numbers formatted as the SVG text and the status bar use them, and axis
+  ticks.
+
+To draw the same SVG to the character, a client must do the arithmetic in the same order as the C#
+code, and format numbers the .NET way. In JavaScript this means:
+
+- **Single precision.** Coordinates arrive in single precision; .NET reads them into a `float`.
+  Use `Math.fround` on each, or the drawings differ in the last digits.
+- **"0.##"** (coordinates): .NET takes 15 significant digits first, then rounds half away from
+  zero, so 1.005 gives `1.01`; a negative number that rounds to zero gives `-0`.
+- **"G6", "G5", "G4"** (tick labels, status bar): correctly rounded, exact halves to even (311.125
+  in "G5" is `311.12`); an exponent from 10⁶ (10⁵, 10⁴) up and below 10⁻⁴, written `1E+06`.
+- **Plain numbers** (sizes, widths): the shortest text that reads back as the number, with an
+  exponent from 10¹⁷ up and below 10⁻⁴, written `1E+17` or `1E-05`.
+- **`Math.Round(x, d)`**: multiply by 10^d, round half to even, divide; from 10¹⁶ up, unchanged.
+
+The TypeScript client's `src/plotting/format.ts` does all of this.
 
 ## An example
 

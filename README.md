@@ -85,18 +85,30 @@ used from shell scripts and builds.
 ## Web app
 
 MLCalc also runs in the browser: an ASP.NET Core server runs the programs, one workspace per
-browser tab, and a Blazor WebAssembly client shows the console and draws the plots, turning 3D
-windows locally. They talk over SignalR with plain JSON messages, described in
-[docs/web-protocol.md](docs/web-protocol.md), so that clients in other languages can be written
-against the same server.
+browser tab, and the browser shows the console and draws the plots, turning 3D windows locally.
+They talk over SignalR with plain JSON messages, described in
+[docs/web-protocol.md](docs/web-protocol.md), so that clients in any language can use the same
+server. There are two clients, which look and behave the same:
 
-**Try it at https://mlcalc-764948534857.europe-north1.run.app** (the first visit after a quiet
-period takes a few seconds while the server starts). To run it yourself:
+- **Blazor WebAssembly** (C#, at `/`): draws the plots with the same C# code as the desktop app.
+- **TypeScript** (at `/ts/`, no framework, about 30 KB compressed): written against the protocol
+  document alone, with the drawing code ported from C#. Test cases shared by both languages
+  ([tests/fixtures](tests/fixtures)) check that the two draw the same SVG to the character.
+
+A link in each toolbar switches to the other client and keeps the workspace.
+
+**Try it at https://mlcalc-764948534857.europe-north1.run.app** (the TypeScript client at
+[/ts/](https://mlcalc-764948534857.europe-north1.run.app/ts/); the first visit after a quiet period
+takes a few seconds while the server starts). To run it yourself:
 
 ```
 docker compose up --build                       # then open http://localhost:8080
 dotnet run --project src/MLCalc.Web.Server      # or without Docker: http://localhost:5080
 ```
+
+Without Docker, the TypeScript client is served once it has been built (Node.js 26):
+`npm ci` and `npm run build` in `src/MLCalc.Web.TypeScript`. Its
+[README](src/MLCalc.Web.TypeScript/README.md) describes the project.
 
 The server reads and writes no files: scripts are opened in the browser and sent as text,
 `savefig` downloads SVG in the browser, and the container runs on a read-only file system. A
@@ -130,8 +142,9 @@ describes the setup.
 | `MLCalc.Wpf` | Windows desktop application |
 | `MLCalc.Cli` | Cross-platform command-line tool (`mlcalc`) |
 | `MLCalc.Web.Protocol` | The messages between the web server and its clients |
-| `MLCalc.Web.Server` | ASP.NET Core server of the web app: sessions, limits, the SignalR hub; serves the client |
+| `MLCalc.Web.Server` | ASP.NET Core server of the web app: sessions, limits, the SignalR hub; serves both clients |
 | `MLCalc.Web.Client` | Blazor WebAssembly client of the web app |
+| `MLCalc.Web.TypeScript` | TypeScript client of the web app (Vite; not part of the .NET solution) |
 
 The libraries target `net10.0` with no Windows dependencies, so they can be reused by other
 front-ends. Dependencies only point downward: `Mathematics` ← `LinearAlgebra` ← `Numerics` ←
@@ -163,6 +176,21 @@ dotnet test MLCalc.slnx
 dotnet run --project src/MLCalc.Wpf
 dotnet run --project src/MLCalc.Cli -- -e "1 + 2"
 ```
+
+The TypeScript client needs Node.js 26:
+
+```
+cd src/MLCalc.Web.TypeScript
+npm ci
+npm run check    # type check
+npm test         # its tests, including the drawings shared with C#
+npm run build    # into src/MLCalc.Web.Server/ts-client, which the server serves at /ts/
+npm run dev      # with hot reload at http://localhost:5173/ts/; start the server too
+```
+
+The shared test cases in `tests/fixtures` are written by the C# tests. After a deliberate change
+to the drawing, run `dotnet test` with the environment variable `MLCALC_UPDATE_FIXTURES=1` to write
+them anew, and review the diff.
 
 Two single-file tools live outside the solution:
 

@@ -1291,6 +1291,11 @@ reads the scripts you open, and draws the plots.
 It is available at <https://mlcalc-764948534857.europe-north1.run.app>. The first visit after a
 quiet period takes a few seconds while the server starts.
 
+The page comes in two versions that look and work the same: one written in C# (Blazor
+WebAssembly), at the address above, and one written in TypeScript, at
+<https://mlcalc-764948534857.europe-north1.run.app/ts/>. A link at the top right of each switches to
+the other, keeping your variables and plots.
+
 To run the server on your own computer, use Docker in the repository's folder and open
 <http://localhost:8080>:
 
