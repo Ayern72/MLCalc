@@ -1,9 +1,11 @@
 import { ConsoleModel } from '../console-model';
 import { MLCalcConnection, type ConnectionState } from '../connection';
 import type { Limits, WelcomeMessage } from '../protocol';
+import { FigureState } from '../figure-state';
 import { ConsoleView } from './console-view';
 import { element } from './dom';
 import { download } from './download';
+import { PlotPane } from './plot-pane';
 
 declare const __MLCALC_VERSION__: string;
 
@@ -31,6 +33,8 @@ export class App {
 	readonly #input: HTMLTextAreaElement;
 	readonly #status: HTMLSpanElement;
 	readonly #consoleView: ConsoleView;
+	readonly #figure = new FigureState();
+	readonly #plotPane: PlotPane;
 
 	readonly panes: HTMLElement;
 	readonly divider: HTMLDivElement;
@@ -75,6 +79,8 @@ export class App {
 		root.replaceChildren(page);
 
 		this.#consoleView = new ConsoleView(this.#output, this.#console);
+		this.#plotPane = new PlotPane(this.#figure, { status: text => this.showMouseStatus(text) });
+		this.plots.append(this.#plotPane.element);
 		this.#openInput.addEventListener('change', () => void this.#openScript());
 		this.#stopButton.addEventListener('click', () => void this.#cancel());
 		clearButton.addEventListener('click', () => {
@@ -94,8 +100,9 @@ export class App {
 				this.#console.applyOutput(message);
 				this.#update();
 			},
-			figureChanged: () => {
-				// Plots come with milestone 2.
+			figureChanged: message => {
+				this.#figure.apply(message);
+				this.#plotPane.update();
 			},
 			runFinished: message => {
 				this.#console.applyRunFinished(message, this.#limits);
@@ -155,7 +162,9 @@ export class App {
 		// open (or the browser kept old files). Offer a reload rather than reloading at once,
 		// which would lose the console.
 		this.#updateBar.hidden = message.version === buildVersion;
-		this.#functions.replaceChildren(...message.builtinNames.map(name => element('code', {}, name)));
+		this.#functions.replaceChildren(...message.builtinNames.map(name => element('code', {}, name)));
+		this.#figure.apply(message.figure);
+		this.#plotPane.update();
 		if (reconnected && message.newSession)
 			this.#console.addInfo('The server started a new session: earlier variables and plots are gone.');
 		else if (reconnected && message.running)

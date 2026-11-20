@@ -1,0 +1,5 @@
+{
+	// The client's own code only: the tests read tests/fixtures, which the Docker build does not have.
+	"extends": "./tsconfig.json",
+	"include": ["src"]
+}

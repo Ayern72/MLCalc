@@ -38,8 +38,8 @@ export default defineConfig({
 	},
 	server: {
 		port: 5173,
-		// The stylesheet and icon are the Blazor client's.
-		fs: { allow: ['..'] },
+		// The stylesheet and icon are the Blazor client's; the tests read tests/fixtures.
+		fs: { allow: ['../..'] },
 		// npm run dev: the page from Vite, the hub from the server (dotnet run, port 5080).
 		proxy: {
 			'/hub': { target: 'http://localhost:5080', ws: true },

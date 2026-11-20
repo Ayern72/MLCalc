@@ -1,0 +1,82 @@
+{
+	"name": "far-outside",
+	"program": "xrange(0, 1); yrange(0, 1); plot([-1e6 0.5 1e9], [0.5 1e12 0.5]); plot([0.2 0.4 0.6], [-3 0.5 1e300], +)",
+	"width": 400,
+	"height": 300,
+	"isCurrent": false,
+	"preview": false,
+	"window": {
+		"kind": "cartesian",
+		"xMin": 0,
+		"xMax": 1,
+		"yMin": 0,
+		"yMax": 1,
+		"zMin": -10,
+		"zMax": 10,
+		"title": "",
+		"xTitle": "",
+		"yTitle": "",
+		"zTitle": "",
+		"grid": false,
+		"pen": 3,
+		"camera": {
+			"azimuth": -37.5,
+			"elevation": 30
+		},
+		"items": [
+			{
+				"type": "series",
+				"pen": 1,
+				"x": [
+					-1000000,
+					0.5,
+					1E+09
+				],
+				"y": [
+					0.5,
+					1E+12,
+					0.5
+				],
+				"style": "line"
+			},
+			{
+				"type": "series",
+				"pen": 2,
+				"x": [
+					0.2,
+					0.4,
+					0.6
+				],
+				"y": [
+					-3,
+					0.5,
+					null
+				],
+				"style": "cross"
+			}
+		]
+	},
+	"svg": [
+		"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"300\" viewBox=\"0 0 400 300\" font-family=\"Segoe UI, Helvetica, Arial, sans-serif\">",
+		"<rect width=\"400\" height=\"300\" fill=\"white\"/>",
+		"<clipPath id=\"w-clip\"><rect x=\"62\" y=\"28\" width=\"320\" height=\"228\"/></clipPath>",
+		"<g clip-path=\"url(#w-clip)\">",
+		"<path d=\"M-3138 142 L222 -3172 L3582 142\" fill=\"none\" stroke=\"#1f77b4\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/>",
+		"<path d=\"M186.5 142h7M190 138.5v7\" fill=\"none\" stroke=\"#d62728\" stroke-width=\"1.5\"/>",
+		"</g>",
+		"<rect x=\"62\" y=\"28\" width=\"320\" height=\"228\" fill=\"none\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<line x1=\"62\" y1=\"256\" x2=\"62\" y2=\"260\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<text x=\"62\" y=\"273\" font-size=\"11\" fill=\"#333\" text-anchor=\"middle\">0</text>",
+		"<line x1=\"222\" y1=\"256\" x2=\"222\" y2=\"260\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<text x=\"222\" y=\"273\" font-size=\"11\" fill=\"#333\" text-anchor=\"middle\">0.5</text>",
+		"<line x1=\"382\" y1=\"256\" x2=\"382\" y2=\"260\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<text x=\"382\" y=\"273\" font-size=\"11\" fill=\"#333\" text-anchor=\"middle\">1</text>",
+		"<line x1=\"58\" y1=\"256\" x2=\"62\" y2=\"256\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<text x=\"55\" y=\"260\" font-size=\"11\" fill=\"#333\" text-anchor=\"end\">0</text>",
+		"<line x1=\"58\" y1=\"142\" x2=\"62\" y2=\"142\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<text x=\"55\" y=\"146\" font-size=\"11\" fill=\"#333\" text-anchor=\"end\">0.5</text>",
+		"<line x1=\"58\" y1=\"28\" x2=\"62\" y2=\"28\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<text x=\"55\" y=\"32\" font-size=\"11\" fill=\"#333\" text-anchor=\"end\">1</text>",
+		"</svg>"
+	]
+}

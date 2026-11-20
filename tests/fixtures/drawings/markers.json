@@ -1,0 +1,98 @@
+{
+	"name": "markers",
+	"program": "xrange(0, 4); yrange(0, 7); plot([1 2 3], [4 5 6], +); plot([1 2 3], [6 5 4], *); plot([1.5 2.5], [1 2], \".\")",
+	"width": 400,
+	"height": 300,
+	"isCurrent": false,
+	"preview": false,
+	"window": {
+		"kind": "cartesian",
+		"xMin": 0,
+		"xMax": 4,
+		"yMin": 0,
+		"yMax": 7,
+		"zMin": -10,
+		"zMax": 10,
+		"title": "",
+		"xTitle": "",
+		"yTitle": "",
+		"zTitle": "",
+		"grid": false,
+		"pen": 4,
+		"camera": {
+			"azimuth": -37.5,
+			"elevation": 30
+		},
+		"items": [
+			{
+				"type": "series",
+				"pen": 1,
+				"x": [
+					1,
+					2,
+					3
+				],
+				"y": [
+					4,
+					5,
+					6
+				],
+				"style": "cross"
+			},
+			{
+				"type": "series",
+				"pen": 2,
+				"x": [
+					1,
+					2,
+					3
+				],
+				"y": [
+					6,
+					5,
+					4
+				],
+				"style": "star"
+			},
+			{
+				"type": "series",
+				"pen": 3,
+				"x": [
+					1.5,
+					2.5
+				],
+				"y": [
+					1,
+					2
+				],
+				"style": "dot"
+			}
+		]
+	},
+	"svg": [
+		"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"300\" viewBox=\"0 0 400 300\" font-family=\"Segoe UI, Helvetica, Arial, sans-serif\">",
+		"<rect width=\"400\" height=\"300\" fill=\"white\"/>",
+		"<clipPath id=\"w-clip\"><rect x=\"62\" y=\"28\" width=\"320\" height=\"228\"/></clipPath>",
+		"<g clip-path=\"url(#w-clip)\">",
+		"<path d=\"M138.5 125.71h7M142 122.21v7M218.5 93.14h7M222 89.64v7M298.5 60.57h7M302 57.07v7\" fill=\"none\" stroke=\"#1f77b4\" stroke-width=\"1.5\"/>",
+		"<path d=\"M138.5 60.57h7M142 57.07v7M139.38 57.95l5.25 5.25M139.38 63.2l5.25 -5.25M218.5 93.14h7M222 89.64v7M219.38 90.52l5.25 5.25M219.38 95.77l5.25 -5.25M298.5 125.71h7M302 122.21v7M299.38 123.09l5.25 5.25M299.38 128.34l5.25 -5.25\" fill=\"none\" stroke=\"#d62728\" stroke-width=\"1.5\"/>",
+		"<path d=\"M180.9 222.33h2.2v2.2h-2.2zM260.9 189.76h2.2v2.2h-2.2z\" fill=\"#2ca02c\"/>",
+		"</g>",
+		"<rect x=\"62\" y=\"28\" width=\"320\" height=\"228\" fill=\"none\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<line x1=\"62\" y1=\"256\" x2=\"62\" y2=\"260\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<text x=\"62\" y=\"273\" font-size=\"11\" fill=\"#333\" text-anchor=\"middle\">0</text>",
+		"<line x1=\"222\" y1=\"256\" x2=\"222\" y2=\"260\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<text x=\"222\" y=\"273\" font-size=\"11\" fill=\"#333\" text-anchor=\"middle\">2</text>",
+		"<line x1=\"382\" y1=\"256\" x2=\"382\" y2=\"260\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<text x=\"382\" y=\"273\" font-size=\"11\" fill=\"#333\" text-anchor=\"middle\">4</text>",
+		"<line x1=\"58\" y1=\"256\" x2=\"62\" y2=\"256\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<text x=\"55\" y=\"260\" font-size=\"11\" fill=\"#333\" text-anchor=\"end\">0</text>",
+		"<line x1=\"58\" y1=\"190.86\" x2=\"62\" y2=\"190.86\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<text x=\"55\" y=\"194.86\" font-size=\"11\" fill=\"#333\" text-anchor=\"end\">2</text>",
+		"<line x1=\"58\" y1=\"125.71\" x2=\"62\" y2=\"125.71\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<text x=\"55\" y=\"129.71\" font-size=\"11\" fill=\"#333\" text-anchor=\"end\">4</text>",
+		"<line x1=\"58\" y1=\"60.57\" x2=\"62\" y2=\"60.57\" stroke=\"#999\" stroke-width=\"1\"/>",
+		"<text x=\"55\" y=\"64.57\" font-size=\"11\" fill=\"#333\" text-anchor=\"end\">6</text>",
+		"</svg>"
+	]
+}
