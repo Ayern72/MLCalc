@@ -192,6 +192,12 @@ The shared test cases in `tests/fixtures` are written by the C# tests. After a d
 to the drawing, run `dotnet test` with the environment variable `MLCALC_UPDATE_FIXTURES=1` to write
 them anew, and review the diff.
 
+Dependencies are kept up to date by Dependabot ([.github/dependabot.yml](.github/dependabot.yml)):
+once a week it opens pull requests for the NuGet and npm packages, the GitHub Actions and the
+Docker base images, with the minor and patch updates of each kind grouped together, and CI builds
+and tests each one. Security updates come at once. New major versions of .NET and Node.js are left
+out, as they mean changing the target framework or the toolchain by hand.
+
 Two single-file tools live outside the solution:
 
 ```

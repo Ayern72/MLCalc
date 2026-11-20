@@ -50,6 +50,14 @@ the .NET tests with `MLCALC_UPDATE_FIXTURES=1` to write them anew.
 
 `global.json` pins SDK 10. The tests run under a culture with a decimal comma (`tests/TestCulture.cs`).
 
+## Dependency updates
+
+Dependabot (`.github/dependabot.yml`) opens weekly pull requests for NuGet (central versions in
+`Directory.Packages.props`), npm (`src/MLCalc.Web.TypeScript`, exact versions), GitHub Actions
+(pinned to commits, with the version in a comment) and the Docker base images. When asked to look
+at one: CI must pass, including the shared drawing test cases; an update of TypeScript, Vite or
+Vitest may need code changes, not only a new lock file.
+
 ## Commits
 
 The repository owner makes the commits; give the `git` commands rather than running `git commit`.
