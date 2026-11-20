@@ -2,6 +2,9 @@
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net10.0-windows</TargetFramework>
+		<!-- Lets the project be restored on Linux, as GitHub's dependency graph does; it is still
+		     built and run on Windows only. -->
+		<EnableWindowsTargeting>true</EnableWindowsTargeting>
 		<UseWPF>true</UseWPF>
 		<IsPackable>false</IsPackable>
 		<AssemblyName>MLCalc</AssemblyName>

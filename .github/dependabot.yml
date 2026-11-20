@@ -49,7 +49,8 @@ updates:
     ignore:
       # A new .NET major version is a change of the target framework and global.json, not of the
       # image alone; a new Node.js major version is chosen by hand, from the LTS versions.
-      - dependency-name: mcr.microsoft.com/dotnet/*
+      # (Dependabot names the images from mcr.microsoft.com without the registry.)
+      - dependency-name: dotnet/*
         update-types: [version-update:semver-major]
       - dependency-name: node
         update-types: [version-update:semver-major]
