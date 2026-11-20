@@ -26,7 +26,7 @@ ARG SOURCE_REVISION
 RUN SOURCE_REVISION=$SOURCE_REVISION npm run build
 
 # ───────────── Build the server and the Blazor client ─────────────
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 
 # The project files first, so that the restore layer is reused while only code changes.
