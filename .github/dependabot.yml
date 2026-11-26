@@ -17,6 +17,9 @@ updates:
       # framework (net11.0) and SDK, which is a change of its own.
       - dependency-name: Microsoft.AspNetCore.*
         update-types: [version-update:semver-major]
+      # So do the MAUI packages: MAUI 11 needs the MAUI 11 workload, which comes with .NET 11.
+      - dependency-name: Microsoft.Maui.*
+        update-types: [version-update:semver-major]
 
   # The TypeScript client's packages, pinned to exact versions in package.json.
   - package-ecosystem: npm
